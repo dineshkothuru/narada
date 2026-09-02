@@ -31,7 +31,7 @@ export default function Home() {
             <Link
               key={t.code}
               href={`/t/${t.code}`}
-              className="rounded-2xl bg-orange-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition active:scale-95"
+              className="rounded-2xl bg-emerald-700 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition active:scale-95"
             >
               {t.label}
             </Link>

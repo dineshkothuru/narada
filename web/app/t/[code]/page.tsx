@@ -1,4 +1,5 @@
 import OrderExperience from "@/components/OrderExperience";
+import { fetchMenu } from "@/lib/menu";
 
 export default async function TablePage({
   params,
@@ -6,5 +7,6 @@ export default async function TablePage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  return <OrderExperience tableCode={code} />;
+  const menu = await fetchMenu(code);
+  return <OrderExperience tableCode={code} menu={menu} />;
 }

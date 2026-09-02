@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CATEGORIES, MENU, RESTAURANT } from "@/lib/menu-data";
-import type { AnnaResponse, CartLine, ChatMessage } from "@/lib/types";
+import { fetchMenu } from "@/lib/menu";
+import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "@/lib/types";
 
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-function buildSystemPrompt(cart: CartLine[], language: string) {
-  const menuForPrompt = CATEGORIES.map((c) => ({
-    category: c.name,
-    items: MENU.filter((m) => m.categoryId === c.id).map((m) => ({
-      id: m.id,
-      name: m.name,
-      description: m.description,
-      price_inr: m.priceInr,
-      veg: m.isVeg,
-      spice_level_0_to_3: m.spiceLevel,
-      allergens: m.allergens,
-      tags: m.tags,
-    })),
+function buildSystemPrompt(menu: MenuPayload, cart: CartLine[], language: string) {
+  const menuForPrompt = menu.categories.map((c) => ({
+    category: c.name.en,
+    items: menu.items
+      .filter((m) => m.categoryId === c.id)
+      .map((m) => ({
+        id: m.id,
+        name: m.name.en,
+        name_hindi: m.name.hi,
+        name_telugu: m.name.te,
+        description: m.description.en,
+        price_inr: m.priceInr,
+        veg: m.isVeg,
+        spice_level_0_to_3: m.spiceLevel,
+        allergens: m.allergens,
+        tags: m.tags,
+      })),
   }));
 
-  return `You are Anna, the friendly waiter at "${RESTAURANT.name}". A customer at the table is talking to you to explore the menu and order food.
+  return `You are Anna, the friendly waiter at "${menu.restaurant.name}". A customer at the table is talking to you to explore the menu and order food.
 
 MENU (the ONLY items that exist — never invent items, prices, or ingredients):
 ${JSON.stringify(menuForPrompt)}
@@ -49,14 +53,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
   }
 
-  const { messages, cart, language } = (await req.json()) as {
+  const { messages, cart, language, tableCode } = (await req.json()) as {
     messages: ChatMessage[];
     cart: CartLine[];
     language?: string;
+    tableCode?: string;
   };
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
+
+  const menu = await fetchMenu(tableCode || "");
 
   const contents = messages.slice(-12).map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: buildSystemPrompt(cart ?? [], language || "English") }],
+        parts: [{ text: buildSystemPrompt(menu, cart ?? [], language || "English") }],
       },
       contents,
       generationConfig: {

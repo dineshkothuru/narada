@@ -72,8 +72,8 @@ export default function MemoryGame({
   };
 
   return (
-    <div className="w-full rounded-2xl bg-violet-50 p-4 ring-1 ring-violet-200">
-      <div className="flex items-center justify-between text-[11px] font-bold tracking-widest text-violet-500 uppercase">
+    <div className="w-full rounded-2xl bg-teal-50 p-4 ring-1 ring-teal-200">
+      <div className="flex items-center justify-between text-[11px] font-bold tracking-widest text-teal-600 uppercase">
         <span>
           {strings.level} {level + 1}/{MEMORY_LEVELS.length}
         </span>
@@ -97,8 +97,8 @@ export default function MemoryGame({
                 shown
                   ? card.matched
                     ? "bg-green-100 ring-1 ring-green-300"
-                    : "bg-white ring-1 ring-violet-300"
-                  : "bg-gradient-to-br from-violet-500 to-fuchsia-500 active:scale-95"
+                    : "bg-white ring-1 ring-teal-300"
+                  : "bg-gradient-to-br from-emerald-600 to-teal-500 active:scale-95"
               }`}
             >
               {shown ? card.emoji : "✦"}
@@ -109,7 +109,7 @@ export default function MemoryGame({
       {levelClear && level < MEMORY_LEVELS.length - 1 && (
         <button
           onClick={nextLevel}
-          className="animate-pop mt-3 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition active:scale-[0.98]"
+          className="animate-pop mt-3 w-full rounded-xl bg-teal-700 px-4 py-3 text-sm font-bold text-white transition active:scale-[0.98]"
         >
           {strings.levelClear} {strings.nextLevel}
         </button>

@@ -1,7 +1,18 @@
-import type { MenuCategory, MenuItem } from "./types";
+// Offline fallback mirroring docs/seed.sql — used only when Supabase is
+// unreachable. The live menu (with translations) comes from lib/menu.ts.
+type MenuCategory = { id: string; name: string; emoji: string };
+type MenuItem = {
+  id: string;
+  categoryId: string;
+  name: string;
+  description: string;
+  priceInr: number;
+  isVeg: boolean;
+  spiceLevel: 0 | 1 | 2 | 3;
+  allergens: string[];
+  tags: string[];
+};
 
-// Demo menu mirroring docs/seed.sql. Once Supabase credentials are configured,
-// this module is replaced by live queries; ids must stay in sync with the seed.
 export const RESTAURANT = {
   name: "Spice Garden",
   slug: "demo-spice-garden",

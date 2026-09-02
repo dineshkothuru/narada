@@ -1,44 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CATEGORIES, MENU, MENU_BY_ID, RESTAURANT } from "@/lib/menu-data";
 import { LANGS, LANG_NAME, STRINGS, type Lang } from "@/lib/i18n";
 import { WHEEL } from "@/lib/games";
 import MemoryGame from "./MemoryGame";
 import SpinWheel from "./SpinWheel";
-import type { AnnaResponse, CartLine, ChatMessage } from "@/lib/types";
+import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "@/lib/types";
 
-const CATEGORY_TILE: Record<string, string> = {
-  starters: "from-amber-100 to-orange-200",
-  mains: "from-orange-100 to-rose-200",
-  breads: "from-yellow-50 to-amber-200",
-  biryani: "from-amber-100 to-yellow-200",
-  desserts: "from-rose-100 to-pink-200",
-  drinks: "from-sky-100 to-cyan-200",
-};
-
-const ITEM_EMOJI: Record<string, string> = {
-  "paneer-tikka": "🧀",
-  "veg-manchurian": "🥟",
-  "chicken-65": "🍗",
-  "tandoori-mushroom": "🍄",
-  "paneer-butter-masala": "🍛",
-  "dal-makhani": "🫘",
-  "butter-chicken": "🍗",
-  "andhra-chicken-curry": "🌶️",
-  "palak-paneer": "🥬",
-  "butter-naan": "🫓",
-  "garlic-naan": "🧄",
-  "tandoori-roti": "🫓",
-  "hyderabadi-chicken-biryani": "🍚",
-  "veg-dum-biryani": "🍚",
-  "jeera-rice": "🍚",
-  "gulab-jamun": "🍮",
-  rasmalai: "🥛",
-  "sweet-lassi": "🥤",
-  "masala-chaas": "🥛",
-  "fresh-lime-soda": "🍋",
-};
+const CATEGORY_TILES = [
+  "from-amber-100 to-orange-200",
+  "from-orange-100 to-rose-200",
+  "from-yellow-50 to-amber-200",
+  "from-amber-100 to-yellow-200",
+  "from-rose-100 to-pink-200",
+  "from-sky-100 to-cyan-200",
+];
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -65,11 +41,19 @@ function VegMark({ isVeg }: { isVeg: boolean }) {
   );
 }
 
-export default function OrderExperience({ tableCode }: { tableCode: string }) {
+export default function OrderExperience({
+  tableCode,
+  menu,
+}: {
+  tableCode: string;
+  menu: MenuPayload;
+}) {
+  const { restaurant, categories, items: menuItems } = menu;
   const [cart, setCart] = useState<CartLine[]>([]);
   const [lang, setLang] = useState<Lang>("en");
+  const [hydrated, setHydrated] = useState(false);
   const [vegOnly, setVegOnly] = useState(false);
-  const [activeCat, setActiveCat] = useState(CATEGORIES[0].id);
+  const [activeCat, setActiveCat] = useState(categories[0]?.id ?? "");
   const [cartOpen, setCartOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -87,6 +71,11 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const storageKey = `narada:${tableCode}`;
 
+  const MENU_BY_ID = useMemo(
+    () => new Map(menuItems.map((m) => [m.id, m])),
+    [menuItems],
+  );
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -99,17 +88,19 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
         if (typeof s.discountPct === "number") setDiscountPct(s.discountPct);
       }
     } catch {}
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
   useEffect(() => {
+    if (!hydrated) return;
     try {
       localStorage.setItem(
         storageKey,
         JSON.stringify({ cart, messages, lang, spinDone, discountPct }),
       );
     } catch {}
-  }, [cart, messages, lang, spinDone, discountPct, storageKey]);
+  }, [hydrated, cart, messages, lang, spinDone, discountPct, storageKey]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -151,10 +142,10 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       if (!item) continue;
       if (a.type === "add") {
         changeQty(a.itemId, Math.max(1, a.qty || 1), a.notes);
-        setToast(`Added ${item.name} ×${Math.max(1, a.qty || 1)}`);
+        setToast(`+ ${item.name[lang]} ×${Math.max(1, a.qty || 1)}`);
       } else if (a.type === "remove") {
         setCart((prev) => prev.filter((l) => l.itemId !== a.itemId));
-        setToast(`Removed ${item.name}`);
+        setToast(`− ${item.name[lang]}`);
       } else if (a.type === "set_qty") {
         setCart((prev) =>
           a.qty <= 0
@@ -179,7 +170,12 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       const res = await fetch("/api/anna", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages, cart, language: LANG_NAME[lang] }),
+        body: JSON.stringify({
+          messages: nextMessages,
+          cart,
+          language: LANG_NAME[lang],
+          tableCode,
+        }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const data: AnnaResponse = await res.json();
@@ -217,32 +213,31 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
     : 0;
 
   const upiLink = orderPlaced
-    ? `upi://pay?pa=${encodeURIComponent(RESTAURANT.upiVpa)}&pn=${encodeURIComponent(
-        RESTAURANT.name,
+    ? `upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(
+        restaurant.name,
       )}&am=${payable}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`
     : "";
-
 
   const scrollToCat = (id: string) => {
     setActiveCat(id);
     sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const tableLabel = tableCode.replace(/^t(\d+).*$/i, "Table $1");
+  const tableLabel = menu.tableLabel;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-36">
       {/* Hero header */}
-      <header className="rounded-b-[2rem] bg-stone-900 px-6 pt-10 pb-6 text-amber-50">
+      <header className="rounded-b-[2rem] bg-emerald-950 px-6 pt-10 pb-6 text-amber-50">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[11px] font-medium tracking-[0.2em] text-amber-200/70 uppercase">
               {tableLabel} · {t.dineIn}
             </p>
             <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight">
-              {RESTAURANT.name}
+              {restaurant.name}
             </h1>
-            <p className="mt-1 text-xs text-amber-100/60">{RESTAURANT.tagline}</p>
+            <p className="mt-1 text-xs text-amber-100/60">{restaurant.tagline}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="flex rounded-full border border-amber-100/20 p-0.5">
@@ -274,7 +269,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
         </div>
         <button
           onClick={() => setChatOpen(true)}
-          className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 px-4 py-3.5 text-left shadow-lg shadow-orange-900/40 transition active:scale-[0.98]"
+          className="mt-5 flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-3.5 text-left shadow-lg shadow-emerald-950/40 transition active:scale-[0.98]"
         >
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 text-xl">
             🎙️
@@ -287,18 +282,18 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       </header>
 
       {/* Category chips */}
-      <nav className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto bg-[#fdf6ec]/95 px-4 py-3 backdrop-blur">
-        {CATEGORIES.map((c) => (
+      <nav className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto bg-[#f3f5f0]/95 px-4 py-3 backdrop-blur">
+        {categories.map((c) => (
           <button
             key={c.id}
             onClick={() => scrollToCat(c.id)}
             className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition ${
               activeCat === c.id
-                ? "bg-stone-900 text-amber-50 shadow"
+                ? "bg-emerald-950 text-amber-50 shadow"
                 : "bg-white text-stone-600 ring-1 ring-stone-200"
             }`}
           >
-            {c.emoji} {c.name}
+            {c.emoji} {c.name[lang]}
           </button>
         ))}
       </nav>
@@ -308,12 +303,12 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
         {!spinDone && !orderPlaced && (
           <button
             onClick={() => setWheelOpen(true)}
-            className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-3.5 text-left shadow-lg shadow-violet-600/20 transition active:scale-[0.98]"
+            className="flex items-center gap-3 rounded-3xl bg-gradient-to-r from-teal-700 to-emerald-600 px-4 py-3.5 text-left shadow-lg shadow-emerald-700/20 transition active:scale-[0.98]"
           >
             <span className="text-3xl">🎡</span>
             <span>
               <span className="block text-sm font-bold text-white">{t.spinBanner}</span>
-              <span className="block text-xs text-violet-100">{t.spinSub}</span>
+              <span className="block text-xs text-emerald-100">{t.spinSub}</span>
             </span>
           </button>
         )}
@@ -322,8 +317,8 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
             🎉 {t.discountApplied.replace("{pct}", String(discountPct))}
           </div>
         )}
-        {CATEGORIES.map((cat) => {
-          const items = MENU.filter(
+        {categories.map((cat, catIdx) => {
+          const items = menuItems.filter(
             (m) => m.categoryId === cat.id && (!vegOnly || m.isVeg),
           );
           if (items.length === 0) return null;
@@ -336,7 +331,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
               className="scroll-mt-16"
             >
               <h2 className="font-display mb-3 text-xl font-semibold text-stone-800">
-                {cat.emoji} {cat.name}
+                {cat.emoji} {cat.name[lang]}
               </h2>
               <div className="flex flex-col gap-3">
                 {items.map((item) => {
@@ -347,15 +342,15 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                       className="flex gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-stone-100"
                     >
                       <div
-                        className={`grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-4xl ${CATEGORY_TILE[cat.id]}`}
+                        className={`grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-4xl ${CATEGORY_TILES[catIdx % CATEGORY_TILES.length]}`}
                       >
-                        {ITEM_EMOJI[item.id] ?? "🍽️"}
+                        {item.emoji}
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col">
                         <div className="flex items-center gap-1.5">
                           <VegMark isVeg={item.isVeg} />
                           <h3 className="truncate text-sm font-bold text-stone-800">
-                            {item.name}
+                            {item.name[lang]}
                           </h3>
                           <SpiceDots level={item.spiceLevel} />
                         </div>
@@ -365,7 +360,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                           </span>
                         )}
                         <p className="mt-1 line-clamp-2 text-xs leading-snug text-stone-500">
-                          {item.description}
+                          {item.description[lang]}
                         </p>
                         <div className="mt-auto flex items-center justify-between pt-2">
                           <span className="text-sm font-bold text-stone-900">
@@ -375,14 +370,14 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                             <button
                               onClick={() => {
                                 changeQty(item.id, 1);
-                                setToast(`Added ${item.name}`);
+                                setToast(`+ ${item.name[lang]}`);
                               }}
-                              className="rounded-full bg-orange-600 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-90"
+                              className="rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-90"
                             >
                               {t.add}
                             </button>
                           ) : (
-                            <div className="flex items-center gap-3 rounded-full bg-stone-900 px-2 py-1 text-white">
+                            <div className="flex items-center gap-3 rounded-full bg-emerald-950 px-2 py-1 text-white">
                               <button
                                 onClick={() => changeQty(item.id, -1)}
                                 className="grid h-6 w-6 place-items-center text-lg leading-none active:scale-90"
@@ -416,7 +411,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
 
       {/* Toast */}
       {toast && (
-        <div className="animate-pop fixed bottom-40 left-1/2 z-40 -translate-x-1/2 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-amber-50 shadow-lg">
+        <div className="animate-pop fixed bottom-40 left-1/2 z-40 -translate-x-1/2 rounded-full bg-emerald-950 px-4 py-2 text-xs font-semibold text-amber-50 shadow-lg">
           {toast}
         </div>
       )}
@@ -425,7 +420,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       {itemCount > 0 && !cartOpen && (
         <button
           onClick={() => setCartOpen(true)}
-          className="animate-pop fixed bottom-5 left-1/2 z-30 flex w-[calc(100%-2.5rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-2xl bg-stone-900 px-5 py-4 text-white shadow-xl shadow-stone-900/30 transition active:scale-[0.98]"
+          className="animate-pop fixed bottom-5 left-1/2 z-30 flex w-[calc(100%-2.5rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-2xl bg-emerald-950 px-5 py-4 text-white shadow-xl shadow-stone-900/30 transition active:scale-[0.98]"
         >
           <span className="text-sm font-semibold">
             {t.items(itemCount)} · {inr(total)}
@@ -441,7 +436,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
         <button
           onClick={() => setChatOpen(true)}
           aria-label="Talk to Anna"
-          className={`fixed right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-orange-600 to-amber-500 text-2xl shadow-xl shadow-orange-600/40 transition active:scale-90 ${
+          className={`fixed right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-2xl shadow-xl shadow-amber-500/40 transition active:scale-90 ${
             itemCount > 0 ? "bottom-24" : "bottom-6"
           }`}
         >
@@ -453,7 +448,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       {wheelOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div
-            className="animate-fade-in absolute inset-0 bg-stone-900/60"
+            className="animate-fade-in absolute inset-0 bg-emerald-950/60"
             onClick={() => setWheelOpen(false)}
           />
           <div className="animate-sheet-up relative flex flex-col items-center rounded-t-[2rem] bg-white px-5 pt-3 pb-10">
@@ -483,7 +478,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                 </div>
                 <button
                   onClick={() => setWheelOpen(false)}
-                  className="mt-3 rounded-full bg-stone-900 px-8 py-2.5 text-xs font-bold text-amber-50 transition active:scale-95"
+                  className="mt-3 rounded-full bg-emerald-950 px-8 py-2.5 text-xs font-bold text-amber-50 transition active:scale-95"
                 >
                   ✕
                 </button>
@@ -497,7 +492,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       {cartOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div
-            className="animate-fade-in absolute inset-0 bg-stone-900/50"
+            className="animate-fade-in absolute inset-0 bg-emerald-950/50"
             onClick={() => setCartOpen(false)}
           />
           <div className="animate-sheet-up relative max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-white px-5 pt-3 pb-8">
@@ -515,12 +510,12 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                 {!compItem && !gameOpen && (
                   <button
                     onClick={() => setGameOpen(true)}
-                    className="mt-5 w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-4 text-left shadow-lg transition active:scale-[0.98]"
+                    className="mt-5 w-full rounded-2xl bg-gradient-to-r from-teal-700 to-emerald-600 px-5 py-4 text-left shadow-lg transition active:scale-[0.98]"
                   >
                     <span className="block text-sm font-bold text-white">
                       {t.playTitle}
                     </span>
-                    <span className="block text-xs text-violet-100">{t.playSub}</span>
+                    <span className="block text-xs text-emerald-100">{t.playSub}</span>
                   </button>
                 )}
 
@@ -586,15 +581,13 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                           key={line.itemId}
                           className="flex items-center gap-3 rounded-2xl bg-stone-50 p-3"
                         >
-                          <span className="text-2xl">
-                            {ITEM_EMOJI[item.id] ?? "🍽️"}
-                          </span>
+                          <span className="text-2xl">{item.emoji}</span>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold text-stone-800">
-                              {item.name}
+                              {item.name[lang]}
                             </p>
                             {line.notes && (
-                              <p className="truncate text-[11px] text-orange-600">
+                              <p className="truncate text-[11px] text-emerald-700">
                                 ✎ {line.notes}
                               </p>
                             )}
@@ -631,18 +624,18 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                         {inr(total)}
                       </span>
                     </div>
-                    {RESTAURANT.paymentTiming === "pre" ? (
+                    {restaurant.paymentTiming === "pre" ? (
                       <a
-                        href={`upi://pay?pa=${encodeURIComponent(RESTAURANT.upiVpa)}&pn=${encodeURIComponent(RESTAURANT.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
+                        href={`upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(restaurant.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
                         onClick={placeOrder}
-                        className="mt-2 rounded-2xl bg-orange-600 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-orange-600/30 transition active:scale-[0.98]"
+                        className="mt-2 rounded-2xl bg-emerald-700 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-emerald-700/30 transition active:scale-[0.98]"
                       >
                         {t.payToOrder} · {inr(total)}
                       </a>
                     ) : (
                       <button
                         onClick={placeOrder}
-                        className="mt-2 rounded-2xl bg-orange-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-orange-600/30 transition active:scale-[0.98]"
+                        className="mt-2 rounded-2xl bg-emerald-700 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-700/30 transition active:scale-[0.98]"
                       >
                         {t.placeOrder} · {inr(total)}
                       </button>
@@ -659,12 +652,12 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
       {chatOpen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div
-            className="animate-fade-in absolute inset-0 bg-stone-900/50"
+            className="animate-fade-in absolute inset-0 bg-emerald-950/50"
             onClick={() => setChatOpen(false)}
           />
           <div className="animate-sheet-up relative flex h-[80dvh] flex-col rounded-t-[2rem] bg-white">
-            <div className="flex items-center gap-3 rounded-t-[2rem] bg-stone-900 px-5 py-4 text-amber-50">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-orange-600 to-amber-500 text-xl">
+            <div className="flex items-center gap-3 rounded-t-[2rem] bg-emerald-950 px-5 py-4 text-amber-50">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-xl">
                 🎙️
               </span>
               <div className="flex-1">
@@ -690,7 +683,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                       <button
                         key={s}
                         onClick={() => sendToAnna(s)}
-                        className="rounded-full bg-orange-50 px-3 py-2 text-xs font-medium text-orange-700 ring-1 ring-orange-200 transition active:scale-95"
+                        className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200 transition active:scale-95"
                       >
                         {s}
                       </button>
@@ -704,18 +697,18 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                     key={i}
                     className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                       m.role === "user"
-                        ? "self-end rounded-br-md bg-stone-900 text-amber-50"
-                        : "self-start rounded-bl-md bg-orange-50 text-stone-800 ring-1 ring-orange-100"
+                        ? "self-end rounded-br-md bg-emerald-950 text-amber-50"
+                        : "self-start rounded-bl-md bg-emerald-50 text-stone-800 ring-1 ring-emerald-100"
                     }`}
                   >
                     {m.text}
                   </div>
                 ))}
                 {thinking && (
-                  <div className="flex gap-1.5 self-start rounded-2xl rounded-bl-md bg-orange-50 px-4 py-3 ring-1 ring-orange-100">
-                    <span className="typing-dot h-1.5 w-1.5 rounded-full bg-orange-400" />
-                    <span className="typing-dot h-1.5 w-1.5 rounded-full bg-orange-400" />
-                    <span className="typing-dot h-1.5 w-1.5 rounded-full bg-orange-400" />
+                  <div className="flex gap-1.5 self-start rounded-2xl rounded-bl-md bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
+                    <span className="typing-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span className="typing-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span className="typing-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -733,7 +726,7 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                 <span>
                   🛒 {t.items(itemCount)} · {inr(total)}
                 </span>
-                <span className="text-orange-600">{t.reviewOrder}</span>
+                <span className="text-emerald-700">{t.reviewOrder}</span>
               </button>
             )}
 
@@ -748,13 +741,13 @@ export default function OrderExperience({ tableCode }: { tableCode: string }) {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder={t.askAnna}
-                className="flex-1 rounded-full bg-stone-100 px-4 py-3 text-sm outline-none placeholder:text-stone-400 focus:ring-2 focus:ring-orange-400"
+                className="flex-1 rounded-full bg-stone-100 px-4 py-3 text-sm outline-none placeholder:text-stone-400 focus:ring-2 focus:ring-amber-400"
               />
               <button
                 type="submit"
                 disabled={thinking || !draft.trim()}
                 aria-label="send"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-600 text-lg text-white shadow transition active:scale-90 disabled:opacity-40"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-lg text-white shadow transition active:scale-90 disabled:opacity-40"
               >
                 ↑
               </button>
