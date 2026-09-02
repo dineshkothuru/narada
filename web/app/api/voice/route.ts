@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMenu } from "@/lib/menu";
 import { askAnna } from "@/lib/anna";
+import { getApiKeys } from "@/lib/keys";
 import type { CartLine, ChatMessage } from "@/lib/types";
 
 const SARVAM = "https://api.sarvam.ai";
 
 // Sarvam STT auto-detects the spoken language; we answer (text + speech) in it.
 export async function POST(req: NextRequest) {
-  const sarvamKey = process.env.SARVAM_API_KEY;
+  const { sarvam: sarvamKey } = await getApiKeys();
   if (!sarvamKey) {
-    return NextResponse.json({ error: "SARVAM_API_KEY not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Sarvam API key not configured (admin settings or env)" },
+      { status: 500 },
+    );
   }
 
   try {

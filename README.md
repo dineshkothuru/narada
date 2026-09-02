@@ -23,6 +23,39 @@ waiting for a waiter. That shapes a few decisions:
 - **Kitchen gets a KOT** (kitchen order ticket) per round, tagged with the table number,
   exactly like a waiter would punch in.
 
+## Run it yourself (5 minutes)
+
+Prereqs: Node 20+, a free [Supabase](https://supabase.com) project, a
+[Gemini API key](https://aistudio.google.com) and a [Sarvam AI key](https://dashboard.sarvam.ai).
+
+```bash
+git clone https://github.com/<owner>/narada
+cd narada/web
+npm install
+```
+
+1. **Configure env** — create `web/.env.local`:
+   ```env
+   SUPABASE_URL=https://<your-project>.supabase.co
+   SUPABASE_ANON_KEY=<publishable/anon key>
+   SUPABASE_SERVICE_ROLE_KEY=<secret/service_role key>
+   GEMINI_API_KEY=<optional — can be set later in /admin>
+   SARVAM_API_KEY=<optional — can be set later in /admin>
+   ```
+2. **Create the database** — in the Supabase SQL editor run, in order:
+   [`docs/schema.sql`](docs/schema.sql), [`docs/seed.sql`](docs/seed.sql),
+   [`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql).
+3. **Run** — `npm run dev`, then open http://localhost:3000 and pick a table.
+
+Where to click:
+- `/t/t1-demo` — the customer experience (each table's QR points at its own code).
+  Tap the 🎙️ button and *talk* to Narada — Telugu, Hindi, or English.
+- `/kitchen` — live kitchen dashboard (orders arrive here). Staff PIN: `1234`.
+- `/admin` — menu availability, prices, payment timing, UPI ID, staff PIN, and
+  the Gemini/Sarvam API keys. Same PIN.
+
+Feedback welcome — open a GitHub issue with screenshots.
+
 ## End-to-end flow
 
 ```

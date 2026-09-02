@@ -1,4 +1,5 @@
 import "server-only";
+import { getApiKeys } from "./keys";
 import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "./types";
 
 const GEMINI_URL =
@@ -54,8 +55,8 @@ export async function askAnna(
   cart: CartLine[],
   language: string,
 ): Promise<AnnaResponse> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+  const { gemini: apiKey } = await getApiKeys();
+  if (!apiKey) throw new Error("Gemini API key not configured (admin settings or env)");
 
   const contents = messages.slice(-12).map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
