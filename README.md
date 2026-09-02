@@ -1,6 +1,6 @@
 # Narada — QR dine-in ordering with a voice waiter
 
-**Narada** is the product; **Anna** is the voice/chat agent customers talk to.
+**Narada** is both the product and the voice waiter customers talk to.
 
 Scan a QR code at the table → menu opens in the browser → talk to a voice agent
 (Sarvam AI for speech, Gemini for reasoning) that answers menu questions and takes
@@ -144,10 +144,10 @@ No login, no location, no phone number to start ordering — scanning the table'
 ## Languages
 
 UI ships in **English, Hindi, Telugu** (header toggle, persisted per session).
-Anna replies in the customer's language — the app language by default, switching
+Narada replies in the customer's language — the app language by default, switching
 automatically to whatever language the customer actually types/speaks. For voice,
 Sarvam STT auto-detects the spoken language; the detected code drives both
-Gemini's reply and Sarvam TTS so Anna speaks back in the same language.
+Gemini's reply and Sarvam TTS so Narada speaks back in the same language.
 
 ## What you need before building
 

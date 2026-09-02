@@ -3,24 +3,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { blobToWavBase64 } from "@/lib/audio";
 
+export type VoiceCard = {
+  id: string;
+  name: string;
+  priceInr: number;
+  imageUrl: string | null;
+  emoji: string;
+  isVeg: boolean;
+};
+
 export type VoiceTurnResult = {
   transcript: string;
   reply: string;
   audio: string | null;
   endConversation?: boolean;
+  cards: VoiceCard[];
+  quickReplies: string[];
 } | null;
 
 type Status = "listening" | "thinking" | "speaking" | "idle";
 
-// Hands-free conversation: listen (voice-activity detection decides when the
-// customer finished a sentence) -> think -> Anna speaks -> listen again.
+// Compact voice dock: Narada talks while the customer keeps browsing the menu.
+// The parent scrolls/highlights menu items he mentions; this dock shows state,
+// the last exchange, and tappable quick replies. VAD keeps it hands-free.
 export default function VoiceMode({
+  onGreet,
   onTurn,
+  onTextTurn,
   onClose,
   onSwitchToChat,
   strings,
 }: {
+  onGreet: () => Promise<VoiceTurnResult>;
   onTurn: (wavBase64: string) => Promise<VoiceTurnResult>;
+  onTextTurn: (text: string) => Promise<VoiceTurnResult>;
   onClose: () => void;
   onSwitchToChat?: () => void;
   strings: {
@@ -30,14 +46,16 @@ export default function VoiceMode({
     endVoice: string;
     voiceHint: string;
     annaRole: string;
+    add: string;
   };
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [lastUser, setLastUser] = useState("");
   const [lastAnna, setLastAnna] = useState("");
+  const [chips, setChips] = useState<string[]>([]);
   const [level, setLevel] = useState(0);
   const closedRef = useRef(false);
+  const discardRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -52,6 +70,40 @@ export default function VoiceMode({
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
   }, []);
+
+  const handleResult = useCallback(
+    (res: VoiceTurnResult, startListening: () => void) => {
+      if (closedRef.current) return;
+      if (!res) {
+        setError("Couldn't reach the waiter service — try again.");
+        setStatus("idle");
+        return;
+      }
+      setLastAnna(res.reply);
+      setChips(res.quickReplies);
+      if (res.audio) {
+        setStatus("speaking");
+        const player = new Audio(`data:audio/wav;base64,${res.audio}`);
+        playerRef.current = player;
+        player.onended = () => {
+          if (closedRef.current) return;
+          if (res.endConversation) {
+            closedRef.current = true;
+            onClose();
+          } else {
+            startListening();
+          }
+        };
+        player.play().catch(() => startListening());
+      } else if (res.endConversation) {
+        closedRef.current = true;
+        onClose();
+      } else {
+        startListening();
+      }
+    },
+    [onClose],
+  );
 
   const startListening = useCallback(async () => {
     if (closedRef.current) return;
@@ -72,6 +124,7 @@ export default function VoiceMode({
 
       const recorder = new MediaRecorder(stream);
       recorderRef.current = recorder;
+      discardRef.current = false;
       const chunks: Blob[] = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
@@ -98,7 +151,7 @@ export default function VoiceMode({
         }
         const doneSpeaking = spoke && silentMs > 1400;
         const tooLong = totalMs > 15000;
-        const nothingSaid = !spoke && totalMs > 8000;
+        const nothingSaid = !spoke && totalMs > 20000;
         if (doneSpeaking || tooLong || nothingSaid) {
           if (recorder.state !== "inactive") recorder.stop();
         }
@@ -106,10 +159,10 @@ export default function VoiceMode({
 
       recorder.onstop = async () => {
         const hadSpeech = spoke;
+        const discarded = discardRef.current;
         cleanupListening();
-        if (closedRef.current) return;
+        if (closedRef.current || discarded) return;
         if (!hadSpeech) {
-          // silence — end the conversation politely instead of looping forever
           closedRef.current = true;
           onClose();
           return;
@@ -118,35 +171,7 @@ export default function VoiceMode({
         try {
           const blob = new Blob(chunks, { type: recorder.mimeType });
           const wav = await blobToWavBase64(blob);
-          const res = await onTurn(wav);
-          if (closedRef.current) return;
-          if (!res) {
-            setError("Couldn't reach the waiter service — check keys/connection, then try again.");
-            setStatus("idle");
-            return;
-          }
-          setLastUser(res.transcript);
-          setLastAnna(res.reply);
-          if (res.audio) {
-            setStatus("speaking");
-            const player = new Audio(`data:audio/wav;base64,${res.audio}`);
-            playerRef.current = player;
-            player.onended = () => {
-              if (closedRef.current) return;
-              if (res.endConversation) {
-                closedRef.current = true;
-                onClose();
-              } else {
-                startListening();
-              }
-            };
-            player.play().catch(() => startListening());
-          } else if (res.endConversation) {
-            closedRef.current = true;
-            onClose();
-          } else {
-            startListening();
-          }
+          handleResult(await onTurn(wav), startListening);
         } catch {
           if (!closedRef.current) startListening();
         }
@@ -154,14 +179,33 @@ export default function VoiceMode({
       recorder.start();
     } catch {
       setError(
-        "Microphone unavailable — allow mic access for this site in your browser settings, then try again.",
+        "Microphone unavailable — allow mic access for this site, then try again.",
       );
       setStatus("idle");
     }
-  }, [cleanupListening, onTurn]);
+  }, [cleanupListening, handleResult, onClose, onTurn]);
+
+  const stopListeningSilently = useCallback(() => {
+    discardRef.current = true;
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    cleanupListening();
+  }, [cleanupListening]);
+
+  const sendText = useCallback(
+    async (text: string) => {
+      if (status === "thinking" || status === "speaking") return;
+      stopListeningSilently();
+      setStatus("thinking");
+      handleResult(await onTextTurn(text), startListening);
+    },
+    [handleResult, onTextTurn, startListening, status, stopListeningSilently],
+  );
 
   useEffect(() => {
-    startListening();
+    (async () => {
+      setStatus("thinking");
+      handleResult(await onGreet(), startListening);
+    })();
     return () => {
       closedRef.current = true;
       cleanupListening();
@@ -172,8 +216,7 @@ export default function VoiceMode({
 
   const end = () => {
     closedRef.current = true;
-    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
-    cleanupListening();
+    stopListeningSilently();
     playerRef.current?.pause();
     onClose();
   };
@@ -186,112 +229,111 @@ export default function VoiceMode({
         : strings.speaking;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-between bg-stone-950/95 px-6 py-10 text-center">
-      <div className="mt-4">
-        <p className="text-sm font-bold text-white">Narada</p>
-        <p className="text-[11px] text-stone-400">{strings.annaRole}</p>
-      </div>
-
-      <div className="flex flex-col items-center gap-6">
-        <button
-          onClick={() => {
-            if (status === "listening" && recorderRef.current?.state === "recording") {
-              recorderRef.current.stop();
-            }
-          }}
-          className="relative grid h-36 w-36 place-items-center rounded-full"
-          aria-label="narada voice orb"
-        >
-          <span
-            className={`absolute inset-0 rounded-full transition-transform duration-150 ${
-              status === "listening"
-                ? "bg-rose-600/30"
-                : status === "speaking"
-                  ? "animate-pulse bg-sky-500/30"
-                  : "bg-stone-500/20"
-            }`}
-            style={
-              status === "listening"
-                ? { transform: `scale(${1 + level * 0.5})` }
-                : undefined
-            }
-          />
-          <span
-            className={`relative grid h-24 w-24 place-items-center rounded-full text-4xl shadow-2xl ${
-              status === "listening"
-                ? "bg-rose-600"
-                : status === "speaking"
-                  ? "bg-sky-600"
-                  : "bg-stone-700"
-            }`}
-          >
-            {status === "thinking" ? (
-              <span className="flex gap-1">
-                <span className="typing-dot h-2 w-2 rounded-full bg-white" />
-                <span className="typing-dot h-2 w-2 rounded-full bg-white" />
-                <span className="typing-dot h-2 w-2 rounded-full bg-white" />
-              </span>
-            ) : (
-              "🎙️"
-            )}
-          </span>
-        </button>
-        <p className="text-sm font-semibold text-white">
-          {error ? "⚠️" : statusText}
-        </p>
-
-        {error && (
-          <div className="max-w-sm rounded-2xl bg-rose-500/15 p-4 ring-1 ring-rose-400/40">
-            <p className="text-xs leading-relaxed text-rose-100">{error}</p>
-            <button
-              onClick={() => {
-                setError(null);
-                startListening();
-              }}
-              className="mt-3 rounded-full bg-white px-6 py-2 text-xs font-bold text-stone-900 transition active:scale-95"
-            >
-              Try again
-            </button>
-          </div>
-        )}
-
-        <div className="min-h-20 max-w-sm space-y-2">
-          {lastUser && (
-            <p className="text-xs text-stone-400">
-              🗣️ “{lastUser}”
-            </p>
-          )}
-          {lastAnna && (
-            <p className="text-sm leading-relaxed text-stone-100">{lastAnna}</p>
-          )}
-          {!lastUser && !lastAnna && (
-            <p className="text-xs text-stone-400">{strings.voiceHint}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        {onSwitchToChat && (
+    <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md px-3 pb-3">
+      <div className="rounded-3xl bg-stone-950/95 p-3 shadow-2xl shadow-stone-950/50 ring-1 ring-white/10 backdrop-blur">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              closedRef.current = true;
-              if (recorderRef.current?.state === "recording") recorderRef.current.stop();
-              cleanupListening();
-              playerRef.current?.pause();
-              onSwitchToChat();
+              if (status === "listening" && recorderRef.current?.state === "recording") {
+                recorderRef.current.stop();
+              }
             }}
-            aria-label="switch to text chat"
-            className="grid h-12 w-12 place-items-center rounded-full bg-white/10 text-xl ring-1 ring-white/20 transition active:scale-95"
+            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full"
+            aria-label="narada voice orb"
           >
-            ⌨️
+            <span
+              className={`absolute inset-0 rounded-full transition-transform duration-150 ${
+                status === "listening"
+                  ? "bg-rose-600/40"
+                  : status === "speaking"
+                    ? "animate-pulse bg-sky-500/40"
+                    : "bg-stone-500/30"
+              }`}
+              style={
+                status === "listening"
+                  ? { transform: `scale(${1 + level * 0.6})` }
+                  : undefined
+              }
+            />
+            <span
+              className={`relative grid h-9 w-9 place-items-center rounded-full text-lg ${
+                status === "listening"
+                  ? "bg-rose-600"
+                  : status === "speaking"
+                    ? "bg-sky-600"
+                    : "bg-stone-700"
+              }`}
+            >
+              {status === "thinking" ? (
+                <span className="flex gap-0.5">
+                  <span className="typing-dot h-1.5 w-1.5 rounded-full bg-white" />
+                  <span className="typing-dot h-1.5 w-1.5 rounded-full bg-white" />
+                  <span className="typing-dot h-1.5 w-1.5 rounded-full bg-white" />
+                </span>
+              ) : (
+                "🎙️"
+              )}
+            </span>
+          </button>
+
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-[11px] font-bold text-white">
+              Narada · <span className="font-medium text-stone-400">{error ? "⚠️" : statusText}</span>
+            </p>
+            <p className="line-clamp-2 text-xs leading-snug text-stone-300">
+              {error ?? (lastAnna || strings.voiceHint)}
+            </p>
+          </div>
+
+          {onSwitchToChat && (
+            <button
+              onClick={() => {
+                closedRef.current = true;
+                stopListeningSilently();
+                playerRef.current?.pause();
+                onSwitchToChat();
+              }}
+              aria-label="switch to text chat"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-sm transition active:scale-95"
+            >
+              ⌨️
+            </button>
+          )}
+          <button
+            onClick={end}
+            aria-label={strings.endVoice}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white transition active:scale-95"
+          >
+            ✕
+          </button>
+        </div>
+
+        {error && (
+          <button
+            onClick={() => {
+              setError(null);
+              startListening();
+            }}
+            className="mt-2 w-full rounded-xl bg-white px-4 py-2 text-xs font-bold text-stone-900 transition active:scale-[0.98]"
+          >
+            Try again
           </button>
         )}
-        <button
-          onClick={end}
-          className="rounded-full bg-white/10 px-8 py-3 text-sm font-bold text-white ring-1 ring-white/20 transition active:scale-95"
-        >
-          ✕ {strings.endVoice}
-        </button>
+
+        {chips.length > 0 && !error && (
+          <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto">
+            {chips.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => sendText(chip)}
+                disabled={status === "thinking"}
+                className="animate-pop shrink-0 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold whitespace-nowrap text-white ring-1 ring-white/25 transition active:scale-95 disabled:opacity-40"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

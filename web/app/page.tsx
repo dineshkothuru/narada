@@ -17,7 +17,7 @@ export default function Home() {
           Narada
         </h1>
         <p className="mt-2 max-w-xs text-sm text-stone-500">
-          Scan the QR at your table, browse the menu, and tell Anna what
+          Scan the QR at your table, browse the menu, and tell Narada what
           you&apos;d like. No app. No waiting.
         </p>
       </div>

@@ -2,8 +2,10 @@ import "server-only";
 import { getApiKeys } from "./keys";
 import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "./types";
 
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+// flash-lite has its own free-tier quota bucket — fallback when flash is throttled
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const geminiUrl = (model: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 function buildSystemPrompt(menu: MenuPayload, cart: CartLine[], language: string) {
   const menuForPrompt = menu.categories.map((c) => ({
@@ -33,7 +35,10 @@ CURRENT CART:
 ${JSON.stringify(cart)}
 
 RULES:
+- OPENING: if the conversation is just starting (greeting trigger or first message), greet warmly in one short sentence and ask ONE opening question — whether they'd like veg or non-veg today — with quickReplies for it. After they answer, suggest 2-3 fitting dishes (showItems) and keep guiding: starters → mains → breads/rice → drinks → dessert. One question at a time.
 - Answer menu questions only from the menu data above. If something is not on the menu, say so warmly and suggest the closest alternative.
+- SCREENS: whenever you mention, suggest, or compare specific dishes, put their ids in "showItems" (max 3, best first) so the app can show their photo cards.
+- QUICK REPLIES: when you ask a question, include "quickReplies" — 2-3 tap options, each 1-3 words, in the language you are replying in (e.g. ["Veg 🌱","Non-veg 🍗"]).
 - The customer's app language is ${language}. Greet and reply in it by default — but if the customer writes in a different language (English, Hindi, Telugu, Hinglish, etc.), always switch to the language they actually used. Keep replies short and conversational — 1 to 3 sentences, like a real waiter speaking.
 - Be a great waiter, not just an order-taker: when the customer sounds unsure, proactively suggest 1-2 dishes with a one-line reason (spice level, bestseller, pairs well). When they ask about a dish, explain it appetizingly from its description and allergens.
 - When the customer wants to order, modify the cart via "actions". Resolve references like "that one" or "the second one" from conversation context.
@@ -45,8 +50,8 @@ RULES:
 - Never discuss anything unrelated to food, the menu, or this restaurant.
 
 Respond with ONLY valid JSON matching this schema:
-{"reply": string, "actions": [{"type": "add", "itemId": string, "qty": number, "notes"?: string} | {"type": "remove", "itemId": string} | {"type": "set_qty", "itemId": string, "qty": number} | {"type": "confirm_order"}], "suggestCheckout"?: boolean}
-"actions" must be [] when the customer is only asking questions. itemId must be an exact id from the menu.`;
+{"reply": string, "actions": [{"type": "add", "itemId": string, "qty": number, "notes"?: string} | {"type": "remove", "itemId": string} | {"type": "set_qty", "itemId": string, "qty": number} | {"type": "confirm_order"}], "suggestCheckout"?: boolean, "showItems"?: string[], "quickReplies"?: string[]}
+"actions" must be [] when the customer is only asking questions. itemId and showItems entries must be exact ids from the menu.`;
 }
 
 export async function askAnna(
@@ -63,27 +68,31 @@ export async function askAnna(
     parts: [{ text: m.text }],
   }));
 
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: {
-        parts: [{ text: buildSystemPrompt(menu, cart, language) }],
-      },
-      contents,
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.4,
-        maxOutputTokens: 1024,
-      },
-    }),
+  const body = JSON.stringify({
+    systemInstruction: {
+      parts: [{ text: buildSystemPrompt(menu, cart, language) }],
+    },
+    contents,
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.4,
+      maxOutputTokens: 1024,
+    },
   });
 
-  if (!res.ok) {
+  let res: Response | null = null;
+  for (const model of GEMINI_MODELS) {
+    res = await fetch(`${geminiUrl(model)}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    if (res.ok) break;
     const detail = await res.text();
-    console.error("Gemini error", res.status, detail.slice(0, 500));
-    throw new Error("gemini unavailable");
+    console.error(`Gemini ${model} error`, res.status, detail.slice(0, 300));
+    if (res.status !== 429 && res.status !== 503) break;
   }
+  if (!res || !res.ok) throw new Error("gemini unavailable");
 
   const data = await res.json();
   const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";

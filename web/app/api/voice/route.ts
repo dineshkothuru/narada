@@ -19,45 +19,70 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { audio, cart, messages, tableCode, language } = (await req.json()) as {
-      audio: string; // base64 wav (16k mono pcm16)
-      cart: CartLine[];
-      messages: ChatMessage[];
-      tableCode?: string;
-      language?: string; // app language fallback
-    };
-    if (!audio) return NextResponse.json({ error: "audio required" }, { status: 400 });
-
-    const wavBytes = Buffer.from(audio, "base64");
-    const form = new FormData();
-    form.append("file", new Blob([new Uint8Array(wavBytes)], { type: "audio/wav" }), "input.wav");
-    form.append("model", "saarika:v2.5");
-    form.append("language_code", "unknown");
-
-    const sttRes = await fetch(`${SARVAM}/speech-to-text`, {
-      method: "POST",
-      headers: { "api-subscription-key": sarvamKey },
-      body: form,
-    });
-    if (!sttRes.ok) {
-      console.error("sarvam stt", sttRes.status, (await sttRes.text()).slice(0, 300));
-      return NextResponse.json({ error: "could not hear you" }, { status: 502 });
-    }
-    const stt = (await sttRes.json()) as { transcript: string; language_code?: string };
-    const transcript = (stt.transcript || "").trim();
-    if (!transcript) {
-      return NextResponse.json({ error: "empty transcript" }, { status: 422 });
+    const { audio, text, greet, cart, messages, tableCode, language } =
+      (await req.json()) as {
+        audio?: string; // base64 wav (16k mono pcm16) — spoken turn
+        text?: string; // typed/tapped turn (quick-reply chips)
+        greet?: boolean; // Narada opens the conversation
+        cart: CartLine[];
+        messages: ChatMessage[];
+        tableCode?: string;
+        language?: string; // app language fallback
+      };
+    if (!audio && !text && !greet) {
+      return NextResponse.json({ error: "audio, text or greet required" }, { status: 400 });
     }
 
-    const detected = stt.language_code || "en-IN";
+    const appLangCode =
+      language === "Hindi" ? "hi-IN" : language === "Telugu" ? "te-IN" : "en-IN";
+    let transcript = "";
+    let detected = appLangCode;
+
+    if (audio) {
+      const wavBytes = Buffer.from(audio, "base64");
+      const form = new FormData();
+      form.append(
+        "file",
+        new Blob([new Uint8Array(wavBytes)], { type: "audio/wav" }),
+        "input.wav",
+      );
+      form.append("model", "saarika:v2.5");
+      form.append("language_code", "unknown");
+
+      const sttRes = await fetch(`${SARVAM}/speech-to-text`, {
+        method: "POST",
+        headers: { "api-subscription-key": sarvamKey },
+        body: form,
+      });
+      if (!sttRes.ok) {
+        console.error("sarvam stt", sttRes.status, (await sttRes.text()).slice(0, 300));
+        return NextResponse.json({ error: "could not hear you" }, { status: 502 });
+      }
+      const stt = (await sttRes.json()) as { transcript: string; language_code?: string };
+      transcript = (stt.transcript || "").trim();
+      if (!transcript) {
+        return NextResponse.json({ error: "empty transcript" }, { status: 422 });
+      }
+      detected = stt.language_code || appLangCode;
+    } else if (text) {
+      transcript = text.trim();
+    } else {
+      // greet: hidden trigger — not stored in the visible conversation
+      transcript =
+        "[The customer just sat down and opened the voice assistant. Greet them and start the conversation.]";
+    }
+
     const langName =
       detected.startsWith("hi") ? "Hindi"
       : detected.startsWith("te") ? "Telugu"
-      : detected.startsWith("en") ? "English"
+      : detected.startsWith("en") && audio ? "English"
       : language || "English";
 
     const menu = await fetchMenu(tableCode || "");
-    const allMessages: ChatMessage[] = [...(messages ?? []), { role: "user", text: transcript }];
+    const allMessages: ChatMessage[] = [
+      ...(messages ?? []),
+      { role: "user", text: transcript },
+    ];
     const anna = await askAnna(menu, allMessages, cart ?? [], langName);
 
     // speak the reply in the same language the customer spoke
@@ -82,11 +107,13 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      transcript,
+      transcript: greet ? "" : transcript,
       detectedLanguage: detected,
       reply: anna.reply,
       actions: anna.actions,
       suggestCheckout: anna.suggestCheckout,
+      showItems: anna.showItems ?? [],
+      quickReplies: anna.quickReplies ?? [],
       audio: audioOut,
     });
   } catch (e) {

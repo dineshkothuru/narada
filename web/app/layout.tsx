@@ -16,7 +16,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Narada — order at your table",
   description:
-    "Scan, browse the menu, and talk to Anna to order. No app, no waiting.",
+    "Scan, browse the menu, and talk to Narada to order. No app, no waiting.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Narada",
+  },
 };
 
 export const viewport: Viewport = {

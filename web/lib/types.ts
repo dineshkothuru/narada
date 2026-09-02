@@ -52,6 +52,8 @@ export type AnnaResponse = {
   reply: string;
   actions: AnnaAction[];
   suggestCheckout?: boolean;
+  showItems?: string[];
+  quickReplies?: string[];
 };
 
 export type ChatMessage = {

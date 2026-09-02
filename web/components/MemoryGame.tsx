@@ -28,6 +28,23 @@ export default function MemoryGame({
   const [levelClear, setLevelClear] = useState(false);
   const lockRef = useRef(false);
   const doneRef = useRef(false);
+  const flippedRef = useRef<number[]>([]);
+
+  const setFlippedSafe = (next: number[]) => {
+    flippedRef.current = next;
+    setFlipped(next);
+  };
+
+  const nextLevel = () => {
+    const n = level + 1;
+    if (n >= MEMORY_LEVELS.length) return;
+    setLevel(n);
+    setDeck(buildDeck(MEMORY_LEVELS[n].pairs));
+    setFlippedSafe([]);
+    setMoves(0);
+    setLevelClear(false);
+    lockRef.current = false;
+  };
 
   useEffect(() => {
     if (deck.length > 0 && deck.every((c) => c.matched) && !levelClear) {
@@ -39,10 +56,30 @@ export default function MemoryGame({
     }
   }, [deck, level, levelClear, onAllLevelsComplete]);
 
+  // auto-advance in its own effect: the timer must survive the levelClear
+  // re-render (a combined effect's cleanup was cancelling it instantly)
+  useEffect(() => {
+    if (!levelClear || level >= MEMORY_LEVELS.length - 1) return;
+    const timer = setTimeout(() => {
+      const n = level + 1;
+      setLevel(n);
+      setDeck(buildDeck(MEMORY_LEVELS[n].pairs));
+      setFlippedSafe([]);
+      setMoves(0);
+      setLevelClear(false);
+      lockRef.current = false;
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelClear, level]);
+
   const flip = (idx: number) => {
-    if (lockRef.current || deck[idx].matched || flipped.includes(idx)) return;
-    const next = [...flipped, idx];
-    setFlipped(next);
+    const prev = flippedRef.current;
+    if (lockRef.current || deck[idx].matched || prev.includes(idx) || prev.length >= 2) {
+      return;
+    }
+    const next = [...prev, idx];
+    setFlippedSafe(next);
     if (next.length === 2) {
       setMoves((m) => m + 1);
       const [a, b] = next;
@@ -50,25 +87,15 @@ export default function MemoryGame({
         setDeck((d) =>
           d.map((c, i) => (i === a || i === b ? { ...c, matched: true } : c)),
         );
-        setFlipped([]);
+        setFlippedSafe([]);
       } else {
         lockRef.current = true;
         setTimeout(() => {
-          setFlipped([]);
+          setFlippedSafe([]);
           lockRef.current = false;
         }, 750);
       }
     }
-  };
-
-  const nextLevel = () => {
-    const n = level + 1;
-    if (n >= MEMORY_LEVELS.length) return;
-    setLevel(n);
-    setDeck(buildDeck(MEMORY_LEVELS[n].pairs));
-    setFlipped([]);
-    setMoves(0);
-    setLevelClear(false);
   };
 
   return (
@@ -113,6 +140,11 @@ export default function MemoryGame({
         >
           {strings.levelClear} {strings.nextLevel}
         </button>
+      )}
+      {levelClear && level === MEMORY_LEVELS.length - 1 && (
+        <p className="animate-pop mt-3 text-center text-sm font-bold text-green-600">
+          🎉
+        </p>
       )}
     </div>
   );

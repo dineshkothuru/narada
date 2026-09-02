@@ -6,7 +6,7 @@ import { WHEEL } from "@/lib/games";
 import HeroCarousel from "./HeroCarousel";
 import MemoryGame from "./MemoryGame";
 import SpinWheel from "./SpinWheel";
-import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
+import VoiceMode, { type VoiceCard, type VoiceTurnResult } from "./VoiceMode";
 import type {
   AnnaResponse,
   CartLine,
@@ -103,8 +103,11 @@ export default function OrderExperience({
   const [discountPct, setDiscountPct] = useState(0);
   const [compItem, setCompItem] = useState<string | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const itemRefs = useRef<Record<string, HTMLElement | null>>({});
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `narada:${tableCode}`;
 
   // stable refs so async voice turns and deferred confirms never see stale state
@@ -271,13 +274,15 @@ export default function OrderExperience({
     }
   };
 
-  const runVoiceTurn = async (wavBase64: string): Promise<VoiceTurnResult> => {
+  const voiceTurn = async (
+    body: Record<string, unknown>,
+  ): Promise<VoiceTurnResult> => {
     try {
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          audio: wavBase64,
+          ...body,
           cart: cartRef.current,
           messages: messagesRef.current,
           language: LANG_NAME[lang],
@@ -288,18 +293,43 @@ export default function OrderExperience({
       const data = (await res.json()) as AnnaResponse & {
         transcript: string;
         audio: string | null;
+        showItems: string[];
+        quickReplies: string[];
       };
       setMessages((m) => [
         ...m,
-        { role: "user", text: data.transcript },
-        { role: "assistant", text: data.reply },
+        ...(data.transcript
+          ? [{ role: "user" as const, text: data.transcript }]
+          : []),
+        { role: "assistant" as const, text: data.reply },
       ]);
       const confirmed = applyAnnaActions(data);
+      // Narada mentioned dishes: scroll the real menu there and highlight them
+      if (data.showItems?.length) {
+        setHighlightIds(data.showItems);
+        const first = itemRefs.current[data.showItems[0]];
+        first?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (highlightTimer.current) clearTimeout(highlightTimer.current);
+        highlightTimer.current = setTimeout(() => setHighlightIds([]), 12000);
+      }
+      const cards: VoiceCard[] = (data.showItems ?? [])
+        .map((id) => MENU_BY_ID.get(id))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m))
+        .map((m) => ({
+          id: m.id,
+          name: m.name[lang],
+          priceInr: m.priceInr,
+          imageUrl: m.imageUrl,
+          emoji: m.emoji,
+          isVeg: m.isVeg,
+        }));
       return {
         transcript: data.transcript,
         reply: data.reply,
         audio: data.audio,
         endConversation: confirmed,
+        cards,
+        quickReplies: data.quickReplies ?? [],
       };
     } catch {
       return null;
@@ -487,22 +517,46 @@ export default function OrderExperience({
       </div>
       </div>
 
-      {/* Category chips */}
-      <nav className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto bg-stone-100/95 px-4 py-3 backdrop-blur">
-        {categories.map((c) => (
+      {/* Sticky zone: live order banner + category chips */}
+      <div className="sticky top-0 z-20">
+        {orderPlaced && (
           <button
-            key={c.id}
-            onClick={() => scrollToCat(c.id)}
-            className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition ${
-              activeCat === c.id
-                ? "bg-stone-900 text-white shadow"
-                : "bg-white text-stone-600 ring-1 ring-stone-200"
-            }`}
+            onClick={() => setCartOpen(true)}
+            className="flex w-full items-center justify-between bg-stone-900 px-4 py-2.5 text-left"
           >
-            {c.emoji} {c.name[lang]}
+            <span className="flex items-center gap-2 text-xs font-bold text-white">
+              <span
+                className={`h-2 w-2 animate-pulse rounded-full ${
+                  orderStatus === "served"
+                    ? "bg-green-400"
+                    : orderStatus === "preparing"
+                      ? "bg-sky-400"
+                      : "bg-rose-400"
+                }`}
+              />
+              {statusLabel}
+            </span>
+            <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
+              {t.payUpi.replace("{amount}", inr(payable))} ›
+            </span>
           </button>
-        ))}
-      </nav>
+        )}
+        <nav className="no-scrollbar flex gap-2 overflow-x-auto bg-stone-100/95 px-4 py-3 backdrop-blur">
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => scrollToCat(c.id)}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition ${
+                activeCat === c.id
+                  ? "bg-stone-900 text-white shadow"
+                  : "bg-white text-stone-600 ring-1 ring-stone-200"
+              }`}
+            >
+              {c.emoji} {c.name[lang]}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {/* Menu */}
       <main className="flex flex-col gap-7 px-4 pt-4">
@@ -530,8 +584,19 @@ export default function OrderExperience({
               <div className="flex flex-col divide-y divide-stone-100">
                 {items.map((item) => {
                   const qty = qtyOf(item.id);
+                  const highlighted = highlightIds.includes(item.id);
                   return (
-                    <article key={item.id} className="flex gap-4 py-4">
+                    <article
+                      key={item.id}
+                      ref={(el) => {
+                        itemRefs.current[item.id] = el;
+                      }}
+                      className={`flex gap-4 py-4 transition-all duration-500 ${
+                        highlighted
+                          ? "-mx-2 rounded-2xl bg-rose-50 px-2 ring-2 ring-rose-400"
+                          : ""
+                      }`}
+                    >
                       <div className="flex min-w-0 flex-1 flex-col">
                         <div className="flex items-center gap-1.5">
                           <VegMark isVeg={item.isVeg} />
@@ -612,7 +677,9 @@ export default function OrderExperience({
       {itemCount > 0 && !cartOpen && (
         <button
           onClick={() => setCartOpen(true)}
-          className="animate-pop fixed bottom-5 left-1/2 z-30 flex w-[calc(100%-2.5rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-2xl bg-rose-600 px-5 py-4 text-white shadow-xl shadow-rose-600/30 transition active:scale-[0.98]"
+          className={`animate-pop fixed left-1/2 z-30 flex w-[calc(100%-2.5rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-2xl bg-rose-600 px-5 py-4 text-white shadow-xl shadow-rose-600/30 transition active:scale-[0.98] ${
+            voiceOpen ? "bottom-44" : "bottom-5"
+          }`}
         >
           <span className="text-sm font-semibold">
             {t.items(itemCount)} · {inr(total)}
@@ -685,7 +752,7 @@ export default function OrderExperience({
           />
           <div className="animate-sheet-up relative max-h-[85dvh] overflow-y-auto rounded-t-[2rem] bg-white px-5 pt-3 pb-8">
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-stone-200" />
-            {orderPlaced ? (
+            {orderPlaced && cart.length === 0 ? (
               <div className="flex flex-col items-center py-6 text-center">
                 <span className="animate-pop text-6xl">✅</span>
                 <h2 className="font-display mt-4 text-2xl font-semibold text-stone-900">
@@ -754,10 +821,7 @@ export default function OrderExperience({
                   )}
                 </a>
                 <button
-                  onClick={() => {
-                    setOrderPlaced(null);
-                    setCartOpen(false);
-                  }}
+                  onClick={() => setCartOpen(false)}
                   className="mt-3 text-xs font-semibold text-stone-400"
                 >
                   {t.payLater}
@@ -953,7 +1017,7 @@ export default function OrderExperience({
                   setChatOpen(false);
                   setVoiceOpen(true);
                 }}
-                aria-label="speak to Anna"
+                aria-label="speak to Narada"
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-stone-100 text-lg text-stone-700 transition active:scale-90"
               >
                 🎙️
@@ -980,7 +1044,9 @@ export default function OrderExperience({
       {/* Voice conversation overlay */}
       {voiceOpen && (
         <VoiceMode
-          onTurn={runVoiceTurn}
+          onGreet={() => voiceTurn({ greet: true })}
+          onTurn={(wav) => voiceTurn({ audio: wav })}
+          onTextTurn={(text) => voiceTurn({ text })}
           onClose={() => setVoiceOpen(false)}
           onSwitchToChat={() => {
             setVoiceOpen(false);
@@ -993,6 +1059,7 @@ export default function OrderExperience({
             endVoice: t.endVoice,
             voiceHint: t.voiceHint,
             annaRole: t.annaRole,
+            add: t.add,
           }}
         />
       )}
