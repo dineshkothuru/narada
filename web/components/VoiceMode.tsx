@@ -33,6 +33,7 @@ export default function VoiceMode({
   };
 }) {
   const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
   const [lastUser, setLastUser] = useState("");
   const [lastAnna, setLastAnna] = useState("");
   const [level, setLevel] = useState(0);
@@ -120,7 +121,8 @@ export default function VoiceMode({
           const res = await onTurn(wav);
           if (closedRef.current) return;
           if (!res) {
-            startListening();
+            setError("Couldn't reach the waiter service — check keys/connection, then try again.");
+            setStatus("idle");
             return;
           }
           setLastUser(res.transcript);
@@ -151,10 +153,12 @@ export default function VoiceMode({
       };
       recorder.start();
     } catch {
-      closedRef.current = true;
-      onClose();
+      setError(
+        "Microphone unavailable — allow mic access for this site in your browser settings, then try again.",
+      );
+      setStatus("idle");
     }
-  }, [cleanupListening, onClose, onTurn]);
+  }, [cleanupListening, onTurn]);
 
   useEffect(() => {
     startListening();
@@ -232,7 +236,24 @@ export default function VoiceMode({
             )}
           </span>
         </button>
-        <p className="text-sm font-semibold text-white">{statusText}</p>
+        <p className="text-sm font-semibold text-white">
+          {error ? "⚠️" : statusText}
+        </p>
+
+        {error && (
+          <div className="max-w-sm rounded-2xl bg-rose-500/15 p-4 ring-1 ring-rose-400/40">
+            <p className="text-xs leading-relaxed text-rose-100">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                startListening();
+              }}
+              className="mt-3 rounded-full bg-white px-6 py-2 text-xs font-bold text-stone-900 transition active:scale-95"
+            >
+              Try again
+            </button>
+          </div>
+        )}
 
         <div className="min-h-20 max-w-sm space-y-2">
           {lastUser && (
