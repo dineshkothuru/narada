@@ -149,7 +149,7 @@ export default function VoiceMode({
         } else {
           silentMs += 100;
         }
-        const doneSpeaking = spoke && silentMs > 1400;
+        const doneSpeaking = spoke && silentMs > 900;
         const tooLong = totalMs > 15000;
         const nothingSaid = !spoke && totalMs > 20000;
         if (doneSpeaking || tooLong || nothingSaid) {

@@ -59,6 +59,7 @@ export async function askAnna(
   messages: ChatMessage[],
   cart: CartLine[],
   language: string,
+  opts?: { voice?: boolean },
 ): Promise<AnnaResponse> {
   const { gemini: apiKey } = await getApiKeys();
   if (!apiKey) throw new Error("Gemini API key not configured (admin settings or env)");
@@ -68,20 +69,25 @@ export async function askAnna(
     parts: [{ text: m.text }],
   }));
 
+  const voiceNote = opts?.voice
+    ? '\nVOICE MODE: your reply is spoken aloud — keep it under 25 words (1-2 short sentences), warm and natural. Never list more than 2 dishes in speech; put the rest in "showItems".'
+    : "";
   const body = JSON.stringify({
     systemInstruction: {
-      parts: [{ text: buildSystemPrompt(menu, cart, language) }],
+      parts: [{ text: buildSystemPrompt(menu, cart, language) + voiceNote }],
     },
     contents,
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.4,
-      maxOutputTokens: 1024,
+      maxOutputTokens: opts?.voice ? 400 : 1024,
     },
   });
 
+  // voice turns are latency-critical: flash-lite answers noticeably faster
+  const models = opts?.voice ? [...GEMINI_MODELS].reverse() : GEMINI_MODELS;
   let res: Response | null = null;
-  for (const model of GEMINI_MODELS) {
+  for (const model of models) {
     res = await fetch(`${geminiUrl(model)}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

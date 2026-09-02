@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       ...(messages ?? []),
       { role: "user", text: transcript },
     ];
-    const anna = await askAnna(menu, allMessages, cart ?? [], langName);
+    const anna = await askAnna(menu, allMessages, cart ?? [], langName, { voice: true });
 
     // speak the reply in the same language the customer spoke
     const ttsLang = ["en-IN", "hi-IN", "te-IN", "ta-IN", "kn-IN", "ml-IN", "mr-IN", "bn-IN", "gu-IN", "pa-IN", "od-IN"].includes(detected)
