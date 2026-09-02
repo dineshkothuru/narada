@@ -23,7 +23,7 @@ type AdminRestaurant = {
   sarvam_api_key: string | null;
 };
 
-const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN")}`;
+import { inr } from "@/lib/format";
 
 export default function AdminPage() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
@@ -99,10 +99,22 @@ export default function AdminPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/admin/qr"
+            className="rounded-full bg-rose-600 px-4 py-2 text-xs font-bold text-white"
+          >
+            QR codes
+          </Link>
+          <Link
+            href="/waiter"
+            className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
+          >
+            Waiter
+          </Link>
+          <Link
             href="/kitchen"
             className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
           >
-            Kitchen →
+            Kitchen
           </Link>
           <button
             onClick={logout}

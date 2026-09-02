@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
     if (!audio && !text && !greet) {
       return NextResponse.json({ error: "audio, text or greet required" }, { status: 400 });
     }
+    if (audio && audio.length > 4_000_000) {
+      return NextResponse.json({ error: "audio too long" }, { status: 413 });
+    }
 
     const appLangCode =
       language === "Hindi" ? "hi-IN" : language === "Telugu" ? "te-IN" : "en-IN";

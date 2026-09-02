@@ -15,7 +15,7 @@ import type {
   MenuPayload,
 } from "@/lib/types";
 
-const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+import { inr } from "@/lib/format";
 
 function SpiceDots({ level }: { level: number }) {
   if (level === 0) return null;
@@ -364,6 +364,17 @@ export default function OrderExperience({
   };
   placeOrderRef.current = placeOrder;
 
+  const callWaiter = async () => {
+    setToast(t.waiterComing);
+    try {
+      await fetch("/api/waiter-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableCode }),
+      });
+    } catch {}
+  };
+
   const onWheelResult = (idx: number) => {
     const reward = WHEEL[idx].reward;
     setSpinResult(idx);
@@ -439,6 +450,12 @@ export default function OrderExperience({
               }`}
             >
               <VegMark isVeg /> {t.veg}
+            </button>
+            <button
+              onClick={callWaiter}
+              className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
+            >
+              🔔 {t.callWaiter}
             </button>
           </div>
         </div>

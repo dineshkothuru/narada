@@ -24,7 +24,7 @@ const NEXT: Record<string, { to: "preparing" | "served"; label: string } | null>
   served: null,
 };
 
-const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN")}`;
+import { inr } from "@/lib/format";
 
 function since(iso: string) {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));

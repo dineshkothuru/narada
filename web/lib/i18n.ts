@@ -60,6 +60,8 @@ type Strings = {
   endVoice: string;
   voiceHint: string;
   heroSpecial: string;
+  callWaiter: string;
+  waiterComing: string;
 };
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -117,6 +119,8 @@ export const STRINGS: Record<Lang, Strings> = {
     endVoice: "End conversation",
     voiceHint: "Just talk — Narada will guide you and confirm before ordering",
     heroSpecial: "Chef's Special ✨",
+    callWaiter: "Call waiter",
+    waiterComing: "Staff is on the way ✋",
   },
   hi: {
     dineIn: "डाइन-इन",
@@ -172,6 +176,8 @@ export const STRINGS: Record<Lang, Strings> = {
     endVoice: "बातचीत समाप्त करें",
     voiceHint: "बस बोलिए — नारद गाइड करेंगे और ऑर्डर से पहले पुष्टि लेंगे",
     heroSpecial: "शेफ़ स्पेशल ✨",
+    callWaiter: "वेटर बुलाएँ",
+    waiterComing: "स्टाफ़ आ रहा है ✋",
   },
   te: {
     dineIn: "డైన్-ఇన్",
@@ -227,5 +233,7 @@ export const STRINGS: Record<Lang, Strings> = {
     endVoice: "సంభాషణ ముగించండి",
     voiceHint: "మాట్లాడండి చాలు — నారదుడు గైడ్ చేసి, ఆర్డర్ ముందు నిర్ధారిస్తాడు",
     heroSpecial: "చెఫ్ స్పెషల్ ✨",
+    callWaiter: "వెయిటర్‌ను పిలవండి",
+    waiterComing: "సిబ్బంది వస్తున్నారు ✋",
   },
 };

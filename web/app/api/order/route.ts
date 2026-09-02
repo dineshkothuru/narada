@@ -41,12 +41,19 @@ export async function POST(req: NextRequest) {
     }
     const session = sessions[0];
 
-    const ids = cart.map((l) => l.itemId).join(",");
+    // itemIds are client input — only well-formed uuids may enter the filter
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ids = [...new Set(cart.map((l) => l.itemId))].filter((id) => UUID.test(id));
+    if (ids.length === 0) {
+      return NextResponse.json({ error: "no valid items" }, { status: 400 });
+    }
     const items = await sbFetch<ItemRow[]>(
-      `menu_items?select=id,name,price_inr&id=in.(${ids})`,
+      `menu_items?select=id,name,price_inr&id=in.(${ids.join(",")})`,
     );
     const byId = new Map(items.map((i) => [i.id, i]));
-    const lines = cart.filter((l) => byId.has(l.itemId) && l.qty > 0);
+    const lines = cart
+      .map((l) => ({ ...l, qty: Math.floor(Number(l.qty)) }))
+      .filter((l) => byId.has(l.itemId) && l.qty > 0 && l.qty <= 50);
     if (lines.length === 0) {
       return NextResponse.json({ error: "no valid items" }, { status: 400 });
     }
