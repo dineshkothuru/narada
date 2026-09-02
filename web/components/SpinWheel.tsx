@@ -80,7 +80,7 @@ export default function SpinWheel({
               </text>
             );
           })}
-          <circle cx="130" cy="130" r="24" fill="#022c22" />
+          <circle cx="130" cy="130" r="24" fill="#1c1c1c" />
           <text x="130" y="130" textAnchor="middle" dominantBaseline="central" fontSize="16">
             🎡
           </text>
@@ -90,7 +90,7 @@ export default function SpinWheel({
         <button
           onClick={spin}
           disabled={spinning}
-          className="mt-4 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-10 py-3 text-sm font-bold text-emerald-950 shadow-lg transition active:scale-95 disabled:opacity-60"
+          className="mt-4 rounded-full bg-rose-600 px-10 py-3 text-sm font-bold text-white shadow-lg transition active:scale-95 disabled:opacity-60"
         >
           {strings.spin}
         </button>

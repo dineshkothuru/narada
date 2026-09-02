@@ -19,6 +19,7 @@ export type MenuItem = {
   allergens: string[];
   tags: string[];
   emoji: string;
+  imageUrl: string | null;
 };
 
 export type RestaurantInfo = {

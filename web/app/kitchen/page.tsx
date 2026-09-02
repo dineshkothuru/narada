@@ -1,0 +1,152 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+type KitchenOrder = {
+  id: string;
+  status: "placed" | "preparing" | "served";
+  total_inr: number;
+  placed_via: "ui" | "anna";
+  created_at: string;
+  session: { table: { label: string } | null } | null;
+  items: { name: string; qty: number; notes: string | null }[];
+};
+
+const COLUMNS: { status: KitchenOrder["status"]; title: string; accent: string }[] = [
+  { status: "placed", title: "New", accent: "border-rose-500" },
+  { status: "preparing", title: "Preparing", accent: "border-sky-500" },
+  { status: "served", title: "Served", accent: "border-green-500" },
+];
+
+const NEXT: Record<string, { to: "preparing" | "served"; label: string } | null> = {
+  placed: { to: "preparing", label: "Start preparing" },
+  preparing: { to: "served", label: "Mark served" },
+  served: null,
+};
+
+const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN")}`;
+
+function since(iso: string) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return mins === 0 ? "just now" : `${mins} min ago`;
+}
+
+export default function KitchenPage() {
+  const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/kitchen", { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      setOrders(data.orders ?? []);
+      setError(null);
+      setUpdatedAt(new Date());
+    } catch {
+      setError("Could not refresh orders");
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const iv = setInterval(load, 5000);
+    return () => clearInterval(iv);
+  }, [load]);
+
+  const advance = async (orderId: string, to: string) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: to as KitchenOrder["status"] } : o)),
+    );
+    await fetch("/api/kitchen", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, status: to }),
+    });
+    load();
+  };
+
+  return (
+    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+      <header className="mx-auto mb-5 flex max-w-6xl items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-stone-900">
+            Narada · Kitchen
+          </h1>
+          <p className="text-xs text-stone-500">
+            Auto-refreshes every 5s
+            {updatedAt && ` · updated ${updatedAt.toLocaleTimeString()}`}
+            {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
+          </p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
+          {orders.filter((o) => o.status !== "served").length} open
+        </span>
+      </header>
+
+      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-3">
+        {COLUMNS.map((col) => {
+          const list = orders.filter((o) => o.status === col.status);
+          return (
+            <section key={col.status}>
+              <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
+                {col.title} ({list.length})
+              </h2>
+              <div className="flex flex-col gap-3">
+                {list.length === 0 && (
+                  <p className="rounded-xl bg-white/60 py-6 text-center text-xs text-stone-400">
+                    No orders
+                  </p>
+                )}
+                {list.map((o) => (
+                  <article
+                    key={o.id}
+                    className={`rounded-2xl border-l-4 bg-white p-4 shadow-sm ${col.accent}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-stone-900">
+                        {o.session?.table?.label ?? "Unknown table"}
+                      </span>
+                      <span className="text-[11px] text-stone-400">{since(o.created_at)}</span>
+                    </div>
+                    <ul className="mt-2 space-y-1">
+                      {o.items.map((it, i) => (
+                        <li key={i} className="flex justify-between text-sm text-stone-700">
+                          <span>
+                            {it.qty} × {it.name}
+                            {it.notes && (
+                              <span className="block text-[11px] text-rose-600">✎ {it.notes}</span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-stone-500">
+                        {inr(o.total_inr)}
+                        {o.placed_via === "anna" && (
+                          <span className="ml-1.5 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
+                            🎙️ Anna
+                          </span>
+                        )}
+                      </span>
+                      {NEXT[o.status] && (
+                        <button
+                          onClick={() => advance(o.id, NEXT[o.status]!.to)}
+                          className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                        >
+                          {NEXT[o.status]!.label}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </main>
+  );
+}

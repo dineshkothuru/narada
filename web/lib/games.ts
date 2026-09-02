@@ -44,12 +44,12 @@ export type WheelSlice = {
 // Pre-order wheel: discounts only (complimentary items come from the waiting
 // game after ordering). Visual slices are equal; hidden weights set generosity.
 export const WHEEL: WheelSlice[] = [
-  { label: "5% OFF", emoji: "💸", reward: { type: "discount", pct: 5 }, weight: 3, color: "#fb923c" },
-  { label: "Try Again", emoji: "😅", reward: { type: "none" }, weight: 3, color: "#a8a29e" },
-  { label: "10% OFF", emoji: "🎉", reward: { type: "discount", pct: 10 }, weight: 2, color: "#f97316" },
-  { label: "Better Luck", emoji: "🍀", reward: { type: "none" }, weight: 3, color: "#78716c" },
-  { label: "15% OFF", emoji: "🏆", reward: { type: "discount", pct: 15 }, weight: 1, color: "#f59e0b" },
-  { label: "5% OFF", emoji: "💰", reward: { type: "discount", pct: 5 }, weight: 3, color: "#fbbf24" },
+  { label: "5% OFF", emoji: "💸", reward: { type: "discount", pct: 5 }, weight: 3, color: "#e11d48" },
+  { label: "Try Again", emoji: "😅", reward: { type: "none" }, weight: 3, color: "#64748b" },
+  { label: "10% OFF", emoji: "🎉", reward: { type: "discount", pct: 10 }, weight: 2, color: "#0ea5e9" },
+  { label: "Better Luck", emoji: "🍀", reward: { type: "none" }, weight: 3, color: "#475569" },
+  { label: "15% OFF", emoji: "🏆", reward: { type: "discount", pct: 15 }, weight: 1, color: "#6366f1" },
+  { label: "5% OFF", emoji: "💰", reward: { type: "discount", pct: 5 }, weight: 3, color: "#f43f5e" },
 ];
 
 // Post-order waiting game: memory match levels (pairs of food emojis).

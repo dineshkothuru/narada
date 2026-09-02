@@ -51,6 +51,10 @@ type Strings = {
   moves: string;
   levelClear: string;
   nextLevel: string;
+  statusPlaced: string;
+  statusPreparing: string;
+  statusServed: string;
+  listening: string;
 };
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -99,6 +103,10 @@ export const STRINGS: Record<Lang, Strings> = {
     moves: "Moves",
     levelClear: "Level clear!",
     nextLevel: "Next level →",
+    statusPlaced: "Order received",
+    statusPreparing: "Being prepared 👨‍🍳",
+    statusServed: "Served — enjoy! 🍽️",
+    listening: "Listening… tap to stop",
   },
   hi: {
     dineIn: "डाइन-इन",
@@ -145,6 +153,10 @@ export const STRINGS: Record<Lang, Strings> = {
     moves: "चालें",
     levelClear: "लेवल पूरा!",
     nextLevel: "अगला लेवल →",
+    statusPlaced: "ऑर्डर मिल गया",
+    statusPreparing: "बन रहा है 👨‍🍳",
+    statusServed: "परोस दिया गया 🍽️",
+    listening: "सुन रही हूँ… रोकने के लिए टैप करें",
   },
   te: {
     dineIn: "డైన్-ఇన్",
@@ -191,5 +203,9 @@ export const STRINGS: Record<Lang, Strings> = {
     moves: "కదలికలు",
     levelClear: "లెవెల్ పూర్తి!",
     nextLevel: "తదుపరి లెవెల్ →",
+    statusPlaced: "ఆర్డర్ అందింది",
+    statusPreparing: "తయారవుతోంది 👨‍🍳",
+    statusServed: "వడ్డించబడింది 🍽️",
+    listening: "వింటున్నాను… ఆపడానికి నొక్కండి",
   },
 };

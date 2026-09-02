@@ -43,6 +43,7 @@ function fallback(tableCode: string): MenuPayload {
       allergens: m.allergens,
       tags: m.tags,
       emoji: "🍽️",
+      imageUrl: null,
     })),
   };
 }
@@ -79,6 +80,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
           allergens: string[];
           tags: string[];
           emoji: string | null;
+          image_url: string | null;
         }[]
       >(
         `menu_items?select=*&restaurant_id=eq.${restaurant_id}&is_available=eq.true&order=sort_order`,
@@ -112,6 +114,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
         allergens: m.allergens ?? [],
         tags: m.tags ?? [],
         emoji: m.emoji || "🍽️",
+        imageUrl: m.image_url || null,
       })),
     };
   } catch (e) {
