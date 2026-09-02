@@ -55,25 +55,30 @@ type Strings = {
   statusPreparing: string;
   statusServed: string;
   listening: string;
+  thinking: string;
+  speaking: string;
+  endVoice: string;
+  voiceHint: string;
+  heroSpecial: string;
 };
 
 export const STRINGS: Record<Lang, Strings> = {
   en: {
     dineIn: "Dine-in",
     veg: "Veg",
-    talkToAnna: "Talk to Anna",
-    annaHint: "“Anna, what’s good today?” — ask anything, order anything",
+    talkToAnna: "Talk to Narada",
+    annaHint: "“Narada, what’s good today?” — ask anything, order anything",
     annaRole: "Your waiter · knows every dish on the menu",
     annaGreeting:
-      "Namaste! I’m Anna. Ask me about any dish, or just tell me what you feel like eating.",
-    askAnna: "Ask Anna anything…",
+      "Namaste! I’m Narada. Ask me about any dish, or just tell me what you feel like eating.",
+    askAnna: "Ask Narada anything…",
     add: "ADD",
     bestseller: "★ Bestseller",
     viewCart: "View cart →",
     items: (n) => `${n} item${n > 1 ? "s" : ""}`,
     yourOrder: "Your order",
     payNote: "pay at the end or right after ordering",
-    emptyCart: "Your cart is empty — ask Anna for a recommendation!",
+    emptyCart: "Your cart is empty — ask Narada for a recommendation!",
     each: "each",
     total: "Total",
     placeOrder: "Place order",
@@ -84,7 +89,7 @@ export const STRINGS: Record<Lang, Strings> = {
     payUpi: "Pay {amount} via UPI",
     payLater: "Pay later — continue browsing",
     reviewOrder: "Review & order →",
-    footer: "Powered by Narada · Anna can make mistakes — the cart is always yours to edit",
+    footer: "Powered by Narada · Narada can make mistakes — the cart is always yours to edit",
     suggestions: [
       "What do you recommend for two?",
       "Which dishes are not spicy?",
@@ -107,23 +112,28 @@ export const STRINGS: Record<Lang, Strings> = {
     statusPreparing: "Being prepared 👨‍🍳",
     statusServed: "Served — enjoy! 🍽️",
     listening: "Listening… tap to stop",
+    thinking: "Narada is thinking…",
+    speaking: "Narada is speaking…",
+    endVoice: "End conversation",
+    voiceHint: "Just talk — Narada will guide you and confirm before ordering",
+    heroSpecial: "Chef's Special ✨",
   },
   hi: {
     dineIn: "डाइन-इन",
     veg: "वेज",
-    talkToAnna: "अन्ना से बात करें",
-    annaHint: "“अन्ना, आज क्या अच्छा है?” — कुछ भी पूछें, कुछ भी ऑर्डर करें",
+    talkToAnna: "नारद से बात करें",
+    annaHint: "“नारद, आज क्या अच्छा है?” — कुछ भी पूछें, कुछ भी ऑर्डर करें",
     annaRole: "आपका वेटर · मेन्यू की हर डिश जानता है",
     annaGreeting:
-      "नमस्ते! मैं अन्ना हूँ। किसी भी डिश के बारे में पूछिए, या बताइए आज क्या खाने का मन है।",
-    askAnna: "अन्ना से कुछ भी पूछें…",
+      "नमस्ते! मैं नारद हूँ। किसी भी डिश के बारे में पूछिए, या बताइए आज क्या खाने का मन है।",
+    askAnna: "नारद से कुछ भी पूछें…",
     add: "जोड़ें",
     bestseller: "★ बेस्टसेलर",
     viewCart: "कार्ट देखें →",
     items: (n) => `${n} आइटम`,
     yourOrder: "आपका ऑर्डर",
     payNote: "अंत में या ऑर्डर के तुरंत बाद भुगतान करें",
-    emptyCart: "कार्ट खाली है — अन्ना से सुझाव पूछिए!",
+    emptyCart: "कार्ट खाली है — नारद से सुझाव पूछिए!",
     each: "प्रति",
     total: "कुल",
     placeOrder: "ऑर्डर करें",
@@ -134,7 +144,7 @@ export const STRINGS: Record<Lang, Strings> = {
     payUpi: "UPI से {amount} भुगतान करें",
     payLater: "बाद में भुगतान करें — ब्राउज़ करते रहें",
     reviewOrder: "ऑर्डर देखें →",
-    footer: "Narada द्वारा संचालित · अन्ना से ग़लती हो सकती है — कार्ट हमेशा आपके नियंत्रण में है",
+    footer: "Narada द्वारा संचालित · नारद से ग़लती हो सकती है — कार्ट हमेशा आपके नियंत्रण में है",
     suggestions: [
       "दो लोगों के लिए क्या सुझाव है?",
       "कौन सी डिश तीखी नहीं है?",
@@ -156,24 +166,29 @@ export const STRINGS: Record<Lang, Strings> = {
     statusPlaced: "ऑर्डर मिल गया",
     statusPreparing: "बन रहा है 👨‍🍳",
     statusServed: "परोस दिया गया 🍽️",
-    listening: "सुन रही हूँ… रोकने के लिए टैप करें",
+    listening: "सुन रहा हूँ… रोकने के लिए टैप करें",
+    thinking: "नारद सोच रहे हैं…",
+    speaking: "नारद बोल रहे हैं…",
+    endVoice: "बातचीत समाप्त करें",
+    voiceHint: "बस बोलिए — नारद गाइड करेंगे और ऑर्डर से पहले पुष्टि लेंगे",
+    heroSpecial: "शेफ़ स्पेशल ✨",
   },
   te: {
     dineIn: "డైన్-ఇన్",
     veg: "వెజ్",
-    talkToAnna: "అన్నతో మాట్లాడండి",
-    annaHint: "“అన్నా, ఈరోజు ఏది బాగుంది?” — ఏదైనా అడగండి, ఏదైనా ఆర్డర్ చేయండి",
+    talkToAnna: "నారదతో మాట్లాడండి",
+    annaHint: "“నారద, ఈరోజు ఏది బాగుంది?” — ఏదైనా అడగండి, ఏదైనా ఆర్డర్ చేయండి",
     annaRole: "మీ వెయిటర్ · మెనూలోని ప్రతి వంటకం తెలుసు",
     annaGreeting:
-      "నమస్తే! నేను అన్న. ఏ వంటకం గురించైనా అడగండి, లేదా ఈరోజు ఏమి తినాలనిపిస్తుందో చెప్పండి.",
-    askAnna: "అన్నను ఏదైనా అడగండి…",
+      "నమస్తే! నేను నారద. ఏ వంటకం గురించైనా అడగండి, లేదా ఈరోజు ఏమి తినాలనిపిస్తుందో చెప్పండి.",
+    askAnna: "నారదను ఏదైనా అడగండి…",
     add: "కావాలి",
     bestseller: "★ బెస్ట్ సెల్లర్",
     viewCart: "కార్ట్ చూడండి →",
     items: (n) => `${n} ఐటమ్${n > 1 ? "లు" : ""}`,
     yourOrder: "మీ ఆర్డర్",
     payNote: "చివర్లో లేదా ఆర్డర్ చేసిన వెంటనే చెల్లించండి",
-    emptyCart: "కార్ట్ ఖాళీగా ఉంది — అన్నను సూచన అడగండి!",
+    emptyCart: "కార్ట్ ఖాళీగా ఉంది — నారదుని సూచన అడగండి!",
     each: "ఒక్కొక్కటి",
     total: "మొత్తం",
     placeOrder: "ఆర్డర్ చేయండి",
@@ -184,7 +199,7 @@ export const STRINGS: Record<Lang, Strings> = {
     payUpi: "UPI ద్వారా {amount} చెల్లించండి",
     payLater: "తర్వాత చెల్లించండి — బ్రౌజ్ చేస్తూ ఉండండి",
     reviewOrder: "ఆర్డర్ చూడండి →",
-    footer: "Narada ఆధారితం · అన్న పొరపాటు చేయవచ్చు — కార్ట్ ఎప్పుడూ మీ చేతుల్లోనే",
+    footer: "Narada ఆధారితం · నారదుడు పొరపాటు చేయవచ్చు — కార్ట్ ఎప్పుడూ మీ చేతుల్లోనే",
     suggestions: [
       "ఇద్దరికి ఏమి సిఫార్సు చేస్తావు?",
       "ఏవి కారంగా ఉండవు?",
@@ -207,5 +222,10 @@ export const STRINGS: Record<Lang, Strings> = {
     statusPreparing: "తయారవుతోంది 👨‍🍳",
     statusServed: "వడ్డించబడింది 🍽️",
     listening: "వింటున్నాను… ఆపడానికి నొక్కండి",
+    thinking: "నారదుడు ఆలోచిస్తున్నాడు…",
+    speaking: "నారదుడు మాట్లాడుతున్నాడు…",
+    endVoice: "సంభాషణ ముగించండి",
+    voiceHint: "మాట్లాడండి చాలు — నారదుడు గైడ్ చేసి, ఆర్డర్ ముందు నిర్ధారిస్తాడు",
+    heroSpecial: "చెఫ్ స్పెషల్ ✨",
   },
 };

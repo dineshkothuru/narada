@@ -3,10 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LANGS, LANG_NAME, STRINGS, type Lang } from "@/lib/i18n";
 import { WHEEL } from "@/lib/games";
-import { blobToWavBase64 } from "@/lib/audio";
+import HeroCarousel from "./HeroCarousel";
 import MemoryGame from "./MemoryGame";
 import SpinWheel from "./SpinWheel";
-import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "@/lib/types";
+import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
+import type {
+  AnnaResponse,
+  CartLine,
+  ChatMessage,
+  MenuItem,
+  MenuPayload,
+} from "@/lib/types";
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -95,12 +102,21 @@ export default function OrderExperience({
   const [gameOpen, setGameOpen] = useState(false);
   const [discountPct, setDiscountPct] = useState(0);
   const [compItem, setCompItem] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const storageKey = `narada:${tableCode}`;
+
+  // stable refs so async voice turns and deferred confirms never see stale state
+  const cartRef = useRef<CartLine[]>(cart);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  const placeOrderRef = useRef<(via?: "ui" | "anna") => void>(() => {});
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const MENU_BY_ID = useMemo(
     () => new Map(menuItems.map((m) => [m.id, m])),
@@ -186,6 +202,7 @@ export default function OrderExperience({
 
   const applyAnnaActions = (res: AnnaResponse) => {
     for (const a of res.actions) {
+      if (a.type === "confirm_order") continue;
       const item = MENU_BY_ID.get(a.itemId);
       if (!item) continue;
       if (a.type === "add") {
@@ -204,7 +221,19 @@ export default function OrderExperience({
         );
       }
     }
-    if (res.suggestCheckout) setCartOpen(true);
+    const confirmed = res.actions.some((a) => a.type === "confirm_order");
+    if (confirmed) {
+      // let the cart state from this same response settle first
+      setTimeout(() => {
+        if (cartRef.current.length > 0) {
+          placeOrderRef.current("anna");
+          setCartOpen(true);
+        }
+      }, 150);
+    } else if (res.suggestCheckout) {
+      setCartOpen(true);
+    }
+    return confirmed;
   };
 
   const sendToAnna = async (text: string) => {
@@ -242,74 +271,54 @@ export default function OrderExperience({
     }
   };
 
-  const toggleRecording = async () => {
-    if (recording) {
-      recorderRef.current?.stop();
-      setRecording(false);
-      return;
-    }
+  const runVoiceTurn = async (wavBase64: string): Promise<VoiceTurnResult> => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audio: wavBase64,
+          cart: cartRef.current,
+          messages: messagesRef.current,
+          language: LANG_NAME[lang],
+          tableCode,
+        }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as AnnaResponse & {
+        transcript: string;
+        audio: string | null;
       };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach((tr) => tr.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
-        if (blob.size < 1000) return;
-        setThinking(true);
-        try {
-          const audio = await blobToWavBase64(blob);
-          const res = await fetch("/api/voice", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              audio,
-              cart,
-              messages,
-              language: LANG_NAME[lang],
-              tableCode,
-            }),
-          });
-          if (!res.ok) throw new Error(String(res.status));
-          const data = (await res.json()) as AnnaResponse & {
-            transcript: string;
-            audio: string | null;
-          };
-          setMessages((m) => [
-            ...m,
-            { role: "user", text: data.transcript },
-            { role: "assistant", text: data.reply },
-          ]);
-          applyAnnaActions(data);
-          if (data.audio) {
-            new Audio(`data:audio/wav;base64,${data.audio}`).play().catch(() => {});
-          }
-        } catch {
-          setToast("Couldn't hear that — try again");
-        } finally {
-          setThinking(false);
-        }
+      setMessages((m) => [
+        ...m,
+        { role: "user", text: data.transcript },
+        { role: "assistant", text: data.reply },
+      ]);
+      const confirmed = applyAnnaActions(data);
+      return {
+        transcript: data.transcript,
+        reply: data.reply,
+        audio: data.audio,
+        endConversation: confirmed,
       };
-      recorder.start();
-      recorderRef.current = recorder;
-      setRecording(true);
     } catch {
-      setToast("Microphone unavailable");
+      return null;
     }
   };
 
-  const placeOrder = async () => {
-    if (placing || cart.length === 0) return;
+  const placeOrder = async (via: "ui" | "anna" = "ui") => {
+    const lines = cartRef.current;
+    if (placing || lines.length === 0) return;
     setPlacing(true);
-    const snapshotTotal = total;
+    const snapshotTotal = lines.reduce(
+      (s, l) => s + (MENU_BY_ID.get(l.itemId)?.priceInr ?? 0) * l.qty,
+      0,
+    );
     try {
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableCode, cart, placedVia: "ui" }),
+        body: JSON.stringify({ tableCode, cart: lines, placedVia: via }),
       });
       const data = res.ok ? await res.json() : {};
       setOrderPlaced({ total: data.total ?? snapshotTotal, orderId: data.orderId ?? null });
@@ -323,6 +332,7 @@ export default function OrderExperience({
       setPlacing(false);
     }
   };
+  placeOrderRef.current = placeOrder;
 
   const onWheelResult = (idx: number) => {
     const reward = WHEEL[idx].reward;
@@ -347,6 +357,13 @@ export default function OrderExperience({
   };
 
   const tableLabel = menu.tableLabel;
+  const heroDishes = useMemo<MenuItem[]>(() => {
+    const specials = menuItems.filter((m) => m.tags.includes("chef-special"));
+    const best = menuItems.filter(
+      (m) => m.tags.includes("bestseller") && !specials.includes(m),
+    );
+    return [...specials.slice(0, 2), ...best.slice(0, 2)];
+  }, [menuItems]);
   const statusLabel =
     orderStatus === "served"
       ? t.statusServed
@@ -355,27 +372,28 @@ export default function OrderExperience({
         : t.statusPlaced;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-white pb-36">
-      {/* Header */}
-      <header className="border-b border-stone-100 px-5 pt-8 pb-5">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-36">
+      {/* Dark hero zone */}
+      <div className="rounded-b-[2rem] bg-gradient-to-b from-stone-950 to-stone-900 shadow-xl shadow-stone-950/25">
+      <header className="px-5 pt-8 pb-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-rose-600 uppercase">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-rose-400 uppercase">
               {tableLabel} · {t.dineIn}
             </p>
-            <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-stone-900">
+            <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-white">
               {restaurant.name}
             </h1>
-            <p className="mt-0.5 text-xs text-stone-500">{restaurant.tagline}</p>
+            <p className="mt-0.5 text-xs text-stone-400">{restaurant.tagline}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <div className="flex rounded-full bg-stone-100 p-0.5">
+            <div className="flex rounded-full bg-white/10 p-0.5">
               {LANGS.map((l) => (
                 <button
                   key={l.code}
                   onClick={() => setLang(l.code)}
                   className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
-                    lang === l.code ? "bg-stone-900 text-white" : "text-stone-500"
+                    lang === l.code ? "bg-white text-stone-900" : "text-stone-400"
                   }`}
                 >
                   {l.label}
@@ -386,38 +404,99 @@ export default function OrderExperience({
               onClick={() => setVegOnly((v) => !v)}
               className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                 vegOnly
-                  ? "border-green-600 bg-green-50 text-green-700"
-                  : "border-stone-200 text-stone-500"
+                  ? "border-green-400 bg-green-500/15 text-green-300"
+                  : "border-white/20 text-stone-300"
               }`}
             >
               <VegMark isVeg /> {t.veg}
             </button>
           </div>
         </div>
-        <button
-          onClick={() => setChatOpen(true)}
-          className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-rose-600 px-4 py-3.5 text-left shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
-        >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/15 text-xl">
-            🎙️
-          </span>
-          <span>
-            <span className="block text-sm font-bold text-white">{t.talkToAnna}</span>
-            <span className="block text-xs text-rose-100">{t.annaHint}</span>
-          </span>
-        </button>
       </header>
 
+      {/* Hero carousel: specials, offers, Narada */}
+      <div className="pt-1 pb-6">
+        <HeroCarousel>
+          {[
+            ...heroDishes.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  changeQty(item.id, 1);
+                  setToast(`+ ${item.name[lang]}`);
+                }}
+                className="relative block h-44 w-full overflow-hidden rounded-3xl text-left shadow-md transition active:scale-[0.98]"
+              >
+                <ItemPhoto
+                  imageUrl={item.imageUrl}
+                  emoji={item.emoji}
+                  alt={item.name.en}
+                  className="absolute inset-0 h-full w-full"
+                />
+                <span className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/25 to-transparent" />
+                <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-stone-900">
+                  {item.tags.includes("chef-special") ? t.heroSpecial : t.bestseller}
+                </span>
+                <span className="absolute bottom-3 left-4 right-20">
+                  <span className="font-display block truncate text-xl font-semibold text-white">
+                    {item.name[lang]}
+                  </span>
+                  <span className="text-sm font-semibold text-stone-200">
+                    {inr(item.priceInr)}
+                  </span>
+                </span>
+                <span className="absolute right-3 bottom-4 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-extrabold text-white shadow">
+                  {t.add}
+                </span>
+              </button>
+            )),
+            ...(!spinDone
+              ? [
+                  <button
+                    key="spin"
+                    onClick={() => setWheelOpen(true)}
+                    className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-700 px-6 text-left shadow-md transition active:scale-[0.98]"
+                  >
+                    <span className="text-6xl">🎡</span>
+                    <span>
+                      <span className="font-display block text-xl font-semibold text-white">
+                        {t.spinBanner}
+                      </span>
+                      <span className="mt-1 block text-xs text-sky-100">{t.spinSub}</span>
+                    </span>
+                  </button>,
+                ]
+              : []),
+            <button
+              key="anna"
+              onClick={() => setVoiceOpen(true)}
+              className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-rose-600 px-6 text-left shadow-md transition active:scale-[0.98]"
+            >
+              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-white/15 text-4xl">
+                🎙️
+              </span>
+              <span>
+                <span className="font-display block text-xl font-semibold text-white">
+                  {t.talkToAnna}
+                </span>
+                <span className="mt-1 block text-xs text-rose-100">{t.voiceHint}</span>
+              </span>
+            </button>,
+          ]}
+        </HeroCarousel>
+      </div>
+      </div>
+
       {/* Category chips */}
-      <nav className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-stone-100 bg-white/95 px-4 py-3 backdrop-blur">
+      <nav className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto bg-stone-100/95 px-4 py-3 backdrop-blur">
         {categories.map((c) => (
           <button
             key={c.id}
             onClick={() => scrollToCat(c.id)}
             className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition ${
               activeCat === c.id
-                ? "bg-stone-900 text-white"
-                : "bg-stone-100 text-stone-600"
+                ? "bg-stone-900 text-white shadow"
+                : "bg-white text-stone-600 ring-1 ring-stone-200"
             }`}
           >
             {c.emoji} {c.name[lang]}
@@ -427,18 +506,6 @@ export default function OrderExperience({
 
       {/* Menu */}
       <main className="flex flex-col gap-7 px-4 pt-4">
-        {!spinDone && !orderPlaced && (
-          <button
-            onClick={() => setWheelOpen(true)}
-            className="flex items-center gap-3 rounded-2xl bg-stone-900 px-4 py-3.5 text-left shadow-lg shadow-stone-900/20 transition active:scale-[0.98]"
-          >
-            <span className="text-3xl">🎡</span>
-            <span>
-              <span className="block text-sm font-bold text-white">{t.spinBanner}</span>
-              <span className="block text-xs text-stone-300">{t.spinSub}</span>
-            </span>
-          </button>
-        )}
         {discountPct > 0 && !orderPlaced && (
           <div className="rounded-xl bg-rose-50 px-4 py-3 text-center text-xs font-bold text-rose-700 ring-1 ring-rose-200">
             🎉 {t.discountApplied.replace("{pct}", String(discountPct))}
@@ -455,9 +522,9 @@ export default function OrderExperience({
               ref={(el) => {
                 sectionRefs.current[cat.id] = el;
               }}
-              className="scroll-mt-16"
+              className="scroll-mt-16 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60"
             >
-              <h2 className="font-display mb-3 text-xl font-semibold text-stone-900">
+              <h2 className="font-display mb-1 text-xl font-semibold text-stone-900">
                 {cat.name[lang]}
               </h2>
               <div className="flex flex-col divide-y divide-stone-100">
@@ -554,12 +621,12 @@ export default function OrderExperience({
         </button>
       )}
 
-      {/* Anna FAB */}
-      {!chatOpen && (
+      {/* Narada FAB — opens the voice conversation */}
+      {!chatOpen && !voiceOpen && (
         <button
-          onClick={() => setChatOpen(true)}
-          aria-label="Talk to Anna"
-          className={`fixed right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-stone-900 text-2xl shadow-xl shadow-stone-900/30 transition active:scale-90 ${
+          onClick={() => setVoiceOpen(true)}
+          aria-label="Talk to Narada"
+          className={`fixed right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-rose-600 text-2xl shadow-xl shadow-rose-600/40 transition active:scale-90 ${
             itemCount > 0 ? "bottom-24" : "bottom-6"
           }`}
         >
@@ -769,14 +836,14 @@ export default function OrderExperience({
                     {restaurant.paymentTiming === "pre" ? (
                       <a
                         href={`upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(restaurant.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
-                        onClick={placeOrder}
+                        onClick={() => placeOrder("ui")}
                         className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
                       >
                         {t.payToOrder} · {inr(total)}
                       </a>
                     ) : (
                       <button
-                        onClick={placeOrder}
+                        onClick={() => placeOrder("ui")}
                         disabled={placing}
                         className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98] disabled:opacity-60"
                       >
@@ -804,7 +871,7 @@ export default function OrderExperience({
                 🎙️
               </span>
               <div className="flex-1">
-                <p className="text-sm font-bold">Anna</p>
+                <p className="text-sm font-bold">Narada</p>
                 <p className="text-[11px] text-stone-400">{t.annaRole}</p>
               </div>
               <button
@@ -882,20 +949,19 @@ export default function OrderExperience({
             >
               <button
                 type="button"
-                onClick={toggleRecording}
-                aria-label={recording ? "stop recording" : "speak to Anna"}
-                className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg transition active:scale-90 ${
-                  recording
-                    ? "animate-pulse bg-rose-600 text-white"
-                    : "bg-stone-100 text-stone-700"
-                }`}
+                onClick={() => {
+                  setChatOpen(false);
+                  setVoiceOpen(true);
+                }}
+                aria-label="speak to Anna"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-stone-100 text-lg text-stone-700 transition active:scale-90"
               >
-                {recording ? "■" : "🎙️"}
+                🎙️
               </button>
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder={recording ? t.listening : t.askAnna}
+                placeholder={t.askAnna}
                 className="flex-1 rounded-full bg-stone-100 px-4 py-3 text-sm outline-none placeholder:text-stone-400 focus:ring-2 focus:ring-rose-400"
               />
               <button
@@ -909,6 +975,26 @@ export default function OrderExperience({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Voice conversation overlay */}
+      {voiceOpen && (
+        <VoiceMode
+          onTurn={runVoiceTurn}
+          onClose={() => setVoiceOpen(false)}
+          onSwitchToChat={() => {
+            setVoiceOpen(false);
+            setChatOpen(true);
+          }}
+          strings={{
+            listening: t.listening,
+            thinking: t.thinking,
+            speaking: t.speaking,
+            endVoice: t.endVoice,
+            voiceHint: t.voiceHint,
+            annaRole: t.annaRole,
+          }}
+        />
       )}
     </div>
   );

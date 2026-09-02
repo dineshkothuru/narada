@@ -127,7 +127,7 @@ export default function KitchenPage() {
                         {inr(o.total_inr)}
                         {o.placed_via === "anna" && (
                           <span className="ml-1.5 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
-                            🎙️ Anna
+                            🎙️ Narada
                           </span>
                         )}
                       </span>

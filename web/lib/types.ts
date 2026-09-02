@@ -45,7 +45,8 @@ export type CartLine = {
 export type AnnaAction =
   | { type: "add"; itemId: string; qty: number; notes?: string }
   | { type: "remove"; itemId: string }
-  | { type: "set_qty"; itemId: string; qty: number };
+  | { type: "set_qty"; itemId: string; qty: number }
+  | { type: "confirm_order" };
 
 export type AnnaResponse = {
   reply: string;
