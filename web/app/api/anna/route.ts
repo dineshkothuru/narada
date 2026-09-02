@@ -3,6 +3,8 @@ import { fetchMenu } from "@/lib/menu";
 import { askAnna } from "@/lib/anna";
 import type { CartLine, ChatMessage } from "@/lib/types";
 
+export const maxDuration = 30;
+
 export async function POST(req: NextRequest) {
   const { messages, cart, language, tableCode } = (await req.json()) as {
     messages: ChatMessage[];

@@ -4,6 +4,8 @@ import { askAnna } from "@/lib/anna";
 import { getApiKeys } from "@/lib/keys";
 import type { CartLine, ChatMessage } from "@/lib/types";
 
+export const maxDuration = 60;
+
 const SARVAM = "https://api.sarvam.ai";
 
 // Sarvam STT auto-detects the spoken language; we answer (text + speech) in it.
