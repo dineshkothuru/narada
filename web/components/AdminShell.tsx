@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import CallTimer from "./CallTimer";
 import CallAlertBar, { type OpenCall } from "./CallAlertBar";
 
 type Role = "admin" | "kitchen" | "waiter" | "reception" | "cashier";
@@ -197,29 +196,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </div>
           ))}
 
-          {watchesCalls && (
-            <div className="mt-2 rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
-              <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                Waiter calls
-              </p>
-              {calls.length === 0 ? (
-                <p className="mt-1.5 text-[11px] text-slate-400">All attended ✓</p>
-              ) : (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  {calls.map((c) => (
-                    <Link
-                      key={c.id}
-                      href="/waiter"
-                      className="flex items-center justify-between gap-2 rounded-lg bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200"
-                    >
-                      <span className="truncate">{c.label}</span>
-                      <CallTimer since={c.since} compact />
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </nav>
 
         <div className="border-t border-slate-200 p-3">
