@@ -1,7 +1,6 @@
 // The two state machines the staff screens run on. Both were inline in their
 // API routes, where the only way to exercise them was to place a real order.
 
-export type ItemStatus = "queued" | "preparing" | "ready" | "served";
 export type OrderStatus = "placed" | "preparing" | "ready" | "served";
 export type TableStatus = "free" | "cleaning" | "seated" | "dining" | "settling" | "paid";
 
