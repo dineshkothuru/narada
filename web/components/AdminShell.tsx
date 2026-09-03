@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import CallTimer from "./CallTimer";
+import CallAlertBar, { type OpenCall } from "./CallAlertBar";
 
 const NAV = [
   { href: "/admin", label: "Menu & settings", emoji: "⚙️" },
@@ -13,8 +14,6 @@ const NAV = [
   { href: "/kitchen", label: "Kitchen", emoji: "👨‍🍳" },
   { href: "/admin/qr", label: "QR codes", emoji: "🖨️" },
 ];
-
-type OpenCall = { id: string; label: string; created_at: string };
 
 // Left sidebar for every staff screen, with a live call watchlist so an
 // unattended table is visible from anywhere in the admin.
@@ -31,11 +30,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       setCalls(
         (d.tables ?? [])
           .filter((t: { calling: boolean }) => t.calling)
-          .map((t: { id: string; label: string; callSince: string }) => ({
-            id: t.id,
-            label: t.label,
-            created_at: t.callSince,
-          })),
+          .map(
+            (t: {
+              id: string;
+              label: string;
+              callSince: string;
+              attendant: string | null;
+            }) => ({
+              id: t.id,
+              label: t.label,
+              since: t.callSince,
+              attendant: t.attendant,
+            }),
+          ),
       );
     } catch {}
   }, []);
@@ -112,7 +119,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   className="flex items-center justify-between gap-2 rounded-lg bg-white/10 px-2 py-1.5 text-[11px] font-bold"
                 >
                   <span className="truncate">{c.label}</span>
-                  <CallTimer since={c.created_at} compact />
+                  <CallTimer since={c.since} compact />
                 </Link>
               ))}
             </div>
@@ -146,6 +153,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </span>
           )}
         </button>
+        <CallAlertBar calls={calls} />
         {children}
       </div>
     </div>
