@@ -1,193 +1,182 @@
-# Narada — QR dine-in ordering with a voice waiter
+# Narada
 
-**Narada** is both the product and the voice waiter customers talk to.
+Narada is a QR dine-in ordering app with a multilingual voice waiter. Customers
+scan a table QR code, browse the menu, order in rounds, call a waiter, and pay
+at the end of the visit. Staff use role-gated kitchen, waiter, floor, counter,
+and admin screens.
 
-Scan a QR code at the table → menu opens in the browser → talk to a voice agent
-(Sarvam AI for speech, Gemini for reasoning) that answers menu questions and takes
-the order → cart → UPI payment.
+## Stack
 
-No app install: the QR encodes a URL like `https://<domain>/t/<table-id>`, and the
-whole experience is a mobile web app (PWA).
+- `apps/api`: Fastify 5, Kysely, and PostgreSQL (`DATABASE_URL`)
+- `apps/web`: Vite 7, React 19, React Router 7, Tailwind 4, and shadcn
+- `packages/shared`: shared types, schemas, and pure business logic
 
-This is a **dine-in** flow — the customer at the table orders directly instead of
-waiting for a waiter. That shapes a few decisions:
+The API serves the built SPA when `WEB_DIST` is set. Supabase is optional and
+is used only for dish-photo storage; database access is through PostgreSQL.
 
-- **Table session, not one-shot order.** Scanning opens a session tied to the table.
-  The customer can order in rounds (starters now, dessert later) on one running tab.
-- **Pay-per-order or pay-at-end** — configurable per outlet. Indian dine-in
-  usually settles at the end, so the default is: orders fire to the kitchen
-  immediately, UPI payment happens once when the customer asks for the bill.
-- **Waiter is still one tap away.** A "call waiter" button (and the agent understanding
-  "bhaiya ko bulao" / "call the waiter") is essential — the system augments staff,
-  it doesn't trap customers in a bot.
-- **Kitchen gets a KOT** (kitchen order ticket) per round, tagged with the table number,
-  exactly like a waiter would punch in.
+## Local setup
 
-## Run it yourself (5 minutes)
-
-Prereqs: Node 20+, a free [Supabase](https://supabase.com) project, a
-[Gemini API key](https://aistudio.google.com) and a [Sarvam AI key](https://dashboard.sarvam.ai).
+Prerequisites: Node 22 and pnpm 11.
 
 ```bash
 git clone https://github.com/<owner>/narada
 cd narada
-npm install
+pnpm install
+cp .env.example apps/api/.env
 ```
 
-1. **Configure env** — create `web/.env.local`:
-   ```env
-   SUPABASE_URL=https://<your-project>.supabase.co
-   SUPABASE_ANON_KEY=<publishable/anon key>
-   SUPABASE_SERVICE_ROLE_KEY=<secret/service_role key>
-   SESSION_SECRET=<long random string, e.g. `openssl rand -hex 32` — signs staff login cookies>
-   GEMINI_API_KEY=<optional — can be set later in /admin>
-   SARVAM_API_KEY=<optional — can be set later in /admin>
-   ```
-2. **Create the database** — in the Supabase SQL editor run, in order:
-   [`docs/schema.sql`](docs/schema.sql), [`docs/seed.sql`](docs/seed.sql),
-   [`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql). On a DB created
-   before 2026-09-03, also run
-   [`docs/migrate-outlet-rename.sql`](docs/migrate-outlet-rename.sql) (fresh installs
-   don't need it — the files above already produce the renamed schema).
-3. **Run** — `npm run dev`, then open http://localhost:3000 and pick a table.
+Set these required values in `apps/api/.env`:
 
-Where to click:
-
-- `/t/t1-demo` — the customer experience (each table's QR points at its own code).
-  Tap the 🎙️ button and _talk_ to Narada — Telugu, Hindi, or English.
-- `/kitchen` — live kitchen dashboard (orders arrive here). Needs the staff PIN.
-- `/admin` — menu availability, prices, payment timing, UPI ID, staff PIN, and
-  the Gemini/Sarvam API keys. Same PIN.
-
-Feedback welcome — open a GitHub issue with screenshots.
-
-## End-to-end flow
-
-```
-Customer scans QR (table 12)
-        │
-        ▼
-Menu web app opens (PWA) ──────────── browse menu manually (always available)
-        │
-        ▼  taps mic
-Voice agent session (WebSocket)
-        │
-        ├─ Sarvam STT (Saarika)  : customer speech → text  (Hindi/Telugu/Tamil/English…)
-        ├─ Gemini (function calls): understands question, answers from menu,
-        │                           calls add_to_cart / remove_from_cart / confirm_order
-        └─ Sarvam TTS (Bulbul)   : reply text → natural speech back to customer
-        │
-        ▼  "yes, that's my order"
-Cart review screen (customer can still edit by hand)
-        │
-        ▼
-UPI payment (Razorpay/Cashfree checkout, or raw upi:// deep link)
-        │
-        ▼  payment webhook confirms
-Order fired to kitchen dashboard / printer
+```env
+DATABASE_URL=postgres://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
+SESSION_SECRET=<long random string; openssl rand -hex 32>
 ```
 
-## Components
+`GEMINI_API_KEY` and `SARVAM_API_KEY` are optional environment fallbacks; the
+admin settings screen can store per-outlet keys. `SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` are needed only for dish-photo uploads.
 
-| #   | Component      | Tech                                                 | Notes                                                                                                                              |
-| --- | -------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Customer PWA   | Next.js + Tailwind                                   | Menu, cart, mic button, payment screen. Mobile-first.                                                                              |
-| 2   | Backend API    | Node.js (Fastify/Express)                            | Menu CRUD, orders, sessions, payment webhooks.                                                                                     |
-| 3   | Voice pipeline | WebSocket server                                     | Streams mic audio → Sarvam STT → Gemini → Sarvam TTS → audio back.                                                                 |
-| 4   | Agent brain    | Gemini (function calling)                            | System prompt = full menu JSON + rules. Tools: `answer from menu`, `add_to_cart`, `remove_from_cart`, `get_cart`, `confirm_order`. |
-| 5   | Speech         | Sarvam AI                                            | Saarika (STT, streaming) + Bulbul (TTS). Built for Indic languages — the reason to pick it over Google/OpenAI speech.              |
-| 6   | Payments       | Razorpay or Cashfree (recommended) or raw UPI intent | See payment options below.                                                                                                         |
-| 7   | Kitchen view   | Simple web dashboard                                 | Live orders per table; mark preparing/served.                                                                                      |
-| 8   | Admin          | Web dashboard                                        | Menu editor, table/QR generator, order history.                                                                                    |
-| 9   | Database       | Postgres (Supabase is a fast start)                  | menus, items, tables, orders, payments.                                                                                            |
+For a one-time first-admin bootstrap, set `ADMIN_BOOTSTRAP_USERNAME`,
+`ADMIN_BOOTSTRAP_FIRST_NAME`, and `ADMIN_BOOTSTRAP_PASSWORD`. The username must
+be 3–32 lowercase ASCII letters, numbers, dots, underscores, or hyphens; the
+password must be 15–128 characters. `ADMIN_BOOTSTRAP_LAST_NAME` is optional.
+Set `ADMIN_BOOTSTRAP_OUTLET_SLUG` when more than one active outlet exists.
+Bootstrap runs only when the target outlet has no usable active admin; remove
+the bootstrap values after the account is available.
 
-## Who talks to whom (your Sarvam→Gemini question)
+### Database
 
-Sarvam and Gemini don't talk to each other directly — **your backend orchestrates both**:
+For a fresh database, run these files in this order in the SQL editor:
 
-1. Browser streams mic audio over WebSocket to your backend.
-2. Backend sends audio to **Sarvam STT** → gets text.
-3. Backend sends text + menu context + cart state to **Gemini** → gets a reply
-   and/or a tool call (e.g. `add_to_cart("Paneer Tikka", qty=2)`).
-4. Backend executes the tool (updates cart in DB, pushes cart update to the UI),
-   sends Gemini's reply text to **Sarvam TTS** → gets audio.
-5. Audio streams back to the browser and plays.
+1. [`docs/schema.sql`](docs/schema.sql)
+2. [`docs/seed.sql`](docs/seed.sql)
+3. [`docs/seed-i18n.sql`](docs/seed-i18n.sql)
 
-This keeps you free to swap either vendor later (e.g. Sarvam-M instead of Gemini,
-or Gemini Live API for speech-to-speech).
+The demo seed creates the `Spice Garden` outlet, four table QR codes, and local
+staff accounts. These credentials are for local demos only; replace them before
+using a real outlet.
 
-## Payment (UPI deep link — decided)
+For a database created by the legacy `web/` app, do not rerun the fresh seed.
+Apply the migrations in this order:
 
-Plain `upi://pay?pa=<vpa>&pn=<name>&am=<amount>&tn=<order-id>` deep link opens
-GPay/PhonePe/any UPI app directly. Zero fees, zero gateway onboarding. Trade-off:
-no server-side payment confirmation, so staff verify payment on their own UPI app
-(normal practice in Indian restaurants). No Razorpay/gateway integration.
+1. [`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql)
+2. [`docs/migrate-outlet-rename.sql`](docs/migrate-outlet-rename.sql)
+3. [`docs/migrate-live-columns.sql`](docs/migrate-live-columns.sql)
+4. [`docs/migrate-password-auth.sql`](docs/migrate-password-auth.sql)
+5. [`docs/migrate-customer-auth.sql`](docs/migrate-customer-auth.sql)
+6. [`docs/migrate-outlet-ordering.sql`](docs/migrate-outlet-ordering.sql)
+7. [`docs/migrate-main-product-parity.sql`](docs/migrate-main-product-parity.sql)
+8. [`docs/migrate-api-only-rls.sql`](docs/migrate-api-only-rls.sql)
 
-**Payment timing is an admin setting** per outlet (`outlets.payment_timing`):
+Take a database backup first. Fresh databases already contain these columns and
+the outlet naming, so they do not need the migration files. The password-auth
+migration preserves existing staff and outlet rows, copies a legacy display
+name into `first_name`, and removes the legacy PIN columns. Legacy rows without
+a username or password cannot sign in until an admin completes their setup in
+Admin > Users. If no active admin can sign in, use the one-time bootstrap
+variables above, start the API, remove those variables, then enroll the
+remaining staff accounts.
 
-- `post` (default): order fires to the kitchen first, customer pays at the end —
-  leaves the waiting window free for engagement (see below).
-- `pre`: customer pays to place the order.
+## Run
 
-## Engagement (implemented)
+Run the API and web app together:
 
-- **Before ordering — Spin the Wheel 🎡**: one spin per table session, discount
-  slices only (5/10/15% or try-again; hidden weights control generosity). Won
-  discount auto-applies to the UPI amount.
-- **While waiting — Memory Match 🃏**: 3 escalating levels (~5–8 min, matches the
-  kitchen wait). Beating all levels wins a complimentary item (free dessert) —
-  comps cost the outlet less than discounts.
-
-## Identity & order updates
-
-No login, no location, no phone number to start ordering — scanning the table's QR
-_is_ the identity (table session). Order status updates:
-
-- **In-app (live)**: Supabase Realtime on `orders` — status changes (preparing →
-  served) push to the customer's open page and the kitchen dashboard.
-- **WhatsApp (roadmap)**: optional phone number at checkout (admin setting), via
-  WhatsApp Business Cloud API, for updates after the customer closes the page.
-
-## Languages
-
-UI ships in **English, Hindi, Telugu** (header toggle, persisted per session).
-Narada replies in the customer's language — the app language by default, switching
-automatically to whatever language the customer actually types/speaks. For voice,
-Sarvam STT auto-detects the spoken language; the detected code drives both
-Gemini's reply and Sarvam TTS so Narada speaks back in the same language.
-
-## What you need before building
-
-- **Sarvam AI API key** — dashboard.sarvam.ai (STT + TTS; check streaming quota).
-- **Gemini API key** — aistudio.google.com (Flash tier is fast/cheap enough for this).
-- **Domain + hosting** — Vercel (PWA) + any Node host (Railway/Render/Fly) for the
-  WebSocket server; Supabase for Postgres. All have free tiers for the prototype.
-- **Payment**: for the prototype nothing (option B); for production a Razorpay/Cashfree
-  merchant account (outlet owner's KYC: PAN, bank account, GST if applicable).
-- **Menu data** for one pilot outlet (names, descriptions, prices, veg/non-veg,
-  spice level, allergens — the richer the data, the better the agent's answers).
-
-## Build phases
-
-1. **Phase 1 — Menu PWA + cart + QR** (no voice, no payment). Scan QR → browse →
-   add to cart → "order" hits the kitchen dashboard. Proves the core loop.
-2. **Phase 2 — Text agent.** Chat box wired to Gemini with menu context + cart tools.
-   Gets the whole agent logic right before audio enters the picture.
-3. **Phase 3 — Voice.** Add Sarvam STT/TTS streaming around the same agent.
-4. **Phase 4 — Payments.** UPI deep link first, then gateway + webhook → auto-confirm.
-5. **Phase 5 — Admin + polish.** Menu editor, QR generator per table, multi-language
-   TTS voice choice, analytics.
-
-## Repo layout (planned)
-
+```bash
+pnpm dev
 ```
-apps/
-  web/        # customer PWA (Next.js)
-  kitchen/    # kitchen + admin dashboard
-  server/     # API + WebSocket voice pipeline
-packages/
-  agent/      # Gemini prompts, tool definitions, menu-grounding logic
-  shared/     # types shared across apps (MenuItem, Cart, Order)
-docs/
-  ARCHITECTURE.md
+
+Or run them separately:
+
+```bash
+pnpm dev:api  # http://localhost:3001
+pnpm dev:web  # http://localhost:5173
+```
+
+Customer demos: takeaway at
+[`/outlet/demo-spice-garden`](http://localhost:5173/outlet/demo-spice-garden),
+or Table 1 at
+[`/outlet/demo-spice-garden/table/t1-demo`](http://localhost:5173/outlet/demo-spice-garden/table/t1-demo).
+The seeded table links are `/outlet/demo-spice-garden/table/t1-demo`,
+`/outlet/demo-spice-garden/table/t2-demo`,
+`/outlet/demo-spice-garden/table/t3-demo`, and
+`/outlet/demo-spice-garden/table/t4-demo`.
+
+Staff sign in at the outlet-scoped URL
+[`/outlet/demo-spice-garden/login`](http://localhost:5173/outlet/demo-spice-garden/login)
+with a lowercase username and password. The form has no outlet chooser or role
+selector: the URL selects the outlet and the server derives the account's role,
+then redirects to that role's home. There is no shared or legacy role-login
+route.
+
+Signup URLs remain role-specific, admin-protected account-creation screens.
+They require a lowercase username, first name, password, and an optional last
+name; there is no public staff signup.
+
+| Role      | Signup            | Username    | Display name   | Password                  | Destination |
+| --------- | ----------------- | ----------- | -------------- | ------------------------- | ----------- |
+| admin     | `/admin/signup`   | `owner`     | Owner          | `owner-demo-password`     | `/admin`    |
+| kitchen   | `/kitchen/signup` | `kitchen`   | Demo Kitchen   | `kitchen-demo-password`   | `/kitchen`  |
+| waiter    | `/waiter/signup`  | `waiter`    | Demo Waiter    | `waiter-demo-password`    | `/waiter`   |
+| reception | `/floor/signup`   | `reception` | Demo Reception | `reception-demo-password` | `/floor`    |
+| cashier   | `/counter/signup` | `cashier`   | Demo Cashier   | `cashier-demo-password`   | `/counter`  |
+
+These credentials are demo-only and must not be used for a real outlet.
+
+The seeded customer account is phone `+919876543210`, password
+`customer-demo-password`, and display name `Demo Customer`. Customer sign-in is
+at [`/login`](http://localhost:5173/login); customer signup is at
+[`/signup`](http://localhost:5173/signup).
+
+An admin can enroll and manage staff at
+[`/admin/users`](http://localhost:5173/admin/users); the account-creation API is
+`POST /api/admin/staff`. Signed-in staff can change their own password with
+`PATCH /api/auth/staff/password` using `currentPassword` and `newPassword`.
+Admin Settings includes an explicit Outlet URL slug editor. Slugs are
+normalized to lowercase, must be 3–63 characters using letters, numbers, and
+single hyphens (no leading, trailing, or consecutive hyphens), and are unique
+in the database; a duplicate returns HTTP 409. Changing a slug invalidates its
+old public URLs immediately.
+
+## Production build
+
+Build the SPA, then point the API at its output directory:
+
+```bash
+pnpm --filter @narada/web build
+WEB_DIST="$PWD/apps/web/dist" pnpm --filter @narada/api start
+```
+
+The production API listens on port `3001` by default. Set `PORT` and `WEB_DIST`
+in the API environment when deploying elsewhere.
+
+Customer identity is phone-only for now; email can be added later. Staff use a
+username and password (not PIN); first name is required and last name optional.
+Text and voice turns use `/api/voice`; the old `/api/anna` route was removed.
+`REDIS_URL` is optional for local single-instance development. For multi-instance
+Railway deployment, set it so rate limits are shared across instances; otherwise
+each instance has its own in-memory limits.
+Leave `TRUST_PROXY_HOPS` empty locally; set it to `1` on Railway only after
+confirming the service has one trusted edge proxy hop.
+Railway can deploy from the root `Dockerfile`; set `DATABASE_URL` and
+`SESSION_SECRET`. Railway supplies `PORT` and uses `/health`.
+Live Railway, Redis, and production-browser verification remain deployment
+gates rather than local checks.
+
+## Checks
+
+```bash
+pnpm run format:check
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run knip
+```
+
+## Repository layout
+
+```text
+apps/api/       Fastify API, services, repositories, and route tests
+apps/web/       Vite customer and staff SPA
+packages/shared Shared schemas, types, and pure modules
+docs/           PostgreSQL schema, seeds, and migrations
 ```
