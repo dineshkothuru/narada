@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
+import { hashPin } from "@/lib/pin";
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -32,7 +33,11 @@ export async function PATCH(req: NextRequest) {
       patch.payment_timing = payment_timing;
     }
     if (typeof upi_vpa === "string" && upi_vpa.includes("@")) patch.upi_vpa = upi_vpa;
-    if (typeof admin_pin === "string" && admin_pin.length >= 4) patch.admin_pin = admin_pin;
+    if (typeof admin_pin === "string" && admin_pin.length >= 4) {
+      // stored as a hash; it can be replaced but never read back
+      patch.admin_pin_hash = await hashPin(admin_pin, restaurantId);
+      patch.admin_pin = null;
+    }
     if (
       typeof service_charge_pct === "number" &&
       service_charge_pct >= 0 &&

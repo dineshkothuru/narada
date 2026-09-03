@@ -28,6 +28,9 @@ export const ROLE_ACCESS: Record<string, StaffRole[]> = {
   "/api/waiter": ["admin", "waiter"],
   "/floor": ["admin", "waiter", "reception", "cashier"],
   "/api/floor": ["admin", "waiter", "reception", "cashier"],
+  // the kitchen knows a dish has run out first, but the counter and the owner
+  // both need to be able to say so too
+  "/api/availability": ["admin", "kitchen", "cashier"],
   // taking money is the counter's job, not the waiter's
   "/counter": ["admin", "cashier"],
   "/api/counter": ["admin", "cashier"],

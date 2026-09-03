@@ -30,6 +30,7 @@ const ICONS: Record<string, React.ReactNode> = {
   floor: I("M3 21h18|M5 21V8h14v13|M9 12h6|M9 16h6|M8 8V5a4 4 0 0 1 8 0v3"),
   waiter: I("M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9|M13.7 21a2 2 0 0 1-3.4 0"),
   kitchen: I("M7 21h10|M12 3a4 4 0 0 1 4 4v7H8V7a4 4 0 0 1 4-4z|M8 14v7|M16 14v7"),
+  report: I("M3 3v18h18|M7 15l3-4 3 2 4-6"),
   orders: I("M6 2h9l5 5v15H6z|M15 2v5h5|M9 12h6|M9 16h6"),
   menu: I("M7 3v9a3 3 0 0 0 6 0V3|M10 12v9|M18 3v18|M18 3a3 3 0 0 1 0 6h-1"),
   tables: I("M4 10h16|M12 10v10|M7 20l5-4 5 4|M6 4h12l2 6H4z"),
@@ -54,6 +55,7 @@ const GROUPS: { label: string; links: NavLink[] }[] = [
   {
     label: "Restaurant",
     links: [
+      { href: "/admin/report", label: "Day close", icon: "report", roles: ["admin"] },
       { href: "/admin/orders", label: "Orders", icon: "orders", roles: ["admin"] },
       { href: "/admin/menu", label: "Menu", icon: "menu", roles: ["admin"] },
       { href: "/admin/tables", label: "Tables & QR", icon: "tables", roles: ["admin"] },

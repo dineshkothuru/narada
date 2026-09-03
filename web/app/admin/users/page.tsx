@@ -99,7 +99,32 @@ export default function Page() {
               >
                 {s.role}
               </span>
-              <span className="font-mono text-xs text-stone-500">PIN {s.pin}</span>
+              {/* the PIN itself is no longer stored, only its hash — so it
+                  cannot be shown back, only replaced */}
+              <button
+                onClick={async () => {
+                  const pin = await ask.prompt({
+                    title: `New PIN for ${s.name}`,
+                    message: "They will use this to sign in. It cannot be read back afterwards.",
+                    label: "New PIN",
+                    placeholder: "at least 4 digits",
+                    inputMode: "numeric",
+                    required: true,
+                    confirmLabel: "Set PIN",
+                  });
+                  if (pin === null) return;
+                  const res = await fetch("/api/admin/staff", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ staffId: s.id, pin }),
+                  });
+                  const d = await res.json().catch(() => ({}));
+                  flash(res.ok ? "PIN updated" : (d.error ?? "Failed"));
+                }}
+                className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold text-stone-600"
+              >
+                Reset PIN
+              </button>
               <button
                 onClick={async () => {
                   await fetch("/api/admin/staff", {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { ask } from "@/components/Dialogs";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
+import { SoldOutAlerts, SoldOutPanel } from "@/components/SoldOut";
 import { inr, minutesAgo } from "@/lib/format";
 
 type Tab = {
@@ -31,6 +32,7 @@ type Tab = {
 export default function CounterPage() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
+  const [showSoldOut, setShowSoldOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cashier, setCashier] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -181,7 +183,21 @@ export default function CounterPage() {
             Raise bills here · payment can be taken anywhere
             {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
           </p>
+          <button
+            onClick={() => setShowSoldOut((v) => !v)}
+            className="mt-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+          >
+            {showSoldOut ? "Hide menu availability" : "🚫 Sold out"}
+          </button>
         </header>
+
+        <SoldOutAlerts />
+
+        {showSoldOut && (
+          <section className="card-float mb-5 max-w-5xl rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
+            <SoldOutPanel />
+          </section>
+        )}
 
         <Section
           title={`Awaiting a bill (${awaitingBill.length})`}

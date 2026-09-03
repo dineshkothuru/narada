@@ -254,7 +254,36 @@ export default function FloorPage() {
                 </p>
               )}
 
-              {t.status === "cleaning" ? (
+              {t.status === "seated" && t.rounds === 0 ? (
+                <>
+                  <p className="mt-2 text-[11px] text-stone-500">
+                    Seated {minutesAgo(t.since!, true)} · nothing ordered yet
+                  </p>
+                  <div className="mt-3 flex gap-1.5">
+                    <a
+                      href={`/t/${t.code}`}
+                      target="_blank"
+                      className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
+                    >
+                      Menu
+                    </a>
+                    <button
+                      onClick={async () => {
+                        const yes = await ask.confirm({
+                          title: `Release ${t.label}?`,
+                          message: "They never ordered. The table goes back to free.",
+                          confirmLabel: "Release it",
+                        });
+                        if (!yes) return;
+                        act({ action: "release", sessionId: t.sessionId });
+                      }}
+                      className="flex-1 rounded-xl bg-stone-800 py-2 text-[11px] font-bold text-white transition active:scale-[0.98]"
+                    >
+                      Release
+                    </button>
+                  </div>
+                </>
+              ) : t.status === "cleaning" ? (
                 <>
                   <p className="mt-2 text-[11px] text-stone-500">
                     Bill settled · waiting for the table to be cleared and wiped

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { SoldOutPanel } from "@/components/SoldOut";
 
 type KitchenItem = {
   id: string;
@@ -54,6 +55,7 @@ import { inr, minutesAgo } from "@/lib/format";
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -130,7 +132,19 @@ export default function KitchenPage() {
           {orders.filter((o) => o.status !== "served").length} open ·{" "}
           {orders.filter((o) => o.status === "ready").length} awaiting pickup
         </span>
+        <button
+          onClick={() => setShowMenu((v) => !v)}
+          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+        >
+          {showMenu ? "Hide" : "🚫 Sold out"}
+        </button>
       </header>
+
+      {showMenu && (
+        <section className="card-float mb-5 max-w-6xl rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
+          <SoldOutPanel />
+        </section>
+      )}
 
       <div className="grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {
@@ -155,7 +169,17 @@ export default function KitchenPage() {
                       <span className="text-sm font-bold text-stone-900">
                         {o.session?.table?.label ?? "Unknown table"}
                       </span>
-                      <span className="text-[11px] text-stone-400">{minutesAgo(o.created_at)}</span>
+                      <span className="flex items-center gap-2 text-[11px] text-stone-400">
+                        {minutesAgo(o.created_at)}
+                        <a
+                          href={`/kitchen/kot/${o.id}`}
+                          target="_blank"
+                          title="Reprint this ticket"
+                          className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-500"
+                        >
+                          🖨️
+                        </a>
+                      </span>
                     </div>
                     <ul className="mt-2 space-y-1">
                       {o.items.map((it) => (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { deriveOrderStatus } from "@/lib/status";
+import { audit, actorFrom } from "@/lib/audit";
 
 // Demo: no auth on the kitchen endpoints. Before real deployment this needs a
 // staff login (Supabase Auth) — flagged in README roadmap.
@@ -12,7 +13,12 @@ export async function GET() {
         `session:sessions(table:tables(label)),items:order_items(id,name,qty,notes,status)` +
         `&status=in.(placed,preparing,ready,served)&order=created_at.desc&limit=60`,
     );
-    return NextResponse.json({ orders });
+    // the kitchen runs out of things mid-service and should not have to find
+    // the owner to say so
+    const menu = await sbFetch<unknown[]>(
+      `menu_items?select=id,name,is_available&order=name`,
+    );
+    return NextResponse.json({ orders, menu });
   } catch (e) {
     console.error("kitchen list:", e);
     return NextResponse.json({ error: "failed" }, { status: 500 });
@@ -21,12 +27,37 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { orderId, status, itemId, itemStatus } = (await req.json()) as {
-      orderId?: string;
-      status?: string;
-      itemId?: string;
-      itemStatus?: string;
-    };
+    const { orderId, status, itemId, itemStatus, menuItemId, available } =
+      (await req.json()) as {
+        orderId?: string;
+        status?: string;
+        itemId?: string;
+        itemStatus?: string;
+        menuItemId?: string;
+        available?: boolean;
+      };
+
+    // 86 a dish — it greys out on the customer menu and Narada stops offering it
+    if (menuItemId && typeof available === "boolean") {
+      const rows = await sbFetch<{ name: string }[]>(
+        `menu_items?select=name&id=eq.${encodeURIComponent(menuItemId)}&limit=1`,
+      );
+      if (rows.length === 0) {
+        return NextResponse.json({ error: "unknown dish" }, { status: 404 });
+      }
+      await sbFetch(`menu_items?id=eq.${encodeURIComponent(menuItemId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_available: available }),
+      });
+      await audit({
+        action: available ? "dish_back_on" : "dish_sold_out",
+        entity: "menu_item",
+        entityId: menuItemId,
+        actorRole: await actorFrom(req),
+        detail: { name: rows[0].name },
+      });
+      return NextResponse.json({ ok: true });
+    }
 
     // per-dish update: set the item, then derive the parent order's status
     if (itemId && itemStatus) {

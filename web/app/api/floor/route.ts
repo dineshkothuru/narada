@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { computeBill } from "@/lib/billing";
 import { deriveTableStatus } from "@/lib/status";
+import { audit, actorFrom } from "@/lib/audit";
 
 type TableRow = {
   id: string;
@@ -147,13 +148,45 @@ export async function PATCH(req: NextRequest) {
   try {
     const { action, sessionId, tableId, guests, intoSessionId, attendant } =
       (await req.json()) as {
-        action: "seat" | "merge" | "unmerge" | "attendant" | "clear_table";
+        action:
+          | "seat"
+          | "merge"
+          | "unmerge"
+          | "attendant"
+          | "clear_table"
+          | "release";
         sessionId?: string;
         tableId?: string;
         guests?: number;
         intoSessionId?: string;
         attendant?: string;
       };
+
+    // a party that scanned, ordered nothing and left would otherwise hold the
+    // table forever. Only a tab with no rounds at all can be released this way:
+    // anything ordered has to go through the counter.
+    if (action === "release" && sessionId) {
+      const rounds = await sbFetch<{ id: string }[]>(
+        `orders?select=id&session_id=eq.${encodeURIComponent(sessionId)}&status=neq.cancelled&limit=1`,
+      );
+      if (rounds.length > 0) {
+        return NextResponse.json(
+          { error: "this table has ordered — settle it at the counter" },
+          { status: 409 },
+        );
+      }
+      await sbFetch(`sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "closed", closed_at: new Date().toISOString() }),
+      });
+      await audit({
+        action: "table_released",
+        entity: "session",
+        entityId: sessionId,
+        actorRole: await actorFrom(req),
+      });
+      return NextResponse.json({ ok: true });
+    }
 
     // housekeeping is done — the table goes back into circulation
     if (action === "clear_table" && tableId) {

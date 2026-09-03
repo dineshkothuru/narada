@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { SoldOutAlerts } from "@/components/SoldOut";
 import { inr, minutesAgo } from "@/lib/format";
 
 type AdminOrder = {
@@ -89,6 +90,8 @@ export default function AdminOrdersPage() {
             Every round, its table, kitchen status and payment · refreshes every 15s
           </p>
         </div>      </header>
+
+      <SoldOutAlerts />
 
       <div className="mb-4 flex max-w-5xl gap-2">
         {RANGES.map((r) => (

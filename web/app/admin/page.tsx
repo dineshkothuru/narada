@@ -45,12 +45,15 @@ export default function Page() {
               />
             </label>
             <label className="text-xs font-semibold text-stone-600">
-              Staff PIN
+              Owner PIN
+              {/* stored as a hash — it can be replaced but never read back */}
               <input
-                defaultValue={restaurant.admin_pin}
+                type="password"
+                placeholder="leave blank to keep the current one"
                 onBlur={(e) => {
-                  if (e.target.value !== restaurant.admin_pin && e.target.value.length >= 4) {
+                  if (e.target.value.length >= 4) {
                     patchSettings({ admin_pin: e.target.value });
+                    e.target.value = "";
                   }
                 }}
                 className={inputCls}

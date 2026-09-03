@@ -34,5 +34,6 @@ export const config = {
     "/api/waiter/:path*",
     "/api/floor/:path*",
     "/api/counter/:path*",
+    "/api/availability/:path*",
   ],
 };

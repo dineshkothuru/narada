@@ -27,8 +27,7 @@ type AdminCategory = {
 type StaffRow = {
   id: string;
   name: string;
-  role: "admin" | "kitchen" | "waiter" | "reception";
-  pin: string;
+  role: "admin" | "kitchen" | "waiter" | "reception" | "cashier";
   active: boolean;
 };
 type AdminRestaurant = {
@@ -36,7 +35,6 @@ type AdminRestaurant = {
   name: string;
   upi_vpa: string | null;
   payment_timing: "pre" | "post";
-  admin_pin: string;
   gemini_api_key: string | null;
   sarvam_api_key: string | null;
   comp_item_id: string | null;
