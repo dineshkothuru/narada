@@ -5,7 +5,7 @@ import AdminShell from "@/components/AdminShell";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
 import { ask } from "@/components/Dialogs";
 import { Metric, type Tone } from "@/components/Panel";
-import { inr, minutesAgo } from "@/lib/format";
+import { minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
   en: { label: "EN", cls: "bg-slate-200 text-slate-700" },
@@ -293,34 +293,10 @@ export default function FloorPage() {
                 <>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
                     <span>{minutesAgo(t.since!, true)}</span>
-                    <button
-                      onClick={async () => {
-                        const who = await ask.prompt({
-                          title: `Attendant for ${t.label}`,
-                          message: "Leave it empty to unassign the table.",
-                          label: "Waiter's name",
-                          defaultValue: t.attendant ?? "",
-                          confirmLabel: "Assign",
-                        });
-                        if (who === null) return;
-                        act({ action: "attendant", sessionId: t.sessionId, attendant: who });
-                      }}
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                        t.attendant
-                          ? "bg-violet-100 text-violet-700"
-                          : "bg-slate-100 text-slate-400"
-                      }`}
-                    >
-                      {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
-                    </button>
-                    <button
-                      onClick={() => setOpenTable({ id: t.sessionId!, label: t.label })}
-                      className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-600"
-                    >
-                      {t.served}/{t.rounds} served · details
-                    </button>
-                    {t.due > 0 && (
-                      <span className="font-bold text-rose-600">due {inr(t.due)}</span>
+                    {t.attendant && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-extrabold text-violet-700">
+                        👤 {t.attendant}
+                      </span>
                     )}
                   </div>
                   <div className="mt-3 flex gap-1.5">
