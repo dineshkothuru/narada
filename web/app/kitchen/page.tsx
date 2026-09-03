@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { SoldOutPanel } from "@/components/SoldOut";
+import type { Tone } from "@/components/Panel";
 
 type KitchenItem = {
   id: string;
@@ -38,11 +39,16 @@ const ITEM_BADGE: Record<KitchenItem["status"], string> = {
   served: "✅",
 };
 
-const COLUMNS: { status: KitchenOrder["status"]; title: string; accent: string }[] = [
-  { status: "placed", title: "New", accent: "border-rose-500" },
-  { status: "preparing", title: "Preparing", accent: "border-sky-500" },
-  { status: "ready", title: "Ready — pick up", accent: "border-amber-500" },
-  { status: "served", title: "Served", accent: "border-green-500" },
+const COLUMNS: {
+  status: KitchenOrder["status"];
+  title: string;
+  tone: Tone;
+  heading: string;
+}[] = [
+  { status: "placed", title: "New", tone: "rose", heading: "text-rose-600" },
+  { status: "preparing", title: "Preparing", tone: "sky", heading: "text-sky-700" },
+  { status: "ready", title: "Ready — pick up", tone: "amber", heading: "text-amber-700" },
+  { status: "served", title: "Served", tone: "emerald", heading: "text-emerald-700" },
 ];
 
 const NEXT: Record<string, { to: "preparing" | "ready"; label: string } | null> = {
@@ -152,7 +158,9 @@ export default function KitchenPage() {
           const list = orders.filter((o) => o.status === col.status);
           return (
             <section key={col.status}>
-              <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+              <h2
+                className={`mb-2 text-xs font-bold tracking-widest uppercase ${col.heading}`}
+              >
                 {col.title} ({list.length})
               </h2>
               <div className="flex flex-col gap-3">
@@ -164,25 +172,29 @@ export default function KitchenPage() {
                 {list.map((o) => (
                   <article
                     key={o.id}
-                    className={`panel panel-lift rounded-2xl border-l-4 p-4 ${col.accent}`}
+                    className={`tone-${col.tone} panel panel-lift`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-slate-900">
-                        {o.session?.table?.label ?? "Unknown table"}
+                    <header className="panel-head flex items-center justify-between gap-2 px-4 py-2.5">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="panel-pill" />
+                        <span className="panel-title truncate text-sm font-bold">
+                          {o.session?.table?.label ?? "Unknown table"}
+                        </span>
                       </span>
-                      <span className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <span className="flex shrink-0 items-center gap-2 text-[11px] text-slate-400">
                         {minutesAgo(o.created_at)}
                         <a
                           href={`/kitchen/kot/${o.id}`}
                           target="_blank"
                           title="Reprint this ticket"
-                          className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500"
+                          className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200"
                         >
                           🖨️
                         </a>
                       </span>
-                    </div>
-                    <ul className="mt-2 space-y-1">
+                    </header>
+                    <div className="p-4">
+                    <ul className="space-y-1">
                       {o.items.map((it) => (
                         <li key={it.id}>
                           <button
@@ -226,6 +238,7 @@ export default function KitchenPage() {
                           {NEXT[o.status]!.label}
                         </button>
                       )}
+                    </div>
                     </div>
                   </article>
                 ))}

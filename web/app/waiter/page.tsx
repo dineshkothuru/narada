@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { ask } from "@/components/Dialogs";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
+import type { Tone } from "@/components/Panel";
 
 type WaiterTable = {
   tableId: string;
@@ -42,11 +43,18 @@ import CallTimer from "@/components/CallTimer";
 // what the host did is visible to the waiter straight away, before any food
 // has been ordered
 const STATUS_LABEL: Record<string, string> = {
-  seated: "Seated · yet to order",
+  seated: "Yet to order",
   dining: "Dining",
   settling: "Needs a bill",
-  billed: "Billed · awaiting payment",
+  billed: "Awaiting payment",
   paid: "Paid",
+};
+const STATUS_TONE: Record<string, Tone> = {
+  seated: "violet",
+  dining: "indigo",
+  settling: "amber",
+  billed: "sky",
+  paid: "emerald",
 };
 const STATUS_CHIP: Record<string, string> = {
   seated: "bg-violet-100 text-violet-700",
@@ -330,14 +338,13 @@ export default function WaiterPage() {
             return (
               <article
                 key={t.tableId}
-                className={`panel panel-lift rounded-2xl p-4 ${
-                  t.call
-                    ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
-                    : "ring-1 ring-slate-200/80"
+                className={`tone-${t.call ? "rose" : (STATUS_TONE[s.status] ?? "slate")} panel panel-lift ${
+                  t.call ? "ring-2 ring-rose-400" : ""
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+                <header className="panel-head flex items-center justify-between gap-2 px-4 py-2.5">
+                  <span className="panel-title flex min-w-0 items-center gap-2.5 text-sm font-bold">
+                    <span className="panel-pill" />
                     {t.label}
                     {s.langs.map((l) => (
                       <span
@@ -359,7 +366,8 @@ export default function WaiterPage() {
                     </span>
                     open {minutesAgo(s.since, true)}
                   </span>
-                </div>
+                </header>
+                <div className="p-4">
                 <button
                   onClick={async () => {
                     const who = await ask.prompt({
@@ -523,6 +531,7 @@ export default function WaiterPage() {
                       )}
                     </div>
                   )}
+                </div>
                 </div>
               </article>
             );

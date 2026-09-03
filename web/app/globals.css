@@ -133,9 +133,8 @@ body {
 /* the page itself: a cool, barely-there wash rather than flat grey */
 .console {
   background:
-    radial-gradient(1200px 520px at 12% -8%, #eef2ff 0%, transparent 62%),
-    radial-gradient(1000px 480px at 92% 0%, #ecfeff 0%, transparent 58%),
-    #f7f8fb;
+    radial-gradient(1100px 460px at 10% -10%, rgba(99, 102, 241, 0.045) 0%, transparent 60%),
+    #f4f5f8;
 }
 
 /* every tone declares the same four roles, so a panel only names its job */
@@ -149,16 +148,17 @@ body {
 
 .panel {
   background: #fff;
-  border-radius: 18px;
+  border-radius: 16px;
   box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.07),
     0 1px 2px rgba(15, 23, 42, 0.04),
-    0 12px 28px -16px rgba(15, 23, 42, 0.18);
+    0 10px 24px -14px rgba(15, 23, 42, 0.22);
   overflow: hidden;
 }
 
 /* the header band: a wash of the panel's own tone, fading out to the right */
 .panel-head {
-  background: linear-gradient(100deg, var(--tone-tint) 0%, #fff 72%);
+  background: linear-gradient(100deg, var(--tone-tint) 0%, #fff 78%);
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
@@ -177,11 +177,12 @@ body {
 .metric {
   position: relative;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 14px;
   padding-top: 4px;
   box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.07),
     0 1px 2px rgba(15, 23, 42, 0.04),
-    0 10px 24px -14px rgba(15, 23, 42, 0.18);
+    0 10px 24px -14px rgba(15, 23, 42, 0.22);
   overflow: hidden;
   transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -202,8 +203,9 @@ body {
   .panel-lift:hover {
     transform: translateY(-2px);
     box-shadow:
-      0 2px 5px rgba(15, 23, 42, 0.06),
-      0 20px 40px -18px rgba(15, 23, 42, 0.28);
+      0 0 0 1px rgba(15, 23, 42, 0.1),
+      0 2px 6px rgba(15, 23, 42, 0.07),
+      0 18px 36px -16px rgba(15, 23, 42, 0.32);
   }
 }
 

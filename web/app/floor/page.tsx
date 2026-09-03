@@ -69,12 +69,12 @@ const STATUS: Record<
   seated: {
     tone: "violet",
     chip: "bg-violet-100 text-violet-700",
-    label: "Seated · yet to order",
+    label: "Yet to order",
   },
   dining: { tone: "indigo", chip: "bg-indigo-100 text-indigo-700", label: "Dining" },
   settling: { tone: "amber", chip: "bg-amber-100 text-amber-800", label: "Needs a bill" },
   // the counter has raised the bill; the guest has not paid it yet
-  billed: { tone: "sky", chip: "bg-sky-100 text-sky-800", label: "Billed · awaiting payment" },
+  billed: { tone: "sky", chip: "bg-sky-100 text-sky-800", label: "Awaiting payment" },
   paid: { tone: "emerald", chip: "bg-emerald-100 text-emerald-700", label: "Paid" },
 };
 
