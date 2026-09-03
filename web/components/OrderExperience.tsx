@@ -6,6 +6,7 @@ import { WHEEL } from "@/lib/games";
 import HeroCarousel from "./HeroCarousel";
 import MemoryGame from "./MemoryGame";
 import SpinWheel from "./SpinWheel";
+import StoryViewer from "./StoryViewer";
 import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
 import type {
   AnnaResponse,
@@ -117,6 +118,8 @@ export default function OrderExperience({
   const [discountPct, setDiscountPct] = useState(0);
   const [compItem, setCompItem] = useState<string | null>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [storiesOpen, setStoriesOpen] = useState(menu.uiVariant === "stories");
+  const storyJumpRef = useRef<((itemId: string) => void) | null>(null);
   const [highlightIds, setHighlightIds] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -440,6 +443,7 @@ export default function OrderExperience({
   // Narada mentioned dishes: scroll the real menu there and highlight them
   const highlightMentioned = (ids?: string[]) => {
     if (!ids?.length) return;
+    storyJumpRef.current?.(ids[0]);
     setHighlightIds(ids);
     itemRefs.current[ids[0]]?.scrollIntoView({ behavior: "smooth", block: "center" });
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
@@ -625,6 +629,14 @@ export default function OrderExperience({
             >
               🔔 {t.callWaiter}
             </button>
+            {menu.uiVariant === "stories" && (
+              <button
+                onClick={() => setStoriesOpen(true)}
+                className="flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-300 transition active:scale-95"
+              >
+                ✨ Stories
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1312,6 +1324,36 @@ export default function OrderExperience({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Feast Stories mode (per-table ui_variant) */}
+      {storiesOpen && (
+        <StoryViewer
+          categories={categories}
+          items={menuItems}
+          lang={lang}
+          strings={{
+            add: t.add,
+            soldOut: t.soldOut,
+            menuTiles: t.menuTiles,
+            storiesHint: t.storiesHint,
+            bestseller: t.bestseller,
+            spinBanner: t.spinBanner,
+          }}
+          qtyOf={qtyOf}
+          onAdd={(item) => {
+            changeQty(item.id, 1);
+            setToast(`+ ${item.name[lang]}`);
+          }}
+          cartCount={itemCount}
+          cartTotal={total}
+          onOpenCart={() => setCartOpen(true)}
+          onOpenVoice={() => setVoiceOpen(true)}
+          onClose={() => setStoriesOpen(false)}
+          showSpin={!spinDone && !orderPlaced}
+          onOpenSpin={() => setWheelOpen(true)}
+          jumpRef={storyJumpRef}
+        />
       )}
 
       {/* Dish detail sheet */}

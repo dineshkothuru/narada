@@ -45,12 +45,16 @@ export default function AdminPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [addingSection, setAddingSection] = useState(false);
   const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [tables, setTables] = useState<
+    { id: string; label: string; code: string; ui_variant: string }[]
+  >([]);
   const [addingStaff, setAddingStaff] = useState(false);
 
   const load = useCallback(async () => {
-    const [res, sres] = await Promise.all([
+    const [res, sres, tres] = await Promise.all([
       fetch("/api/admin/menu", { cache: "no-store" }),
       fetch("/api/admin/staff", { cache: "no-store" }),
+      fetch("/api/admin/tables", { cache: "no-store" }),
     ]);
     if (res.ok) {
       const d = await res.json();
@@ -61,6 +65,10 @@ export default function AdminPage() {
     if (sres.ok) {
       const s = await sres.json();
       setStaff(s.staff ?? []);
+    }
+    if (tres.ok) {
+      const tt = await tres.json();
+      setTables(tt.tables ?? []);
     }
   }, []);
 
@@ -301,6 +309,43 @@ export default function AdminPage() {
           </div>
         </section>
       )}
+
+      {/* Tables: per-table UI experience (A/B testing between designs) */}
+      <section className="mx-auto mb-6 max-w-3xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
+        <h2 className="text-xs font-bold tracking-widest text-stone-500 uppercase">
+          Tables &amp; experiences
+        </h2>
+        <p className="mt-1 text-[11px] text-stone-400">
+          Choose which UI each table&apos;s QR opens — run Classic vs ✨ Feast Stories
+          side by side and compare bills.
+        </p>
+        <div className="mt-2 divide-y divide-stone-100">
+          {tables.map((tb) => (
+            <div key={tb.id} className="flex items-center gap-3 py-2.5 text-sm">
+              <span className="min-w-0 flex-1 truncate font-medium text-stone-800">
+                {tb.label}
+                <span className="ml-2 font-mono text-[10px] text-stone-400">/t/{tb.code}</span>
+              </span>
+              <select
+                value={tb.ui_variant}
+                onChange={async (e) => {
+                  await fetch("/api/admin/tables", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tableId: tb.id, ui_variant: e.target.value }),
+                  });
+                  flash("Saved");
+                  load();
+                }}
+                className="rounded-xl bg-stone-100 px-3 py-2 text-xs font-bold outline-none"
+              >
+                <option value="classic">Classic list</option>
+                <option value="stories">✨ Feast Stories</option>
+              </select>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Staff: each person gets their own PIN; role decides which screens open */}
       <section className="mx-auto mb-6 max-w-3xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">

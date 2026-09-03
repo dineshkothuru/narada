@@ -66,6 +66,8 @@ type Strings = {
   inQueue: string;
   servedOf: string;
   soldOut: string;
+  menuTiles: string;
+  storiesHint: string;
   you: string;
   yourName: string;
   contains: string;
@@ -132,6 +134,8 @@ export const STRINGS: Record<Lang, Strings> = {
     inQueue: "In queue ⏳",
     servedOf: "{a}/{b} served",
     soldOut: "Sold out",
+    menuTiles: "Menu",
+    storiesHint: "▲ swipe up for the next dish",
     you: "You",
     yourName: "Your name (optional — shows on the table's order)",
     contains: "Contains",
@@ -196,6 +200,8 @@ export const STRINGS: Record<Lang, Strings> = {
     inQueue: "क़तार में ⏳",
     servedOf: "{a}/{b} परोसा गया",
     soldOut: "उपलब्ध नहीं",
+    menuTiles: "मेन्यू",
+    storiesHint: "▲ अगली डिश के लिए ऊपर स्वाइप करें",
     you: "आप",
     yourName: "आपका नाम (वैकल्पिक — टेबल के ऑर्डर पर दिखेगा)",
     contains: "इसमें है",
@@ -260,6 +266,8 @@ export const STRINGS: Record<Lang, Strings> = {
     inQueue: "వరుసలో ⏳",
     servedOf: "{a}/{b} వడ్డించాం",
     soldOut: "అయిపోయింది",
+    menuTiles: "మెనూ",
+    storiesHint: "▲ తదుపరి వంటకానికి పైకి స్వైప్ చేయండి",
     you: "మీరు",
     yourName: "మీ పేరు (ఐచ్ఛికం — టేబుల్ ఆర్డర్‌పై కనిపిస్తుంది)",
     contains: "ఇందులో",

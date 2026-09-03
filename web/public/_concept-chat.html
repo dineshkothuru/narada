@@ -1,0 +1,53 @@
+<!doctype html><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+*{margin:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:#ece5dd;height:100dvh;display:flex;flex-direction:column;background-image:radial-gradient(circle at 20% 30%, rgba(225,29,72,.045) 0, transparent 40%),radial-gradient(circle at 80% 70%, rgba(2,44,34,.05) 0, transparent 40%)}
+.hdr{background:#111;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.orb{width:42px;height:42px;border-radius:50%;background:#e11d48;display:grid;place-items:center;font-size:20px;box-shadow:0 0 0 3px rgba(225,29,72,.3)}
+.hdr b{font-size:15px}.hdr small{display:block;font-size:11px;color:#9ae6b4}
+.hdr .tbl{margin-left:auto;font-size:11px;background:rgba(255,255,255,.12);padding:6px 10px;border-radius:99px;font-weight:700}
+.chat{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:82%;padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.45;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.bot{background:#fff;border-top-left-radius:4px;align-self:flex-start}
+.me{background:#dcf8c6;border-top-right-radius:4px;align-self:flex-end}
+.cardrow{display:flex;gap:10px;overflow-x:auto;align-self:stretch;padding:2px}
+.dish{flex:none;width:150px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.dish img{width:100%;height:92px;object-fit:cover}
+.dish .p{padding:8px 10px 10px}
+.dish b{font-size:12px;display:block;line-height:1.25}
+.dish .pr{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.dish .pr span{font-size:12.5px;font-weight:800}
+.dish .pr button{background:#e11d48;color:#fff;border:0;border-radius:8px;font-size:10px;font-weight:800;padding:5px 10px}
+.bill{background:#fff;border-radius:16px;align-self:stretch;padding:12px 14px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.bill h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#888;margin-bottom:8px}
+.bill .li{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.bill .tot{border-top:1px dashed #ddd;margin-top:6px;padding-top:8px;font-weight:800;display:flex;justify-content:space-between}
+.bill .st{font-size:11px;color:#0284c7;font-weight:700;margin-top:6px}
+.chips{display:flex;gap:8px;align-self:flex-start;flex-wrap:wrap}
+.chip{background:#fff;border:1.5px solid #e11d48;color:#e11d48;font-weight:700;font-size:12px;padding:8px 14px;border-radius:99px}
+.inp{display:flex;gap:8px;padding:10px 12px;background:transparent}
+.inp input{flex:1;border:0;border-radius:99px;padding:13px 18px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mic{width:48px;height:48px;border-radius:50%;background:#e11d48;display:grid;place-items:center;color:#fff;font-size:20px;box-shadow:0 4px 14px rgba(225,29,72,.4)}
+</style>
+<div class="hdr"><div class="orb">🎙️</div><div><b>Narada</b><small>● online · your waiter</small></div><div class="tbl">Table 4</div></div>
+<div class="chat">
+  <div class="msg bot">Namaste Dinesh! 🙏 Round 1 is <b>being prepared</b> 👨‍🍳. Something to drink while you wait?</div>
+  <div class="msg me">something cold, not too sweet</div>
+  <div class="msg bot">Perfect weather for these two 👇</div>
+  <div class="cardrow">
+    <div class="dish"><img src="https://images.unsplash.com/photo-1523677011781-c91d1bbe2f9e?w=300&h=200&fit=crop&q=60"/><div class="p"><b>Fresh Lime Soda</b><div class="pr"><span>₹80</span><button>ADD</button></div></div></div>
+    <div class="dish"><img src="https://images.unsplash.com/photo-1541544741938-0af808871cc0?w=300&h=200&fit=crop&q=60"/><div class="p"><b>Masala Chaas</b><div class="pr"><span>₹70</span><button>ADD</button></div></div></div>
+  </div>
+  <div class="msg me">chaas 👍 and how much is my bill now?</div>
+  <div class="bill">
+    <h4>Table 4 · running bill</h4>
+    <div class="li"><span>1× Hyderabadi Biryani <small>(you)</small></span><span>₹380</span></div>
+    <div class="li"><span>1× Paneer Tikka <small>(Ravi)</small></span><span>₹280</span></div>
+    <div class="li"><span>1× Masala Chaas <small>(you · just added)</small></span><span>₹70</span></div>
+    <div class="li" style="color:#e11d48"><span>🎡 Spin discount</span><span>−10%</span></div>
+    <div class="tot"><span>To pay</span><span>₹657</span></div>
+    <div class="st">👨‍🍳 Biryani being prepared · Tikka ✅ served</div>
+  </div>
+  <div class="chips"><div class="chip">Add chaas ✓</div><div class="chip">Pay now ₹657</div><div class="chip">🔔 Call waiter</div></div>
+</div>
+<div class="inp"><input placeholder="Message Narada…"/><div class="mic">🎙️</div></div>

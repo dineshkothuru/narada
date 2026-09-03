@@ -31,6 +31,7 @@ function fallback(tableCode: string): MenuPayload {
       paymentTiming: RESTAURANT.paymentTiming,
     },
     tableLabel: tableCode.replace(/^t(\d+).*$/i, "Table $1"),
+    uiVariant: "classic",
     categories: CATEGORIES.map((c) => ({ id: c.id, name: loc(c.name), emoji: c.emoji })),
     items: MENU.map((m) => ({
       id: m.id,
@@ -53,10 +54,12 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
   if (!SUPABASE_URL || !ANON_KEY) return fallback(tableCode);
   try {
     const tables = await rest<
-      { label: string; restaurant_id: string }[]
-    >(`tables?select=label,restaurant_id&code=eq.${encodeURIComponent(tableCode)}&limit=1`);
+      { label: string; restaurant_id: string; ui_variant: string | null }[]
+    >(
+      `tables?select=label,restaurant_id,ui_variant&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
+    );
     if (tables.length === 0) return fallback(tableCode);
-    const { label, restaurant_id } = tables[0];
+    const { label, restaurant_id, ui_variant } = tables[0];
 
     const [restaurants, cats, items] = await Promise.all([
       rest<
@@ -100,6 +103,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
         paymentTiming: restaurants[0].payment_timing,
       },
       tableLabel: label,
+      uiVariant: ui_variant === "stories" ? "stories" : "classic",
       categories: cats.map((c) => ({
         id: c.id,
         name: loc(c.name, c.name_hi, c.name_te),

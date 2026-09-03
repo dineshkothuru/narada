@@ -33,6 +33,7 @@ export type RestaurantInfo = {
 export type MenuPayload = {
   restaurant: RestaurantInfo;
   tableLabel: string;
+  uiVariant: "classic" | "stories";
   categories: MenuCategory[];
   items: MenuItem[];
 };
