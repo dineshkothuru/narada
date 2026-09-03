@@ -104,8 +104,33 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const session = req.nextUrl.searchParams.get("session");
   try {
+    if (session) {
+      // whole table session: every round with its kitchen status
+      const [rounds, sessions] = await Promise.all([
+        sbFetch<
+          {
+            id: string;
+            status: string;
+            total_inr: number;
+            created_at: string;
+            items: { name: string; qty: number }[];
+          }[]
+        >(
+          `orders?select=id,status,total_inr,created_at,items:order_items(name,qty)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
+        ),
+        sbFetch<{ discount_pct: number; status: string }[]>(
+          `sessions?select=discount_pct,status&id=eq.${encodeURIComponent(session)}&limit=1`,
+        ),
+      ]);
+      return NextResponse.json({
+        rounds,
+        discountPct: sessions[0]?.discount_pct ?? 0,
+        sessionStatus: sessions[0]?.status ?? "active",
+      });
+    }
+    if (!id) return NextResponse.json({ error: "id or session required" }, { status: 400 });
     const rows = await sbFetch<{ status: string }[]>(
       `orders?select=status&id=eq.${encodeURIComponent(id)}&limit=1`,
     );

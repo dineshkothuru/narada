@@ -62,6 +62,8 @@ type Strings = {
   heroSpecial: string;
   callWaiter: string;
   waiterComing: string;
+  round: string;
+  allServed: string;
 };
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -121,6 +123,8 @@ export const STRINGS: Record<Lang, Strings> = {
     heroSpecial: "Chef's Special ✨",
     callWaiter: "Call waiter",
     waiterComing: "Staff is on the way ✋",
+    round: "Round",
+    allServed: "All served — enjoy! 🍽️",
   },
   hi: {
     dineIn: "डाइन-इन",
@@ -178,6 +182,8 @@ export const STRINGS: Record<Lang, Strings> = {
     heroSpecial: "शेफ़ स्पेशल ✨",
     callWaiter: "वेटर बुलाएँ",
     waiterComing: "स्टाफ़ आ रहा है ✋",
+    round: "राउंड",
+    allServed: "सब परोस दिया गया — आनंद लें! 🍽️",
   },
   te: {
     dineIn: "డైన్-ఇన్",
@@ -235,5 +241,7 @@ export const STRINGS: Record<Lang, Strings> = {
     heroSpecial: "చెఫ్ స్పెషల్ ✨",
     callWaiter: "వెయిటర్‌ను పిలవండి",
     waiterComing: "సిబ్బంది వస్తున్నారు ✋",
+    round: "రౌండ్",
+    allServed: "అన్నీ వడ్డించాం — ఆస్వాదించండి! 🍽️",
   },
 };

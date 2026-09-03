@@ -93,8 +93,13 @@ export default function OrderExperience({
   const [orderPlaced, setOrderPlaced] = useState<{
     total: number;
     orderId: string | null;
+    sessionId?: string | null;
   } | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("placed");
+  const [rounds, setRounds] = useState<
+    { id: string; status: string; total_inr: number; items: { name: string; qty: number }[] }[]
+  >([]);
+  const [tickerIdx, setTickerIdx] = useState(0);
   const [placing, setPlacing] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
   const [spinDone, setSpinDone] = useState(false);
@@ -163,21 +168,41 @@ export default function OrderExperience({
     return () => clearTimeout(t);
   }, [toast]);
 
-  // live order status from the kitchen
+  // live kitchen progress: poll the whole table session (every round)
   useEffect(() => {
-    const id = orderPlaced?.orderId;
-    if (!id) return;
-    const iv = setInterval(async () => {
+    const sessionId = orderPlaced?.sessionId;
+    const orderId = orderPlaced?.orderId;
+    if (!sessionId && !orderId) return;
+    const tick = async () => {
       try {
-        const res = await fetch(`/api/order?id=${id}`);
-        if (res.ok) {
-          const d = await res.json();
-          if (d.status) setOrderStatus(d.status);
+        const res = await fetch(
+          sessionId ? `/api/order?session=${sessionId}` : `/api/order?id=${orderId}`,
+        );
+        if (!res.ok) return;
+        const d = await res.json();
+        if (sessionId) {
+          if (Array.isArray(d.rounds)) {
+            setRounds(d.rounds);
+            const latest = d.rounds[d.rounds.length - 1];
+            if (latest) setOrderStatus(latest.status);
+          }
+          if (typeof d.discountPct === "number") setDiscountPct(d.discountPct);
+        } else if (d.status) {
+          setOrderStatus(d.status);
         }
       } catch {}
-    }, 8000);
+    };
+    tick();
+    const iv = setInterval(tick, 8000);
     return () => clearInterval(iv);
-  }, [orderPlaced?.orderId]);
+  }, [orderPlaced?.sessionId, orderPlaced?.orderId]);
+
+  // banner ticker cycles through the rounds
+  useEffect(() => {
+    if (rounds.length < 2) return;
+    const iv = setInterval(() => setTickerIdx((i) => (i + 1) % rounds.length), 3500);
+    return () => clearInterval(iv);
+  }, [rounds.length]);
 
   const total = useMemo(
     () =>
@@ -351,7 +376,11 @@ export default function OrderExperience({
         body: JSON.stringify({ tableCode, cart: lines, placedVia: via }),
       });
       const data = res.ok ? await res.json() : {};
-      setOrderPlaced({ total: data.total ?? snapshotTotal, orderId: data.orderId ?? null });
+      setOrderPlaced({
+        total: data.total ?? snapshotTotal,
+        orderId: data.orderId ?? null,
+        sessionId: data.sessionId ?? null,
+      });
       if (typeof data.discountPct === "number") setDiscountPct(data.discountPct);
     } catch {
       setOrderPlaced({ total: snapshotTotal, orderId: null });
@@ -397,7 +426,12 @@ export default function OrderExperience({
   };
 
   const payable = orderPlaced
-    ? Math.round(orderPlaced.total * (1 - discountPct / 100))
+    ? Math.round(
+        (rounds.length
+          ? rounds.reduce((s, r) => s + Number(r.total_inr), 0)
+          : orderPlaced.total) *
+          (1 - discountPct / 100),
+      )
     : 0;
 
   const upiLink = orderPlaced
@@ -412,6 +446,18 @@ export default function OrderExperience({
   };
 
   const tableLabel = menu.tableLabel;
+  const statusLabelFor = (status: string) =>
+    status === "served"
+      ? t.statusServed
+      : status === "preparing"
+        ? t.statusPreparing
+        : t.statusPlaced;
+  const statusDotFor = (status: string) =>
+    status === "served" ? "bg-green-400" : status === "preparing" ? "bg-sky-400" : "bg-rose-400";
+  const sessionTotal = rounds.length
+    ? rounds.reduce((s, r) => s + Number(r.total_inr), 0)
+    : (orderPlaced?.total ?? 0);
+  const allServed = rounds.length > 0 && rounds.every((r) => r.status === "served");
   const heroDishes = useMemo<MenuItem[]>(() => {
     const specials = menuItems.filter((m) => m.tags.includes("chef-special"));
     const best = menuItems.filter(
@@ -553,21 +599,38 @@ export default function OrderExperience({
         {orderPlaced && (
           <button
             onClick={() => setCartOpen(true)}
-            className="flex w-full items-center justify-between bg-stone-900 px-4 py-2.5 text-left"
+            className="flex w-full items-center justify-between gap-2 bg-stone-900 px-4 py-2.5 text-left"
           >
-            <span className="flex items-center gap-2 text-xs font-bold text-white">
+            {allServed ? (
+              <span className="flex items-center gap-2 text-xs font-bold text-white">
+                <span className="h-2 w-2 rounded-full bg-green-400" /> {t.allServed}
+              </span>
+            ) : rounds.length > 1 ? (
+              // ticker: rotates through every round's kitchen progress
               <span
-                className={`h-2 w-2 animate-pulse rounded-full ${
-                  orderStatus === "served"
-                    ? "bg-green-400"
-                    : orderStatus === "preparing"
-                      ? "bg-sky-400"
-                      : "bg-rose-400"
-                }`}
-              />
-              {statusLabel}
-            </span>
-            <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
+                key={tickerIdx}
+                className="animate-pop flex min-w-0 items-center gap-2 text-xs font-bold text-white"
+              >
+                <span
+                  className={`h-2 w-2 shrink-0 animate-pulse rounded-full ${statusDotFor(rounds[tickerIdx % rounds.length]?.status ?? "placed")}`}
+                />
+                <span className="truncate">
+                  {t.round} {(tickerIdx % rounds.length) + 1}
+                  {rounds[tickerIdx % rounds.length]?.items?.[0]
+                    ? ` · ${rounds[tickerIdx % rounds.length].items[0].name}${rounds[tickerIdx % rounds.length].items.length > 1 ? " +" : ""}`
+                    : ""}{" "}
+                  · {statusLabelFor(rounds[tickerIdx % rounds.length]?.status ?? "placed")}
+                </span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 text-xs font-bold text-white">
+                <span
+                  className={`h-2 w-2 animate-pulse rounded-full ${statusDotFor(orderStatus)}`}
+                />
+                {statusLabel}
+              </span>
+            )}
+            <span className="shrink-0 rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
               {t.payUpi.replace("{amount}", inr(payable))} ›
             </span>
           </button>
@@ -792,19 +855,35 @@ export default function OrderExperience({
                 <p className="mt-2 max-w-xs text-sm text-stone-500">
                   {tableLabel} · {inr(orderPlaced.total)}. {t.orderSentNote}
                 </p>
-                {orderPlaced.orderId && (
-                  <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-stone-100 px-4 py-1.5 text-xs font-bold text-stone-700">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        orderStatus === "served"
-                          ? "bg-green-500"
-                          : orderStatus === "preparing"
-                            ? "bg-sky-500"
-                            : "bg-rose-500"
-                      }`}
-                    />
-                    {statusLabel}
-                  </span>
+                {rounds.length > 0 ? (
+                  <div className="mt-4 w-full space-y-1.5">
+                    {rounds.map((r, i) => (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between rounded-xl bg-stone-50 px-3.5 py-2.5 text-xs"
+                      >
+                        <span className="flex min-w-0 items-center gap-2 font-semibold text-stone-700">
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${statusDotFor(r.status)} ${r.status !== "served" ? "animate-pulse" : ""}`}
+                          />
+                          <span className="truncate">
+                            {t.round} {i + 1} ·{" "}
+                            {r.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}
+                          </span>
+                        </span>
+                        <span className="ml-2 shrink-0 font-bold text-stone-500">
+                          {Number(r.total_inr) === 0 ? "🎁" : statusLabelFor(r.status)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  orderPlaced.orderId && (
+                    <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-stone-100 px-4 py-1.5 text-xs font-bold text-stone-700">
+                      <span className={`h-2 w-2 rounded-full ${statusDotFor(orderStatus)}`} />
+                      {statusLabel}
+                    </span>
+                  )
                 )}
 
                 {!compItem && !gameOpen && (
