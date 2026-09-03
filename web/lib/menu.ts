@@ -44,6 +44,7 @@ function fallback(tableCode: string): MenuPayload {
       tags: m.tags,
       emoji: "🍽️",
       imageUrl: null,
+      isAvailable: true,
     })),
   };
 }
@@ -81,9 +82,10 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
           tags: string[];
           emoji: string | null;
           image_url: string | null;
+          is_available: boolean;
         }[]
       >(
-        `menu_items?select=*&restaurant_id=eq.${restaurant_id}&is_available=eq.true&order=sort_order`,
+        `menu_items?select=*&restaurant_id=eq.${restaurant_id}&order=sort_order`,
       ),
     ]);
     if (restaurants.length === 0 || cats.length === 0 || items.length === 0) {
@@ -115,6 +117,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
         tags: m.tags ?? [],
         emoji: m.emoji || "🍽️",
         imageUrl: m.image_url || null,
+        isAvailable: m.is_available !== false,
       })),
     };
   } catch (e) {

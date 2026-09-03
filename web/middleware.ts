@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE, adminToken } from "@/lib/admin-auth";
+import { ADMIN_COOKIE, ROLE_ACCESS, verifyToken } from "@/lib/admin-auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (pathname === "/admin/login" || pathname === "/api/admin/login") {
     return NextResponse.next();
   }
-  const cookie = req.cookies.get(ADMIN_COOKIE)?.value;
-  if (cookie && cookie === (await adminToken())) {
-    return NextResponse.next();
-  }
+  const role = await verifyToken(req.cookies.get(ADMIN_COOKIE)?.value);
+  const rule = Object.entries(ROLE_ACCESS).find(([prefix]) => pathname.startsWith(prefix));
+  const allowed = role !== null && (!rule || rule[1].includes(role));
+  if (allowed) return NextResponse.next();
+
   if (pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { error: role ? "forbidden for your role" : "unauthorized" },
+      { status: role ? 403 : 401 },
+    );
   }
   const login = req.nextUrl.clone();
   login.pathname = "/admin/login";
   login.searchParams.set("next", pathname);
+  if (role) login.searchParams.set("denied", role);
   return NextResponse.redirect(login);
 }
 

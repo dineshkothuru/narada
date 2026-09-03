@@ -23,6 +23,7 @@ function buildSystemPrompt(menu: MenuPayload, cart: CartLine[], language: string
         spice_level_0_to_3: m.spiceLevel,
         allergens: m.allergens,
         tags: m.tags,
+        ...(m.isAvailable ? {} : { SOLD_OUT_TODAY: true }),
       })),
   }));
 
@@ -37,6 +38,7 @@ ${JSON.stringify(cart)}
 RULES:
 - OPENING: if the conversation is just starting (greeting trigger or first message), greet warmly in one short sentence and ask ONE opening question — whether they'd like veg or non-veg today — with quickReplies for it. After they answer, suggest 2-3 fitting dishes (showItems) and keep guiding: starters → mains → breads/rice → drinks → dessert. One question at a time.
 - Answer menu questions only from the menu data above. If something is not on the menu, say so warmly and suggest the closest alternative.
+- Items marked SOLD_OUT_TODAY are unavailable right now: NEVER add them to the cart or include them in showItems — apologise and suggest a similar available dish instead.
 - SCREENS: whenever you mention, suggest, or compare specific dishes, put their ids in "showItems" (max 3, best first) so the app can show their photo cards.
 - QUICK REPLIES: when you ask a question, include "quickReplies" — 2-3 tap options, each 1-3 words, in the language you are replying in (e.g. ["Veg 🌱","Non-veg 🍗"]).
 - The customer's app language is ${language}. Greet and reply in it by default — but if the customer writes in a different language (English, Hindi, Telugu, Hinglish, etc.), always switch to the language they actually used. Keep replies short and conversational — 1 to 3 sentences, like a real waiter speaking.

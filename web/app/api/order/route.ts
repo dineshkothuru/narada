@@ -9,10 +9,11 @@ type OrderRow = { id: string; status: string; created_at: string };
 
 export async function POST(req: NextRequest) {
   try {
-    const { tableCode, cart, placedVia } = (await req.json()) as {
+    const { tableCode, cart, placedVia, guestName } = (await req.json()) as {
       tableCode: string;
       cart: CartLine[];
       placedVia?: "ui" | "anna";
+      guestName?: string;
     };
     if (!tableCode || !Array.isArray(cart) || cart.length === 0) {
       return NextResponse.json({ error: "tableCode and cart required" }, { status: 400 });
@@ -70,6 +71,10 @@ export async function POST(req: NextRequest) {
         restaurant_id: table.restaurant_id,
         total_inr: total,
         placed_via: placedVia === "anna" ? "anna" : "ui",
+        placed_by:
+          typeof guestName === "string" && guestName.trim()
+            ? guestName.trim().slice(0, 40)
+            : null,
       }),
     });
     const order = orders[0];
@@ -115,10 +120,11 @@ export async function GET(req: NextRequest) {
             status: string;
             total_inr: number;
             created_at: string;
+            placed_by: string | null;
             items: { name: string; qty: number; status: string }[];
           }[]
         >(
-          `orders?select=id,status,total_inr,created_at,items:order_items(name,qty,status)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
+          `orders?select=id,status,total_inr,created_at,placed_by,items:order_items(name,qty,status)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
         ),
         sbFetch<{ discount_pct: number; status: string }[]>(
           `sessions?select=discount_pct,status&id=eq.${encodeURIComponent(session)}&limit=1`,

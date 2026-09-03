@@ -101,9 +101,13 @@ export default function OrderExperience({
       id: string;
       status: string;
       total_inr: number;
+      placed_by?: string | null;
       items: { name: string; qty: number; status?: string }[];
     }[]
   >([]);
+  const [guestName, setGuestName] = useState("");
+  const [myOrderIds, setMyOrderIds] = useState<string[]>([]);
+  const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [placing, setPlacing] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
   const [spinDone, setSpinDone] = useState(false);
@@ -146,21 +150,48 @@ export default function OrderExperience({
         if (s.spinDone) setSpinDone(true);
         if (typeof s.discountPct === "number") setDiscountPct(s.discountPct);
         if (s.orderPlaced?.total) setOrderPlaced(s.orderPlaced);
+        if (typeof s.guestName === "string") setGuestName(s.guestName);
+        if (Array.isArray(s.myOrderIds)) setMyOrderIds(s.myOrderIds);
       }
     } catch {}
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
+  // a fresh phone at an already-active table joins the group's live order view
+  useEffect(() => {
+    if (!hydrated || orderPlaced) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/session?table=${encodeURIComponent(tableCode)}`);
+        if (!res.ok) return;
+        const d = await res.json();
+        if (d.sessionId) {
+          setOrderPlaced({ total: 0, orderId: null, sessionId: d.sessionId });
+        }
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
   useEffect(() => {
     if (!hydrated) return;
     try {
       localStorage.setItem(
         storageKey,
-        JSON.stringify({ cart, messages, lang, spinDone, discountPct, orderPlaced }),
+        JSON.stringify({
+          cart,
+          messages,
+          lang,
+          spinDone,
+          discountPct,
+          orderPlaced,
+          guestName,
+          myOrderIds,
+        }),
       );
     } catch {}
-  }, [hydrated, cart, messages, lang, spinDone, discountPct, orderPlaced, storageKey]);
+  }, [hydrated, cart, messages, lang, spinDone, discountPct, orderPlaced, guestName, myOrderIds, storageKey]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -371,7 +402,7 @@ export default function OrderExperience({
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableCode, cart: lines, placedVia: via }),
+        body: JSON.stringify({ tableCode, cart: lines, placedVia: via, guestName }),
       });
       const data = res.ok ? await res.json() : {};
       setOrderPlaced({
@@ -379,6 +410,7 @@ export default function OrderExperience({
         orderId: data.orderId ?? null,
         sessionId: data.sessionId ?? null,
       });
+      if (data.orderId) setMyOrderIds((prev) => [...prev, data.orderId]);
       if (typeof data.discountPct === "number") setDiscountPct(data.discountPct);
     } catch {
       setOrderPlaced({ total: snapshotTotal, orderId: null });
@@ -483,8 +515,9 @@ export default function OrderExperience({
   const statusEmojiFor = (status: string) =>
     status === "served" ? "✅" : status === "preparing" ? "👨‍🍳" : "⏳";
   const heroDishes = useMemo<MenuItem[]>(() => {
-    const specials = menuItems.filter((m) => m.tags.includes("chef-special"));
-    const best = menuItems.filter(
+    const avail = menuItems.filter((m) => m.isAvailable);
+    const specials = avail.filter((m) => m.tags.includes("chef-special"));
+    const best = avail.filter(
       (m) => m.tags.includes("bestseller") && !specials.includes(m),
     );
     return [...specials.slice(0, 2), ...best.slice(0, 2)];
@@ -709,16 +742,25 @@ export default function OrderExperience({
                         highlighted
                           ? "-mx-2 rounded-2xl bg-rose-50 px-2 ring-2 ring-rose-400"
                           : ""
-                      }`}
+                      } ${!item.isAvailable ? "opacity-45 grayscale" : ""}`}
                     >
-                      <div className="flex min-w-0 flex-1 flex-col">
+                      <div
+                        className="flex min-w-0 flex-1 flex-col"
+                        onClick={() => setDetailItem(item)}
+                      >
                         <div className="flex items-center gap-1.5">
                           <VegMark isVeg={item.isVeg} />
                           <SpiceDots level={item.spiceLevel} />
-                          {item.tags.includes("bestseller") && (
-                            <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">
-                              {t.bestseller}
+                          {!item.isAvailable ? (
+                            <span className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
+                              {t.soldOut}
                             </span>
+                          ) : (
+                            item.tags.includes("bestseller") && (
+                              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">
+                                {t.bestseller}
+                              </span>
+                            )
                           )}
                         </div>
                         <h3 className="mt-1 text-[15px] font-bold text-stone-900">
@@ -732,14 +774,16 @@ export default function OrderExperience({
                         </p>
                       </div>
                       <div className="relative shrink-0">
-                        <ItemPhoto
-                          imageUrl={item.imageUrl}
-                          emoji={item.emoji}
-                          alt={item.name.en}
-                          className="h-28 w-28 rounded-2xl"
-                        />
+                        <span onClick={() => setDetailItem(item)}>
+                          <ItemPhoto
+                            imageUrl={item.imageUrl}
+                            emoji={item.emoji}
+                            alt={item.name.en}
+                            className="h-28 w-28 rounded-2xl"
+                          />
+                        </span>
                         <div className="absolute inset-x-3 -bottom-2.5">
-                          {qty === 0 ? (
+                          {!item.isAvailable ? null : qty === 0 ? (
                             <button
                               onClick={() => {
                                 changeQty(item.id, 1);
@@ -882,6 +926,17 @@ export default function OrderExperience({
                         <div className="flex items-center justify-between font-bold text-stone-500">
                           <span>
                             {t.round} {i + 1} {Number(r.total_inr) === 0 && "🎁"}
+                            {(myOrderIds.includes(r.id) || r.placed_by) && (
+                              <span
+                                className={`ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-extrabold ${
+                                  myOrderIds.includes(r.id)
+                                    ? "bg-rose-100 text-rose-700"
+                                    : "bg-stone-200 text-stone-600"
+                                }`}
+                              >
+                                {myOrderIds.includes(r.id) ? t.you : r.placed_by}
+                              </span>
+                            )}
                           </span>
                           <span>{Number(r.total_inr) > 0 ? inr(Number(r.total_inr)) : ""}</span>
                         </div>
@@ -1043,6 +1098,13 @@ export default function OrderExperience({
                         {inr(total)}
                       </span>
                     </div>
+                    <input
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      placeholder={t.yourName}
+                      maxLength={40}
+                      className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm outline-none placeholder:text-stone-400 focus:ring-2 focus:ring-rose-400"
+                    />
                     {restaurant.paymentTiming === "pre" ? (
                       <a
                         href={`upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(restaurant.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
@@ -1183,6 +1245,68 @@ export default function OrderExperience({
                 ↑
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dish detail sheet */}
+      {detailItem && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div
+            className="animate-fade-in absolute inset-0 bg-stone-950/50"
+            onClick={() => setDetailItem(null)}
+          />
+          <div className="animate-sheet-up relative overflow-hidden rounded-t-[2rem] bg-white">
+            <ItemPhoto
+              imageUrl={detailItem.imageUrl}
+              emoji={detailItem.emoji}
+              alt={detailItem.name.en}
+              className="h-52 w-full text-7xl"
+            />
+            <div className="px-5 pt-4 pb-8">
+              <div className="flex items-center gap-2">
+                <VegMark isVeg={detailItem.isVeg} />
+                <SpiceDots level={detailItem.spiceLevel} />
+                {!detailItem.isAvailable && (
+                  <span className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
+                    {t.soldOut}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 flex items-start justify-between gap-3">
+                <h2 className="font-display text-2xl font-semibold text-stone-900">
+                  {detailItem.name[lang]}
+                </h2>
+                <span className="pt-1 text-lg font-bold text-stone-900">
+                  {inr(detailItem.priceInr)}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-stone-600">
+                {detailItem.description[lang]}
+              </p>
+              {detailItem.allergens.length > 0 && (
+                <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
+                  <span className="font-bold">{t.contains}:</span>
+                  {detailItem.allergens.map((a) => (
+                    <span key={a} className="rounded-full bg-stone-100 px-2 py-0.5 font-semibold">
+                      {a}
+                    </span>
+                  ))}
+                </p>
+              )}
+              {detailItem.isAvailable && (
+                <button
+                  onClick={() => {
+                    changeQty(detailItem.id, 1);
+                    setToast(`+ ${detailItem.name[lang]}`);
+                    setDetailItem(null);
+                  }}
+                  className="mt-5 w-full rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
+                >
+                  {t.add} · {inr(detailItem.priceInr)}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

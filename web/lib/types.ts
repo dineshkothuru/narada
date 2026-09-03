@@ -20,6 +20,7 @@ export type MenuItem = {
   tags: string[];
   emoji: string;
   imageUrl: string | null;
+  isAvailable: boolean;
 };
 
 export type RestaurantInfo = {
