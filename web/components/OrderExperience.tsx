@@ -97,9 +97,13 @@ export default function OrderExperience({
   } | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("placed");
   const [rounds, setRounds] = useState<
-    { id: string; status: string; total_inr: number; items: { name: string; qty: number }[] }[]
+    {
+      id: string;
+      status: string;
+      total_inr: number;
+      items: { name: string; qty: number; status?: string }[];
+    }[]
   >([]);
-  const [tickerIdx, setTickerIdx] = useState(0);
   const [placing, setPlacing] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
   const [spinDone, setSpinDone] = useState(false);
@@ -197,12 +201,6 @@ export default function OrderExperience({
     return () => clearInterval(iv);
   }, [orderPlaced?.sessionId, orderPlaced?.orderId]);
 
-  // banner ticker cycles through the rounds
-  useEffect(() => {
-    if (rounds.length < 2) return;
-    const iv = setInterval(() => setTickerIdx((i) => (i + 1) % rounds.length), 3500);
-    return () => clearInterval(iv);
-  }, [rounds.length]);
 
   const total = useMemo(
     () =>
@@ -451,13 +449,39 @@ export default function OrderExperience({
       ? t.statusServed
       : status === "preparing"
         ? t.statusPreparing
-        : t.statusPlaced;
+        : status === "queued"
+          ? t.inQueue
+          : t.statusPlaced;
   const statusDotFor = (status: string) =>
-    status === "served" ? "bg-green-400" : status === "preparing" ? "bg-sky-400" : "bg-rose-400";
-  const sessionTotal = rounds.length
-    ? rounds.reduce((s, r) => s + Number(r.total_inr), 0)
-    : (orderPlaced?.total ?? 0);
+    status === "served"
+      ? "bg-green-400"
+      : status === "preparing"
+        ? "bg-sky-400"
+        : status === "queued"
+          ? "bg-stone-400"
+          : "bg-rose-400";
   const allServed = rounds.length > 0 && rounds.every((r) => r.status === "served");
+  // per-dish chips for the scrolling strip under the banner
+  const dishChips = useMemo(() => {
+    const all = rounds.flatMap((r) =>
+      r.items.map((it) => ({
+        text: `${it.qty}× ${it.name}`,
+        status: it.status ?? r.status,
+      })),
+    );
+    if (all.length === 0) return [];
+    const servedCount = all.filter((x) => x.status === "served").length;
+    return [
+      {
+        text: t.servedOf.replace("{a}", String(servedCount)).replace("{b}", String(all.length)),
+        status: servedCount === all.length ? "served" : "preparing",
+      },
+      ...all,
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rounds, lang]);
+  const statusEmojiFor = (status: string) =>
+    status === "served" ? "✅" : status === "preparing" ? "👨‍🍳" : "⏳";
   const heroDishes = useMemo<MenuItem[]>(() => {
     const specials = menuItems.filter((m) => m.tags.includes("chef-special"));
     const best = menuItems.filter(
@@ -599,40 +623,36 @@ export default function OrderExperience({
         {orderPlaced && (
           <button
             onClick={() => setCartOpen(true)}
-            className="flex w-full items-center justify-between gap-2 bg-stone-900 px-4 py-2.5 text-left"
+            className="block w-full bg-stone-900 px-4 py-2.5 text-left"
           >
-            {allServed ? (
+            <span className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-xs font-bold text-white">
-                <span className="h-2 w-2 rounded-full bg-green-400" /> {t.allServed}
-              </span>
-            ) : rounds.length > 1 ? (
-              // ticker: rotates through every round's kitchen progress
-              <span
-                key={tickerIdx}
-                className="animate-pop flex min-w-0 items-center gap-2 text-xs font-bold text-white"
-              >
                 <span
-                  className={`h-2 w-2 shrink-0 animate-pulse rounded-full ${statusDotFor(rounds[tickerIdx % rounds.length]?.status ?? "placed")}`}
+                  className={`h-2 w-2 rounded-full ${
+                    allServed ? "bg-green-400" : `animate-pulse ${statusDotFor(orderStatus)}`
+                  }`}
                 />
-                <span className="truncate">
-                  {t.round} {(tickerIdx % rounds.length) + 1}
-                  {rounds[tickerIdx % rounds.length]?.items?.[0]
-                    ? ` · ${rounds[tickerIdx % rounds.length].items[0].name}${rounds[tickerIdx % rounds.length].items.length > 1 ? " +" : ""}`
-                    : ""}{" "}
-                  · {statusLabelFor(rounds[tickerIdx % rounds.length]?.status ?? "placed")}
+                {allServed ? t.allServed : statusLabel}
+              </span>
+              <span className="shrink-0 rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
+                {t.payUpi.replace("{amount}", inr(payable))} ›
+              </span>
+            </span>
+            {dishChips.length > 1 && !allServed && (
+              // continuously scrolling per-dish progress strip
+              <span className="mt-1.5 block overflow-hidden">
+                <span className="animate-marquee flex w-max gap-5">
+                  {[...dishChips, ...dishChips].map((c, i) => (
+                    <span
+                      key={i}
+                      className="flex items-center gap-1 text-[10px] font-semibold whitespace-nowrap text-stone-300"
+                    >
+                      {statusEmojiFor(c.status)} {c.text}
+                    </span>
+                  ))}
                 </span>
               </span>
-            ) : (
-              <span className="flex items-center gap-2 text-xs font-bold text-white">
-                <span
-                  className={`h-2 w-2 animate-pulse rounded-full ${statusDotFor(orderStatus)}`}
-                />
-                {statusLabel}
-              </span>
             )}
-            <span className="shrink-0 rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
-              {t.payUpi.replace("{amount}", inr(payable))} ›
-            </span>
           </button>
         )}
         <nav className="no-scrollbar flex gap-2 overflow-x-auto bg-stone-100/95 px-4 py-3 backdrop-blur">
@@ -856,24 +876,32 @@ export default function OrderExperience({
                   {tableLabel} · {inr(orderPlaced.total)}. {t.orderSentNote}
                 </p>
                 {rounds.length > 0 ? (
-                  <div className="mt-4 w-full space-y-1.5">
+                  <div className="mt-4 w-full space-y-2">
                     {rounds.map((r, i) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center justify-between rounded-xl bg-stone-50 px-3.5 py-2.5 text-xs"
-                      >
-                        <span className="flex min-w-0 items-center gap-2 font-semibold text-stone-700">
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${statusDotFor(r.status)} ${r.status !== "served" ? "animate-pulse" : ""}`}
-                          />
-                          <span className="truncate">
-                            {t.round} {i + 1} ·{" "}
-                            {r.items.map((it) => `${it.qty}× ${it.name}`).join(", ")}
+                      <div key={r.id} className="rounded-xl bg-stone-50 px-3.5 py-2.5 text-xs">
+                        <div className="flex items-center justify-between font-bold text-stone-500">
+                          <span>
+                            {t.round} {i + 1} {Number(r.total_inr) === 0 && "🎁"}
                           </span>
-                        </span>
-                        <span className="ml-2 shrink-0 font-bold text-stone-500">
-                          {Number(r.total_inr) === 0 ? "🎁" : statusLabelFor(r.status)}
-                        </span>
+                          <span>{Number(r.total_inr) > 0 ? inr(Number(r.total_inr)) : ""}</span>
+                        </div>
+                        <div className="mt-1.5 space-y-1">
+                          {r.items.map((it, j) => (
+                            <div key={j} className="flex items-center justify-between">
+                              <span className="flex min-w-0 items-center gap-2 font-semibold text-stone-700">
+                                <span
+                                  className={`h-2 w-2 shrink-0 rounded-full ${statusDotFor(it.status ?? r.status)} ${(it.status ?? r.status) !== "served" ? "animate-pulse" : ""}`}
+                                />
+                                <span className="truncate">
+                                  {it.qty}× {it.name}
+                                </span>
+                              </span>
+                              <span className="ml-2 shrink-0 text-stone-500">
+                                {statusLabelFor(it.status ?? r.status)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>

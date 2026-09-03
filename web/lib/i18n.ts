@@ -64,6 +64,8 @@ type Strings = {
   waiterComing: string;
   round: string;
   allServed: string;
+  inQueue: string;
+  servedOf: string;
 };
 
 export const STRINGS: Record<Lang, Strings> = {
@@ -125,6 +127,8 @@ export const STRINGS: Record<Lang, Strings> = {
     waiterComing: "Staff is on the way ✋",
     round: "Round",
     allServed: "All served — enjoy! 🍽️",
+    inQueue: "In queue ⏳",
+    servedOf: "{a}/{b} served",
   },
   hi: {
     dineIn: "डाइन-इन",
@@ -184,6 +188,8 @@ export const STRINGS: Record<Lang, Strings> = {
     waiterComing: "स्टाफ़ आ रहा है ✋",
     round: "राउंड",
     allServed: "सब परोस दिया गया — आनंद लें! 🍽️",
+    inQueue: "क़तार में ⏳",
+    servedOf: "{a}/{b} परोसा गया",
   },
   te: {
     dineIn: "డైన్-ఇన్",
@@ -243,5 +249,7 @@ export const STRINGS: Record<Lang, Strings> = {
     waiterComing: "సిబ్బంది వస్తున్నారు ✋",
     round: "రౌండ్",
     allServed: "అన్నీ వడ్డించాం — ఆస్వాదించండి! 🍽️",
+    inQueue: "వరుసలో ⏳",
+    servedOf: "{a}/{b} వడ్డించాం",
   },
 };

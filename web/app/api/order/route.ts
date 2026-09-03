@@ -115,10 +115,10 @@ export async function GET(req: NextRequest) {
             status: string;
             total_inr: number;
             created_at: string;
-            items: { name: string; qty: number }[];
+            items: { name: string; qty: number; status: string }[];
           }[]
         >(
-          `orders?select=id,status,total_inr,created_at,items:order_items(name,qty)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
+          `orders?select=id,status,total_inr,created_at,items:order_items(name,qty,status)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
         ),
         sbFetch<{ discount_pct: number; status: string }[]>(
           `sessions?select=discount_pct,status&id=eq.${encodeURIComponent(session)}&limit=1`,

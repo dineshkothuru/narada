@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const orders = await sbFetch<unknown[]>(
       `orders?select=id,status,total_inr,placed_via,created_at,` +
-        `session:sessions(table:tables(label)),items:order_items(name,qty,notes)` +
+        `session:sessions(table:tables(label)),items:order_items(id,name,qty,notes,status)` +
         `&status=in.(placed,preparing,served)&order=created_at.desc&limit=60`,
     );
     return NextResponse.json({ orders });
@@ -20,14 +20,57 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { orderId, status } = (await req.json()) as { orderId: string; status: string };
-    if (!orderId || !["preparing", "served", "cancelled"].includes(status)) {
+    const { orderId, status, itemId, itemStatus } = (await req.json()) as {
+      orderId?: string;
+      status?: string;
+      itemId?: string;
+      itemStatus?: string;
+    };
+
+    // per-dish update: set the item, then derive the parent order's status
+    if (itemId && itemStatus) {
+      if (!["queued", "preparing", "served"].includes(itemStatus)) {
+        return NextResponse.json({ error: "invalid item status" }, { status: 400 });
+      }
+      const rows = await sbFetch<{ order_id: string }[]>(
+        `order_items?select=order_id&id=eq.${encodeURIComponent(itemId)}&limit=1`,
+      );
+      if (rows.length === 0) {
+        return NextResponse.json({ error: "unknown item" }, { status: 404 });
+      }
+      await sbFetch(`order_items?id=eq.${encodeURIComponent(itemId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: itemStatus }),
+      });
+      const siblings = await sbFetch<{ status: string }[]>(
+        `order_items?select=status&order_id=eq.${rows[0].order_id}`,
+      );
+      const derived = siblings.every((s) => s.status === "served")
+        ? "served"
+        : siblings.some((s) => s.status !== "queued")
+          ? "preparing"
+          : "placed";
+      await sbFetch(`orders?id=eq.${rows[0].order_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: derived }),
+      });
+      return NextResponse.json({ ok: true, orderStatus: derived });
+    }
+
+    if (!orderId || !status || !["preparing", "served", "cancelled"].includes(status)) {
       return NextResponse.json({ error: "orderId and valid status required" }, { status: 400 });
     }
     await sbFetch(`orders?id=eq.${encodeURIComponent(orderId)}`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
+    // whole-ticket advance drags every dish along with it
+    if (status === "preparing" || status === "served") {
+      await sbFetch(
+        `order_items?order_id=eq.${encodeURIComponent(orderId)}${status === "preparing" ? "&status=eq.queued" : ""}`,
+        { method: "PATCH", body: JSON.stringify({ status: status === "served" ? "served" : "preparing" }) },
+      );
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("kitchen update:", e);

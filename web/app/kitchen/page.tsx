@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+type KitchenItem = {
+  id: string;
+  name: string;
+  qty: number;
+  notes: string | null;
+  status: "queued" | "preparing" | "served";
+};
+
 type KitchenOrder = {
   id: string;
   status: "placed" | "preparing" | "served";
@@ -9,7 +17,19 @@ type KitchenOrder = {
   placed_via: "ui" | "anna";
   created_at: string;
   session: { table: { label: string } | null } | null;
-  items: { name: string; qty: number; notes: string | null }[];
+  items: KitchenItem[];
+};
+
+const ITEM_NEXT: Record<KitchenItem["status"], KitchenItem["status"]> = {
+  queued: "preparing",
+  preparing: "served",
+  served: "queued",
+};
+
+const ITEM_BADGE: Record<KitchenItem["status"], string> = {
+  queued: "⏳",
+  preparing: "👨‍🍳",
+  served: "✅",
 };
 
 const COLUMNS: { status: KitchenOrder["status"]; title: string; accent: string }[] = [
@@ -67,6 +87,22 @@ export default function KitchenPage() {
     load();
   };
 
+  const cycleItem = async (item: KitchenItem) => {
+    const next = ITEM_NEXT[item.status];
+    setOrders((prev) =>
+      prev.map((o) => ({
+        ...o,
+        items: o.items.map((it) => (it.id === item.id ? { ...it, status: next } : it)),
+      })),
+    );
+    await fetch("/api/kitchen", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: item.id, itemStatus: next }),
+    });
+    load();
+  };
+
   return (
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
       <header className="mx-auto mb-5 flex max-w-6xl items-center justify-between">
@@ -111,14 +147,27 @@ export default function KitchenPage() {
                       <span className="text-[11px] text-stone-400">{since(o.created_at)}</span>
                     </div>
                     <ul className="mt-2 space-y-1">
-                      {o.items.map((it, i) => (
-                        <li key={i} className="flex justify-between text-sm text-stone-700">
-                          <span>
-                            {it.qty} × {it.name}
-                            {it.notes && (
-                              <span className="block text-[11px] text-rose-600">✎ {it.notes}</span>
-                            )}
-                          </span>
+                      {o.items.map((it) => (
+                        <li key={it.id}>
+                          <button
+                            onClick={() => cycleItem(it)}
+                            title="Tap to cycle: queued → preparing → served"
+                            className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
+                              it.status === "served"
+                                ? "bg-green-50 text-stone-400 line-through"
+                                : it.status === "preparing"
+                                  ? "bg-sky-50 text-stone-800"
+                                  : "text-stone-700 hover:bg-stone-50"
+                            }`}
+                          >
+                            <span>
+                              {it.qty} × {it.name}
+                              {it.notes && (
+                                <span className="block text-[11px] text-rose-600">✎ {it.notes}</span>
+                              )}
+                            </span>
+                            <span className="ml-2 text-base">{ITEM_BADGE[it.status]}</span>
+                          </button>
                         </li>
                       ))}
                     </ul>
