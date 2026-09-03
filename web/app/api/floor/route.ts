@@ -51,6 +51,7 @@ export async function GET() {
         let due = 0;
         let served = 0;
         let pending = 0;
+        let rounds = 0;
         if (session) {
           const primary = session.merged_into ?? session.id;
           if (primary === session.id) {
@@ -62,6 +63,7 @@ export async function GET() {
           const live = session.orders.filter((o) => o.status !== "cancelled");
           served = live.filter((o) => o.status === "served").length;
           pending = live.length - served;
+          rounds = live.length;
         }
         const groupTables = session
           ? (mergeGroups.get(session.merged_into ?? session.id) ?? [])
@@ -75,13 +77,24 @@ export async function GET() {
           code: t.code,
           capacity: t.capacity,
           zone: t.zone,
-          status: session ? (pending > 0 ? "dining" : "settling") : "free",
+          // seated → ordering → dining → ready to settle (all food served,
+          // money still owed). A table that hasn't ordered yet is "seated",
+          // not "ready to settle".
+          status: !session
+            ? "free"
+            : rounds === 0
+              ? "seated"
+              : pending > 0
+                ? "dining"
+                : due > 0
+                  ? "settling"
+                  : "paid",
           sessionId: session?.id ?? null,
           isMerged: Boolean(session?.merged_into),
           mergedWith: groupTables,
           since: session?.created_at ?? null,
           guests: session?.guests ?? null,
-          rounds: session ? session.orders.length : 0,
+          rounds,
           served,
           pending,
           due,
@@ -103,8 +116,10 @@ export async function GET() {
       stats: {
         total: rows.length,
         free: rows.filter((r) => r.status === "free").length,
+        seated: rows.filter((r) => r.status === "seated").length,
         dining: rows.filter((r) => r.status === "dining").length,
         settling: rows.filter((r) => r.status === "settling").length,
+        paid: rows.filter((r) => r.status === "paid").length,
         seats,
         seatsBusy,
       },

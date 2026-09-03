@@ -12,7 +12,7 @@ type FloorTable = {
   code: string;
   capacity: number;
   zone: string | null;
-  status: "free" | "dining" | "settling";
+  status: "free" | "seated" | "dining" | "settling" | "paid";
   sessionId: string | null;
   isMerged: boolean;
   mergedWith: string[];
@@ -31,19 +31,31 @@ type FloorTable = {
 type Stats = {
   total: number;
   free: number;
+  seated: number;
   dining: number;
   settling: number;
+  paid: number;
   seats: number;
   seatsBusy: number;
 };
 
 const STATUS = {
   free: { ring: "ring-green-300", chip: "bg-green-100 text-green-700", label: "Free" },
+  seated: {
+    ring: "ring-violet-300",
+    chip: "bg-violet-100 text-violet-700",
+    label: "Seated · yet to order",
+  },
   dining: { ring: "ring-sky-300", chip: "bg-sky-100 text-sky-700", label: "Dining" },
   settling: {
-    ring: "ring-amber-300",
-    chip: "bg-amber-100 text-amber-700",
+    ring: "ring-amber-400",
+    chip: "bg-amber-100 text-amber-800",
     label: "Ready to settle",
+  },
+  paid: {
+    ring: "ring-stone-300",
+    chip: "bg-stone-200 text-stone-600",
+    label: "Paid · clearing",
   },
 };
 
@@ -119,7 +131,7 @@ export default function FloorPage() {
       {stats && (
         <section className="mx-auto mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-green-600" />
-          <Stat label="Dining" value={String(stats.dining)} tone="text-sky-600" />
+          <Stat label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} tone="text-sky-600" />
           <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
           <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
         </section>

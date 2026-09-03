@@ -77,6 +77,8 @@ type Strings = {
   serviceRemoved: string;
   addTip: string;
   viewBill: string;
+  askBill: string;
+  billRequested: string;
   you: string;
   yourName: string;
   contains: string;
@@ -154,6 +156,8 @@ export const STRINGS: Record<Lang, Strings> = {
     serviceRemoved: "Service charge removed",
     addTip: "Add a tip",
     viewBill: "🧾 View / print bill",
+    askBill: "Ask for the bill",
+    billRequested: "Bill requested — staff are on the way ✋",
     you: "You",
     yourName: "Your name (optional — shows on the table's order)",
     contains: "Contains",
@@ -229,6 +233,8 @@ export const STRINGS: Record<Lang, Strings> = {
     serviceRemoved: "सर्विस चार्ज हटा दिया गया",
     addTip: "टिप जोड़ें",
     viewBill: "🧾 बिल देखें / प्रिंट करें",
+    askBill: "बिल मंगाएँ",
+    billRequested: "बिल का अनुरोध भेजा — स्टाफ़ आ रहे हैं ✋",
     you: "आप",
     yourName: "आपका नाम (वैकल्पिक — टेबल के ऑर्डर पर दिखेगा)",
     contains: "इसमें है",
@@ -304,6 +310,8 @@ export const STRINGS: Record<Lang, Strings> = {
     serviceRemoved: "సర్వీస్ ఛార్జ్ తీసివేయబడింది",
     addTip: "టిప్ జోడించండి",
     viewBill: "🧾 బిల్లు చూడండి / ప్రింట్",
+    askBill: "బిల్లు అడగండి",
+    billRequested: "బిల్లు అడిగారు — సిబ్బంది వస్తున్నారు ✋",
     you: "మీరు",
     yourName: "మీ పేరు (ఐచ్ఛికం — టేబుల్ ఆర్డర్‌పై కనిపిస్తుంది)",
     contains: "ఇందులో",

@@ -1217,8 +1217,17 @@ export default function OrderExperience({
                   )}
                 </a>
                 <button
+                  onClick={() => {
+                    callWaiter();
+                    setToast(t.billRequested);
+                  }}
+                  className="mt-3 w-full rounded-2xl bg-stone-900 px-6 py-3 text-xs font-bold text-white transition active:scale-[0.98]"
+                >
+                  🧾 {t.askBill}
+                </button>
+                <button
                   onClick={() => setCartOpen(false)}
-                  className="mt-3 text-xs font-semibold text-stone-400"
+                  className="mt-2 text-xs font-semibold text-stone-400"
                 >
                   {t.payLater}
                 </button>
