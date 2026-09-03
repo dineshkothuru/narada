@@ -534,23 +534,23 @@ export default function WaiterPage() {
                 </div>
 
                 <div className="mt-3 flex items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <p
-                      className={`font-display text-xl font-semibold tabular-nums ${
-                        s.due > 0 ? "text-rose-600" : "text-emerald-600"
-                      }`}
-                    >
-                      {s.due > 0 ? inr(s.due) : "Settled ✓"}
-                    </p>
-                    {/* the arithmetic behind the figure, demoted to a caption —
-                        it is reference, not the thing being scanned for */}
-                    <p className="truncate text-[10px] text-slate-400">
-                      {inr(s.ordered)} + GST {inr(s.gst)}
-                      {s.service > 0 && ` + svc ${inr(s.service)}`}
-                      {s.serviceWaived && " · svc waived"}
-                      {s.paid > 0 && ` · paid ${inr(s.paid)}`}
-                    </p>
-                  </div>
+                  {/* the arithmetic behind the figure, demoted to a caption —
+                      it is reference, not the thing being scanned for */}
+                  <p className="min-w-0 truncate text-[10px] text-slate-400">
+                    {inr(s.ordered)} + GST {inr(s.gst)}
+                    {s.service > 0 && ` + svc ${inr(s.service)}`}
+                    {s.serviceWaived && " · svc waived"}
+                    {s.paid > 0 && ` · paid ${inr(s.paid)}`}
+                  </p>
+                  {/* an open tab is the normal state of a table, not a fault —
+                      the figure is just the figure */}
+                  <p
+                    className={`font-display shrink-0 text-xl font-semibold tabular-nums ${
+                      s.due > 0 ? "text-slate-900" : "text-emerald-600"
+                    }`}
+                  >
+                    {s.due > 0 ? inr(s.due) : "Settled ✓"}
+                  </p>
                 </div>
 
                 <div
