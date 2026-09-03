@@ -82,9 +82,6 @@ export default function FloorPage() {
   const [tables, setTables] = useState<FloorTable[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
-  // reception and the counter can see the floor but do not take orders, so the
-  // button only becomes an order pad for the people who do
-  const [role, setRole] = useState<string | null>(null);
   const [mergeFrom, setMergeFrom] = useState<FloorTable | null>(null);
 
   const load = useCallback(async () => {
@@ -131,20 +128,6 @@ export default function FloorPage() {
     act({ action: "seat", tableId: t.id, guests: Number(n) });
   };
 
-  useEffect(() => {
-    let off = false;
-    fetch("/api/admin/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!off && d?.role) setRole(d.role);
-      })
-      .catch(() => {});
-    return () => {
-      off = true;
-    };
-  }, []);
-
-  const takesOrders = role === "waiter" || role === "admin";
   const freeTables = tables.filter((t) => t.status === "free");
 
   return (
@@ -271,13 +254,6 @@ export default function FloorPage() {
                     Seated {minutesAgo(t.since!, true)} · nothing ordered yet
                   </p>
                   <div className="mt-3 flex gap-1.5">
-                    <a
-                      href={takesOrders ? `/waiter/order/${t.code}` : `/t/${t.code}`}
-                      target={takesOrders ? undefined : "_blank"}
-                      className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
-                    >
-                      {takesOrders ? "Take order" : "Menu"}
-                    </a>
                     <button
                       onClick={async () => {
                         const yes = await ask.confirm({
@@ -337,42 +313,17 @@ export default function FloorPage() {
                     >
                       {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
                     </button>
-                    <a
-                      href={
-                        takesOrders
-                          ? `/waiter/table/${t.code}`
-                          : undefined
-                      }
-                      onClick={(e) => {
-                        if (takesOrders) return;
-                        e.preventDefault();
-                        setOpenTable({ id: t.sessionId!, label: t.label });
-                      }}
-                      className="cursor-pointer rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-600"
+                    <button
+                      onClick={() => setOpenTable({ id: t.sessionId!, label: t.label })}
+                      className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-600"
                     >
                       {t.served}/{t.rounds} served · details
-                    </a>
+                    </button>
                     {t.due > 0 && (
                       <span className="font-bold text-rose-600">due {inr(t.due)}</span>
                     )}
                   </div>
                   <div className="mt-3 flex gap-1.5">
-                    <a
-                      href={takesOrders ? `/waiter/order/${t.code}` : `/t/${t.code}`}
-                      target={takesOrders ? undefined : "_blank"}
-                      className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
-                    >
-                      {takesOrders ? "+ Order" : "Menu"}
-                    </a>
-                    {t.sessionId && (
-                      <a
-                        href={`/bill/${t.sessionId}`}
-                        target="_blank"
-                        className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
-                      >
-                        Bill
-                      </a>
-                    )}
                     {t.isMerged ? (
                       <button
                         onClick={() => act({ action: "unmerge", sessionId: t.sessionId })}
