@@ -54,7 +54,7 @@ export default function Home() {
 
       <div className="w-full max-w-xs rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
         <p className="text-xs font-medium tracking-widest text-stone-400 uppercase">
-          Staff — PIN 1234
+          Staff · PIN required
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {STAFF_SCREENS.map((s) => (
@@ -72,7 +72,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-3 text-center text-[11px] text-stone-400">
-          Each staff member can get their own PIN in Admin → Staff.
+          Ask the owner for your PIN — each screen opens only for its role.
         </p>
       </div>
     </main>

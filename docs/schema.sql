@@ -125,7 +125,7 @@ alter publication supabase_realtime add table orders;
 alter table restaurants
   add column if not exists payment_timing text not null default 'post'
     check (payment_timing in ('pre','post')),
-  add column if not exists admin_pin text not null default '1234',
+  add column if not exists admin_pin text not null default '0000', -- change on first login
   add column if not exists gemini_api_key text,
   add column if not exists sarvam_api_key text,
   add column if not exists comp_item_id uuid references menu_items(id);

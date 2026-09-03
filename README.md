@@ -50,7 +50,7 @@ npm install
 Where to click:
 - `/t/t1-demo` — the customer experience (each table's QR points at its own code).
   Tap the 🎙️ button and *talk* to Narada — Telugu, Hindi, or English.
-- `/kitchen` — live kitchen dashboard (orders arrive here). Staff PIN: `1234`.
+- `/kitchen` — live kitchen dashboard (orders arrive here). Needs the staff PIN.
 - `/admin` — menu availability, prices, payment timing, UPI ID, staff PIN, and
   the Gemini/Sarvam API keys. Same PIN.
 
