@@ -2,10 +2,8 @@ import "server-only";
 import { CATEGORIES, MENU, RESTAURANT } from "./menu-data";
 import type { Localized, MenuPayload } from "./types";
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-const ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 
 const loc = (en: string, hi?: string | null, te?: string | null): Localized => ({
   en,
@@ -62,12 +60,20 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
     const { label, restaurant_id, ui_variant } = tables[0];
 
     const [restaurants, cats, items] = await Promise.all([
+      rest<{ name: string; upi_vpa: string | null; payment_timing: "pre" | "post" }[]>(
+        `restaurants?select=name,upi_vpa,payment_timing&id=eq.${restaurant_id}&limit=1`,
+      ),
       rest<
-        { name: string; upi_vpa: string | null; payment_timing: "pre" | "post" }[]
-      >(`restaurants?select=name,upi_vpa,payment_timing&id=eq.${restaurant_id}&limit=1`),
-      rest<
-        { id: string; name: string; name_hi: string | null; name_te: string | null; emoji: string | null }[]
-      >(`menu_categories?select=id,name,name_hi,name_te,emoji&restaurant_id=eq.${restaurant_id}&order=sort_order`),
+        {
+          id: string;
+          name: string;
+          name_hi: string | null;
+          name_te: string | null;
+          emoji: string | null;
+        }[]
+      >(
+        `menu_categories?select=id,name,name_hi,name_te,emoji&restaurant_id=eq.${restaurant_id}&order=sort_order`,
+      ),
       rest<
         {
           id: string;
@@ -87,9 +93,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
           image_url: string | null;
           is_available: boolean;
         }[]
-      >(
-        `menu_items?select=*&restaurant_id=eq.${restaurant_id}&order=sort_order`,
-      ),
+      >(`menu_items?select=*&restaurant_id=eq.${restaurant_id}&order=sort_order`),
     ]);
     if (restaurants.length === 0 || cats.length === 0 || items.length === 0) {
       return fallback(tableCode);

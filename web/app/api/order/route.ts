@@ -46,10 +46,7 @@ export async function POST(req: NextRequest) {
     if (lines.length === 0) {
       return NextResponse.json({ error: "no valid items" }, { status: 400 });
     }
-    const total = lines.reduce(
-      (s, l) => s + Number(byId.get(l.itemId)!.price_inr) * l.qty,
-      0,
-    );
+    const total = lines.reduce((s, l) => s + Number(byId.get(l.itemId)!.price_inr) * l.qty, 0);
 
     const orders = await sbFetch<OrderRow[]>(`orders`, {
       method: "POST",
@@ -60,9 +57,7 @@ export async function POST(req: NextRequest) {
         total_inr: total,
         placed_via: placedVia === "anna" ? "anna" : "ui",
         placed_by:
-          typeof guestName === "string" && guestName.trim()
-            ? guestName.trim().slice(0, 40)
-            : null,
+          typeof guestName === "string" && guestName.trim() ? guestName.trim().slice(0, 40) : null,
         lang: ["en", "hi", "te"].includes(lang ?? "") ? lang : null,
       }),
     });

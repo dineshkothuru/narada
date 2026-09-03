@@ -51,10 +51,7 @@ export default function StoryViewer({
   jumpRef: React.MutableRefObject<((itemId: string) => void) | null>;
 }) {
   const dishes = useMemo(
-    () =>
-      categories.flatMap((c) =>
-        items.filter((m) => m.categoryId === c.id && m.isAvailable),
-      ),
+    () => categories.flatMap((c) => items.filter((m) => m.categoryId === c.id && m.isAvailable)),
     [categories, items],
   );
   const [index, setIndex] = useState(0);
@@ -220,9 +217,7 @@ export default function StoryViewer({
             className="flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-xs font-extrabold text-white backdrop-blur"
           >
             ☰ {strings.menuTiles}
-            <span className="font-medium text-white/60">
-              · {currentCat?.name[lang]}
-            </span>
+            <span className="font-medium text-white/60">· {currentCat?.name[lang]}</span>
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -247,9 +242,7 @@ export default function StoryViewer({
         <div className="absolute inset-0 z-10 overflow-y-auto bg-stone-950/97 p-5 backdrop-blur">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="font-display text-2xl font-semibold text-white">
-              {tileCat
-                ? categories.find((c) => c.id === tileCat)?.name[lang]
-                : strings.menuTiles}
+              {tileCat ? categories.find((c) => c.id === tileCat)?.name[lang] : strings.menuTiles}
             </h2>
             <button
               onClick={() => (tileCat ? setTileCat(null) : setTilesOpen(false))}
@@ -272,7 +265,11 @@ export default function StoryViewer({
                   >
                     {cover ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      <img
+                        src={cover}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="absolute inset-0 grid place-items-center bg-stone-800 text-5xl">
                         {c.emoji}

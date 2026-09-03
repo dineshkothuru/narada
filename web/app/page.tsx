@@ -22,12 +22,10 @@ export default function Home() {
     <main className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-14">
       <div className="text-center">
         <p className="text-5xl">🪈</p>
-        <h1 className="font-display mt-3 text-4xl font-semibold tracking-tight">
-          Narada
-        </h1>
+        <h1 className="font-display mt-3 text-4xl font-semibold tracking-tight">Narada</h1>
         <p className="mt-2 max-w-xs text-sm text-stone-500">
-          Scan the QR at your table, browse the menu, and tell Narada what
-          you&apos;d like. No app. No waiting.
+          Scan the QR at your table, browse the menu, and tell Narada what you&apos;d like. No app.
+          No waiting.
         </p>
       </div>
 
@@ -43,9 +41,7 @@ export default function Home() {
               className="rounded-2xl bg-rose-600 px-3 py-3 text-center text-white shadow-sm transition active:scale-95"
             >
               <span className="block text-sm font-semibold">{t.label}</span>
-              <span className="block text-[10px] font-medium text-rose-100">
-                {t.variant}
-              </span>
+              <span className="block text-[10px] font-medium text-rose-100">{t.variant}</span>
             </Link>
           ))}
         </div>
@@ -67,9 +63,7 @@ export default function Home() {
             >
               <span className="block text-lg leading-none">{s.emoji}</span>
               <span className="mt-1 block text-sm font-semibold">{s.label}</span>
-              <span className="block text-[10px] font-medium text-stone-400">
-                {s.hint}
-              </span>
+              <span className="block text-[10px] font-medium text-stone-400">{s.hint}</span>
             </Link>
           ))}
         </div>

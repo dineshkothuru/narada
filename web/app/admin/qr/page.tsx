@@ -37,12 +37,8 @@ export default function QrSheetPage() {
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6 print:bg-white print:p-0">
       <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between print:hidden">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
-            Table QR codes
-          </h1>
-          <p className="text-xs text-stone-500">
-            Print, cut, and place one on each table.
-          </p>
+          <h1 className="font-display text-2xl font-semibold text-stone-900">Table QR codes</h1>
+          <p className="text-xs text-stone-500">Print, cut, and place one on each table.</p>
         </div>
         <div className="flex gap-2">
           <Link
@@ -66,9 +62,7 @@ export default function QrSheetPage() {
             key={t.id}
             className="flex flex-col items-center rounded-3xl bg-white p-5 text-center shadow-sm ring-1 ring-stone-200/60 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
           >
-            <p className="font-display text-lg font-semibold text-stone-900">
-              {restaurantName}
-            </p>
+            <p className="font-display text-lg font-semibold text-stone-900">{restaurantName}</p>
             <p className="mt-0.5 text-[11px] font-bold tracking-widest text-rose-600 uppercase">
               {t.label}
             </p>
@@ -83,9 +77,7 @@ export default function QrSheetPage() {
             <p className="mt-3 text-xs font-semibold text-stone-700">
               Scan to see the menu &amp; order
             </p>
-            <p className="text-[10px] text-stone-400">
-              Talk to Narada · no app needed
-            </p>
+            <p className="text-[10px] text-stone-400">Talk to Narada · no app needed</p>
           </div>
         ))}
       </div>

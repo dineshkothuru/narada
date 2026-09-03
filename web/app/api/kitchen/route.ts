@@ -59,11 +59,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true, orderStatus: derived });
     }
 
-    if (
-      !orderId ||
-      !status ||
-      !["preparing", "ready", "served", "cancelled"].includes(status)
-    ) {
+    if (!orderId || !status || !["preparing", "ready", "served", "cancelled"].includes(status)) {
       return NextResponse.json({ error: "orderId and valid status required" }, { status: 400 });
     }
     await sbFetch(`orders?id=eq.${encodeURIComponent(orderId)}`, {

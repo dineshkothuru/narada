@@ -82,186 +82,191 @@ export default function AdminOrdersPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-      <header className="mx-auto mb-5 flex max-w-4xl flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">Orders</h1>
-          <p className="text-xs text-stone-500">
-            Every round, its table, kitchen status and payment · refreshes every 15s
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/admin"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            ← Admin
-          </Link>
-          <Link
-            href="/kitchen"
-            className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
-          >
-            Kitchen
-          </Link>
-        </div>
-      </header>
+      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+        <header className="mx-auto mb-5 flex max-w-4xl flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="font-display text-2xl font-semibold text-stone-900">Orders</h1>
+            <p className="text-xs text-stone-500">
+              Every round, its table, kitchen status and payment · refreshes every 15s
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin"
+              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+            >
+              ← Admin
+            </Link>
+            <Link
+              href="/kitchen"
+              className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
+            >
+              Kitchen
+            </Link>
+          </div>
+        </header>
 
-      <div className="mx-auto mb-4 flex max-w-4xl gap-2">
-        {RANGES.map((r) => (
-          <button
-            key={r.key}
-            onClick={() => setRange(r.key)}
-            className={`rounded-full px-4 py-2 text-xs font-bold transition ${
-              range === r.key
-                ? "bg-stone-900 text-white"
-                : "bg-white text-stone-600 ring-1 ring-stone-200"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-
-      {stats && (
-        <section className="mx-auto mb-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Sales (after discounts)", value: inr(stats.netExpected), tone: "text-stone-900" },
-            { label: "Collected", value: inr(stats.collected), tone: "text-green-600" },
-            { label: "Outstanding", value: inr(stats.outstanding), tone: "text-rose-600" },
-            { label: "Tables served", value: String(stats.tables), tone: "text-stone-900" },
-          ].map((c) => (
-            <div key={c.label} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
-              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                {c.label}
-              </p>
-              <p className={`font-display mt-1 text-2xl font-semibold ${c.tone}`}>{c.value}</p>
-            </div>
+        <div className="mx-auto mb-4 flex max-w-4xl gap-2">
+          {RANGES.map((r) => (
+            <button
+              key={r.key}
+              onClick={() => setRange(r.key)}
+              className={`rounded-full px-4 py-2 text-xs font-bold transition ${
+                range === r.key
+                  ? "bg-stone-900 text-white"
+                  : "bg-white text-stone-600 ring-1 ring-stone-200"
+              }`}
+            >
+              {r.label}
+            </button>
           ))}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60 sm:col-span-2">
-            <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-              Top dishes
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {stats.topDishes.length === 0 && (
-                <span className="text-xs text-stone-400">No orders yet</span>
-              )}
-              {stats.topDishes.map((d) => (
-                <span
-                  key={d.name}
-                  className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-semibold text-stone-700"
-                >
-                  {d.name} · {d.qty}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
-            <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-              Avg per table
-            </p>
-            <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
-            <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-              🎙️ Voice orders
-            </p>
-            <p className="font-display mt-1 text-2xl font-semibold">
-              {stats.byVoice}
-              <span className="ml-1 text-sm font-medium text-stone-400">
-                / {stats.orders}
-              </span>
-            </p>
-          </div>
-        </section>
-      )}
+        </div>
 
-      <section className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/60">
-        {orders.length === 0 && (
-          <p className="py-10 text-center text-sm text-stone-400">No orders in this range</p>
-        )}
-        {orders.map((o) => {
-          const paid = paidFor(o);
-          const isOpen = open === o.id;
-          return (
-            <div key={o.id} className="border-b border-stone-100 last:border-0">
-              <button
-                onClick={() => setOpen(isOpen ? null : o.id)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-stone-50"
+        {stats && (
+          <section className="mx-auto mb-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              {
+                label: "Sales (after discounts)",
+                value: inr(stats.netExpected),
+                tone: "text-stone-900",
+              },
+              { label: "Collected", value: inr(stats.collected), tone: "text-green-600" },
+              { label: "Outstanding", value: inr(stats.outstanding), tone: "text-rose-600" },
+              { label: "Tables served", value: String(stats.tables), tone: "text-stone-900" },
+            ].map((c) => (
+              <div
+                key={c.label}
+                className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60"
               >
-                <span className="w-20 shrink-0 text-sm font-bold text-stone-900">
-                  {o.session?.table?.label ?? "—"}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-xs text-stone-500">
-                  {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
-                </span>
-                {o.placed_via === "anna" && <span title="ordered by voice">🎙️</span>}
-                {o.placed_by && (
-                  <span className="hidden rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500 sm:inline">
-                    {o.placed_by}
-                  </span>
+                <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                  {c.label}
+                </p>
+                <p className={`font-display mt-1 text-2xl font-semibold ${c.tone}`}>{c.value}</p>
+              </div>
+            ))}
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60 sm:col-span-2">
+              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                Top dishes
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {stats.topDishes.length === 0 && (
+                  <span className="text-xs text-stone-400">No orders yet</span>
                 )}
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                    STATUS_STYLE[o.status] ?? "bg-stone-100 text-stone-600"
-                  }`}
+                {stats.topDishes.map((d) => (
+                  <span
+                    key={d.name}
+                    className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-semibold text-stone-700"
+                  >
+                    {d.name} · {d.qty}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                Avg per table
+              </p>
+              <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                🎙️ Voice orders
+              </p>
+              <p className="font-display mt-1 text-2xl font-semibold">
+                {stats.byVoice}
+                <span className="ml-1 text-sm font-medium text-stone-400">/ {stats.orders}</span>
+              </p>
+            </div>
+          </section>
+        )}
+
+        <section className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/60">
+          {orders.length === 0 && (
+            <p className="py-10 text-center text-sm text-stone-400">No orders in this range</p>
+          )}
+          {orders.map((o) => {
+            const paid = paidFor(o);
+            const isOpen = open === o.id;
+            return (
+              <div key={o.id} className="border-b border-stone-100 last:border-0">
+                <button
+                  onClick={() => setOpen(isOpen ? null : o.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-stone-50"
                 >
-                  {o.status}
-                </span>
-                <span className="w-20 shrink-0 text-right text-sm font-bold text-stone-800">
-                  {Number(o.total_inr) === 0 ? "🎁 free" : inr(o.total_inr)}
-                </span>
-                <span className="hidden w-24 shrink-0 text-right text-[11px] font-semibold sm:block">
-                  {o.session?.status === "closed" ? (
-                    <span className="text-green-600">paid {inr(paid)}</span>
-                  ) : (
-                    <span className="text-rose-600">open tab</span>
+                  <span className="w-20 shrink-0 text-sm font-bold text-stone-900">
+                    {o.session?.table?.label ?? "—"}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-stone-500">
+                    {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                  </span>
+                  {o.placed_via === "anna" && <span title="ordered by voice">🎙️</span>}
+                  {o.placed_by && (
+                    <span className="hidden rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500 sm:inline">
+                      {o.placed_by}
+                    </span>
                   )}
-                </span>
-                <span className="hidden w-20 shrink-0 text-right text-[11px] text-stone-400 sm:block">
-                  {minutesAgo(o.created_at)}
-                </span>
-              </button>
-              {isOpen && (
-                <div className="bg-stone-50 px-4 py-3 text-xs">
-                  <div className="grid gap-1 sm:grid-cols-2">
-                    <div>
-                      {o.items.map((i, n) => (
-                        <div key={n} className="flex justify-between py-0.5 text-stone-700">
-                          <span>
-                            {i.qty} × {i.name}
-                            <span className="ml-2 text-[10px] text-stone-400 uppercase">
-                              {i.status}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                      STATUS_STYLE[o.status] ?? "bg-stone-100 text-stone-600"
+                    }`}
+                  >
+                    {o.status}
+                  </span>
+                  <span className="w-20 shrink-0 text-right text-sm font-bold text-stone-800">
+                    {Number(o.total_inr) === 0 ? "🎁 free" : inr(o.total_inr)}
+                  </span>
+                  <span className="hidden w-24 shrink-0 text-right text-[11px] font-semibold sm:block">
+                    {o.session?.status === "closed" ? (
+                      <span className="text-green-600">paid {inr(paid)}</span>
+                    ) : (
+                      <span className="text-rose-600">open tab</span>
+                    )}
+                  </span>
+                  <span className="hidden w-20 shrink-0 text-right text-[11px] text-stone-400 sm:block">
+                    {minutesAgo(o.created_at)}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="bg-stone-50 px-4 py-3 text-xs">
+                    <div className="grid gap-1 sm:grid-cols-2">
+                      <div>
+                        {o.items.map((i, n) => (
+                          <div key={n} className="flex justify-between py-0.5 text-stone-700">
+                            <span>
+                              {i.qty} × {i.name}
+                              <span className="ml-2 text-[10px] text-stone-400 uppercase">
+                                {i.status}
+                              </span>
                             </span>
-                          </span>
-                          <span className="font-semibold">
-                            {inr(Number(i.unit_price) * i.qty)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="text-stone-500 sm:text-right">
-                      <p>Order #{o.id.slice(0, 8).toUpperCase()}</p>
-                      <p>{new Date(o.created_at).toLocaleString()}</p>
-                      {(o.session?.discount_pct ?? 0) > 0 && (
-                        <p className="font-semibold text-rose-600">
-                          🎡 table discount −{o.session?.discount_pct}%
+                            <span className="font-semibold">
+                              {inr(Number(i.unit_price) * i.qty)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-stone-500 sm:text-right">
+                        <p>Order #{o.id.slice(0, 8).toUpperCase()}</p>
+                        <p>{new Date(o.created_at).toLocaleString()}</p>
+                        {(o.session?.discount_pct ?? 0) > 0 && (
+                          <p className="font-semibold text-rose-600">
+                            🎡 table discount −{o.session?.discount_pct}%
+                          </p>
+                        )}
+                        <p>
+                          session {o.session?.status}
+                          {o.session?.payments?.length
+                            ? ` · ${o.session.payments.map((p) => p.method).join(", ")}`
+                            : ""}
                         </p>
-                      )}
-                      <p>
-                        session {o.session?.status}
-                        {o.session?.payments?.length
-                          ? ` · ${o.session.payments.map((p) => p.method).join(", ")}`
-                          : ""}
-                      </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </section>
-    </main>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      </main>
     </AdminShell>
   );
 }

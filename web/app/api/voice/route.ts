@@ -56,16 +56,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { audio, text, greet, cart, messages, tableCode, language } =
-      (await req.json()) as {
-        audio?: string; // base64 wav (16k mono pcm16) — spoken turn
-        text?: string; // typed/tapped turn (quick-reply chips)
-        greet?: boolean; // Narada opens the conversation
-        cart: CartLine[];
-        messages: ChatMessage[];
-        tableCode?: string;
-        language?: string; // app language fallback
-      };
+    const { audio, text, greet, cart, messages, tableCode, language } = (await req.json()) as {
+      audio?: string; // base64 wav (16k mono pcm16) — spoken turn
+      text?: string; // typed/tapped turn (quick-reply chips)
+      greet?: boolean; // Narada opens the conversation
+      cart: CartLine[];
+      messages: ChatMessage[];
+      tableCode?: string;
+      language?: string; // app language fallback
+    };
     if (!audio && !text && !greet) {
       return NextResponse.json({ error: "audio, text or greet required" }, { status: 400 });
     }
@@ -73,8 +72,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "audio too long" }, { status: 413 });
     }
 
-    const appLangCode =
-      language === "Hindi" ? "hi-IN" : language === "Telugu" ? "te-IN" : "en-IN";
+    const appLangCode = language === "Hindi" ? "hi-IN" : language === "Telugu" ? "te-IN" : "en-IN";
     let transcript = "";
     let detected = appLangCode;
 
@@ -84,11 +82,7 @@ export async function POST(req: NextRequest) {
     if (audio) {
       const wavBytes = Buffer.from(audio, "base64");
       const form = new FormData();
-      form.append(
-        "file",
-        new Blob([new Uint8Array(wavBytes)], { type: "audio/wav" }),
-        "input.wav",
-      );
+      form.append("file", new Blob([new Uint8Array(wavBytes)], { type: "audio/wav" }), "input.wav");
       form.append("model", "saarika:v2.5");
       form.append("language_code", "unknown");
 
@@ -115,17 +109,16 @@ export async function POST(req: NextRequest) {
         "[The customer just sat down and opened the voice assistant. Greet them and start the conversation.]";
     }
 
-    const langName =
-      detected.startsWith("hi") ? "Hindi"
-      : detected.startsWith("te") ? "Telugu"
-      : detected.startsWith("en") && audio ? "English"
-      : language || "English";
+    const langName = detected.startsWith("hi")
+      ? "Hindi"
+      : detected.startsWith("te")
+        ? "Telugu"
+        : detected.startsWith("en") && audio
+          ? "English"
+          : language || "English";
 
     const menu = await menuPromise;
-    const allMessages: ChatMessage[] = [
-      ...(messages ?? []),
-      { role: "user", text: transcript },
-    ];
+    const allMessages: ChatMessage[] = [...(messages ?? []), { role: "user", text: transcript }];
     let anna: AnnaResponse;
     try {
       anna = await askAnna(menu, allMessages, cart ?? [], langName, { voice: true });
@@ -145,8 +138,7 @@ export async function POST(req: NextRequest) {
             : "en";
 
     // speak the reply in the language the customer is actually using
-    const ttsLang =
-      uiLanguage === "hi" ? "hi-IN" : uiLanguage === "te" ? "te-IN" : "en-IN";
+    const ttsLang = uiLanguage === "hi" ? "hi-IN" : uiLanguage === "te" ? "te-IN" : "en-IN";
     let audioOut: string | null = null;
     const ttsRes = await fetch(`${SARVAM}/text-to-speech`, {
       method: "POST",

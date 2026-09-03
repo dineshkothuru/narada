@@ -11,7 +11,6 @@ const LANG_BADGE: Record<string, { label: string; cls: string }> = {
   te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
 };
 
-
 type FloorTable = {
   id: string;
   label: string;
@@ -103,7 +102,10 @@ export default function FloorPage() {
   };
 
   const seat = (t: FloorTable) => {
-    const n = prompt(`Seat how many guests at ${t.label}? (capacity ${t.capacity})`, String(t.capacity));
+    const n = prompt(
+      `Seat how many guests at ${t.label}? (capacity ${t.capacity})`,
+      String(t.capacity),
+    );
     if (n === null) return;
     act({ action: "seat", tableId: t.id, guests: Number(n) });
   };
@@ -112,204 +114,222 @@ export default function FloorPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-      <header className="mx-auto mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
-            Narada · Floor
-          </h1>
-          <p className="text-xs text-stone-500">
-            Live table status, capacity and merges · refreshes every 5s
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/waiter" className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
-            Waiter
-          </Link>
-          <Link href="/kitchen" className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
-            Kitchen
-          </Link>
-          <Link href="/admin" className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white">
-            Admin
-          </Link>
-        </div>
-      </header>
-
-      {stats && (
-        <section className="mx-auto mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-green-600" />
-          <Stat label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} tone="text-sky-600" />
-          <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
-          <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
-        </section>
-      )}
-
-      {mergeFrom && (
-        <div className="mx-auto mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
-          <p className="text-sm font-bold">
-            Merging {mergeFrom.label} — pick the table it should join:
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {tables
-              .filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged)
-              .map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    act({
-                      action: "merge",
-                      sessionId: mergeFrom.sessionId,
-                      intoSessionId: t.sessionId,
-                    });
-                    setMergeFrom(null);
-                  }}
-                  className="rounded-full bg-white/15 px-4 py-2 text-xs font-bold ring-1 ring-white/25"
-                >
-                  {t.label}
-                </button>
-              ))}
-            {tables.filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged).length === 0 && (
-              <span className="text-xs text-stone-400">
-                No other open table to merge with — seat guests first.
-              </span>
-            )}
-            <button
-              onClick={() => setMergeFrom(null)}
-              className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold"
-            >
-              Cancel
-            </button>
+      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+        <header className="mx-auto mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Floor</h1>
+            <p className="text-xs text-stone-500">
+              Live table status, capacity and merges · refreshes every 5s
+            </p>
           </div>
-        </div>
-      )}
-
-      <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {tables.map((t) => {
-          const st = STATUS[t.status];
-          return (
-            <article
-              key={t.id}
-              className={`rounded-2xl bg-white p-4 shadow-sm ring-2 ${
-                t.calling ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : st.ring
-              }`}
+          <div className="flex gap-2">
+            <Link
+              href="/waiter"
+              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+              Waiter
+            </Link>
+            <Link
+              href="/kitchen"
+              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+            >
+              Kitchen
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
+            >
+              Admin
+            </Link>
+          </div>
+        </header>
+
+        {stats && (
+          <section className="mx-auto mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat
+              label="Free tables"
+              value={`${stats.free}/${stats.total}`}
+              tone="text-green-600"
+            />
+            <Stat
+              label="Seated / dining"
+              value={`${stats.seated} / ${stats.dining}`}
+              tone="text-sky-600"
+            />
+            <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
+            <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
+          </section>
+        )}
+
+        {mergeFrom && (
+          <div className="mx-auto mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
+            <p className="text-sm font-bold">
+              Merging {mergeFrom.label} — pick the table it should join:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tables
+                .filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged)
+                .map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      act({
+                        action: "merge",
+                        sessionId: mergeFrom.sessionId,
+                        intoSessionId: t.sessionId,
+                      });
+                      setMergeFrom(null);
+                    }}
+                    className="rounded-full bg-white/15 px-4 py-2 text-xs font-bold ring-1 ring-white/25"
+                  >
                     {t.label}
-                    {t.langs.map((l) => (
-                      <span
-                        key={l}
-                        title="language this table ordered in"
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
-                      >
-                        {LANG_BADGE[l]?.label ?? l.toUpperCase()}
-                      </span>
-                    ))}
-                    {t.isMerged && (
-                      <span className="ml-1.5 text-[10px] font-bold text-stone-400">
-                        merged →
-                      </span>
-                    )}
-                  </h2>
-                  <p className="text-[11px] text-stone-400">
-                    {t.capacity} seats
-                    {t.zone ? ` · ${t.zone}` : ""}
-                    {t.guests ? ` · ${t.guests} guests` : ""}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${st.chip}`}>
-                    {st.label.toUpperCase()}
-                  </span>
-                  {t.calling && t.callSince && <CallTimer since={t.callSince} compact />}
-                </div>
-              </div>
-
-              {t.mergedWith.length > 0 && (
-                <p className="mt-1 text-[11px] font-semibold text-stone-500">
-                  🔗 with {t.mergedWith.join(", ")}
-                </p>
+                  </button>
+                ))}
+              {tables.filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged).length ===
+                0 && (
+                <span className="text-xs text-stone-400">
+                  No other open table to merge with — seat guests first.
+                </span>
               )}
+              <button
+                onClick={() => setMergeFrom(null)}
+                className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
-              {t.status === "free" ? (
-                <button
-                  onClick={() => seat(t)}
-                  className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
-                >
-                  Seat guests
-                </button>
-              ) : (
-                <>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-600">
-                    <span>{minutesAgo(t.since!, true)}</span>
-                    <button
-                      onClick={() => {
-                        const who = prompt(`Who is serving ${t.label}?`, t.attendant ?? "");
-                        if (who === null) return;
-                        act({ action: "attendant", sessionId: t.sessionId, attendant: who });
-                      }}
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                        t.attendant
-                          ? "bg-violet-100 text-violet-700"
-                          : "bg-stone-100 text-stone-400"
-                      }`}
-                    >
-                      {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
-                    </button>
-                    <span>
-                      {t.served}/{t.rounds} served
-                    </span>
-                    {t.due > 0 && (
-                      <span className="font-bold text-rose-600">due {inr(t.due)}</span>
-                    )}
+        <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {tables.map((t) => {
+            const st = STATUS[t.status];
+            return (
+              <article
+                key={t.id}
+                className={`rounded-2xl bg-white p-4 shadow-sm ring-2 ${
+                  t.calling ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : st.ring
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+                      {t.label}
+                      {t.langs.map((l) => (
+                        <span
+                          key={l}
+                          title="language this table ordered in"
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                        >
+                          {LANG_BADGE[l]?.label ?? l.toUpperCase()}
+                        </span>
+                      ))}
+                      {t.isMerged && (
+                        <span className="ml-1.5 text-[10px] font-bold text-stone-400">
+                          merged →
+                        </span>
+                      )}
+                    </h2>
+                    <p className="text-[11px] text-stone-400">
+                      {t.capacity} seats
+                      {t.zone ? ` · ${t.zone}` : ""}
+                      {t.guests ? ` · ${t.guests} guests` : ""}
+                    </p>
                   </div>
-                  <div className="mt-3 flex gap-1.5">
-                    <a
-                      href={`/t/${t.code}`}
-                      target="_blank"
-                      className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${st.chip}`}
                     >
-                      Menu
-                    </a>
-                    {t.sessionId && (
+                      {st.label.toUpperCase()}
+                    </span>
+                    {t.calling && t.callSince && <CallTimer since={t.callSince} compact />}
+                  </div>
+                </div>
+
+                {t.mergedWith.length > 0 && (
+                  <p className="mt-1 text-[11px] font-semibold text-stone-500">
+                    🔗 with {t.mergedWith.join(", ")}
+                  </p>
+                )}
+
+                {t.status === "free" ? (
+                  <button
+                    onClick={() => seat(t)}
+                    className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                  >
+                    Seat guests
+                  </button>
+                ) : (
+                  <>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-600">
+                      <span>{minutesAgo(t.since!, true)}</span>
+                      <button
+                        onClick={() => {
+                          const who = prompt(`Who is serving ${t.label}?`, t.attendant ?? "");
+                          if (who === null) return;
+                          act({ action: "attendant", sessionId: t.sessionId, attendant: who });
+                        }}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                          t.attendant
+                            ? "bg-violet-100 text-violet-700"
+                            : "bg-stone-100 text-stone-400"
+                        }`}
+                      >
+                        {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
+                      </button>
+                      <span>
+                        {t.served}/{t.rounds} served
+                      </span>
+                      {t.due > 0 && (
+                        <span className="font-bold text-rose-600">due {inr(t.due)}</span>
+                      )}
+                    </div>
+                    <div className="mt-3 flex gap-1.5">
                       <a
-                        href={`/bill/${t.sessionId}`}
+                        href={`/t/${t.code}`}
                         target="_blank"
                         className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
                       >
-                        Bill
+                        Menu
                       </a>
-                    )}
-                    {t.isMerged ? (
-                      <button
-                        onClick={() => act({ action: "unmerge", sessionId: t.sessionId })}
-                        className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
-                      >
-                        Unmerge
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setMergeFrom(t)}
-                        className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
-                      >
-                        Merge
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </article>
-          );
-        })}
-      </div>
+                      {t.sessionId && (
+                        <a
+                          href={`/bill/${t.sessionId}`}
+                          target="_blank"
+                          className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
+                        >
+                          Bill
+                        </a>
+                      )}
+                      {t.isMerged ? (
+                        <button
+                          onClick={() => act({ action: "unmerge", sessionId: t.sessionId })}
+                          className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
+                        >
+                          Unmerge
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setMergeFrom(t)}
+                          className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
+                        >
+                          Merge
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </article>
+            );
+          })}
+        </div>
 
-      {freeTables.length > 0 && (
-        <p className="mx-auto mt-5 max-w-5xl text-center text-[11px] text-stone-400">
-          Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
-        </p>
-      )}
-    </main>
+        {freeTables.length > 0 && (
+          <p className="mx-auto mt-5 max-w-5xl text-center text-[11px] text-stone-400">
+            Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
+          </p>
+        )}
+      </main>
     </AdminShell>
   );
 }

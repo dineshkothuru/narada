@@ -39,7 +39,6 @@ const LANG_BADGE: Record<string, { label: string; cls: string }> = {
   te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
 };
 
-
 export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -105,240 +104,236 @@ export default function WaiterPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-      <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
-            Narada · Waiter
-          </h1>
-          <p className="text-xs text-stone-500">
-            Calls, running tabs &amp; payments · refreshes every 5s
-            {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/kitchen"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            Kitchen
-          </Link>
-          <Link
-            href="/admin"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            Admin
-          </Link>
-        </div>
-      </header>
-
-      {calls.length > 0 && (
-        <section className="mx-auto mb-5 max-w-3xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-rose-600 uppercase">
-            🔔 Waiter calls ({calls.length})
-          </h2>
-          <div className="flex flex-col gap-2">
-            {calls.map((t) => (
-              <div
-                key={t.call!.id}
-                className="flex animate-pulse items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-4 shadow-sm"
-              >
-                <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
-                  {t.label}
-                  <CallTimer since={t.call!.created_at} />
-                </span>
-                <button
-                  onClick={() => {
-                    const who = prompt(
-                      `Attending ${t.label} — your name (shown as this table's attendant):`,
-                      lastAttendant,
-                    );
-                    if (who === null) return;
-                    if (who.trim()) setLastAttendant(who.trim());
-                    act({
-                      action: "ack_call",
-                      callId: t.call!.id,
-                      sessionId: t.session?.id,
-                      attendedBy: who,
-                    });
-                  }}
-                  className="rounded-full bg-stone-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
-                >
-                  On it ✋
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {readyRounds.length > 0 && (
-        <section className="mx-auto mb-5 max-w-3xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
-            🔔 Ready to serve ({readyRounds.length})
-          </h2>
-          <div className="flex flex-col gap-2">
-            {readyRounds.map(({ table, order }) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4 shadow-sm"
-              >
-                <span className="min-w-0">
-                  <span className="text-sm font-bold text-stone-900">{table.label}</span>
-                  <span className="ml-2 text-xs text-stone-500">
-                    {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
-                  </span>
-                </span>
-                <button
-                  onClick={() => act({ action: "mark_served", orderId: order.id })}
-                  className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
-                >
-                  Served ✅
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="mx-auto max-w-3xl">
-        <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
-          Open tables ({active.length})
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {active.length === 0 && (
-            <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-stone-400 sm:col-span-2">
-              No open tables
+      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+        <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Waiter</h1>
+            <p className="text-xs text-stone-500">
+              Calls, running tabs &amp; payments · refreshes every 5s
+              {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
             </p>
-          )}
-          {active.map((t) => {
-            const s = t.session!;
-            return (
-              <article
-                key={t.tableId}
-                className={`rounded-2xl bg-white p-4 shadow-sm ${
-                  t.call
-                    ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
-                    : "ring-1 ring-stone-200/60"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href="/kitchen"
+              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+            >
+              Kitchen
+            </Link>
+            <Link
+              href="/admin"
+              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+            >
+              Admin
+            </Link>
+          </div>
+        </header>
+
+        {calls.length > 0 && (
+          <section className="mx-auto mb-5 max-w-3xl">
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-rose-600 uppercase">
+              🔔 Waiter calls ({calls.length})
+            </h2>
+            <div className="flex flex-col gap-2">
+              {calls.map((t) => (
+                <div
+                  key={t.call!.id}
+                  className="flex animate-pulse items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-4 shadow-sm"
+                >
+                  <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
                     {t.label}
-                    {s.langs.map((l) => (
-                      <span
-                        key={l}
-                        title="language this table ordered in"
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
-                      >
-                        {LANG_BADGE[l]?.label ?? l.toUpperCase()}
-                      </span>
-                    ))}
+                    <CallTimer since={t.call!.created_at} />
                   </span>
-                  <span className="text-[11px] text-stone-400">
-                    open {minutesAgo(s.since, true)}
-                  </span>
+                  <button
+                    onClick={() => {
+                      const who = prompt(
+                        `Attending ${t.label} — your name (shown as this table's attendant):`,
+                        lastAttendant,
+                      );
+                      if (who === null) return;
+                      if (who.trim()) setLastAttendant(who.trim());
+                      act({
+                        action: "ack_call",
+                        callId: t.call!.id,
+                        sessionId: t.session?.id,
+                        attendedBy: who,
+                      });
+                    }}
+                    className="rounded-full bg-stone-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  >
+                    On it ✋
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    const who = prompt(
-                      `Who is serving ${t.label}?`,
-                      s.attendant ?? lastAttendant,
-                    );
-                    if (who === null) return;
-                    if (who.trim()) setLastAttendant(who.trim());
-                    fetch("/api/floor", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        action: "attendant",
-                        sessionId: s.id,
-                        attendant: who,
-                      }),
-                    }).then(load);
-                  }}
-                  className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
-                    s.attendant
-                      ? "bg-violet-100 text-violet-700"
-                      : "bg-stone-100 text-stone-400"
+              ))}
+            </div>
+          </section>
+        )}
+
+        {readyRounds.length > 0 && (
+          <section className="mx-auto mb-5 max-w-3xl">
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
+              🔔 Ready to serve ({readyRounds.length})
+            </h2>
+            <div className="flex flex-col gap-2">
+              {readyRounds.map(({ table, order }) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4 shadow-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="text-sm font-bold text-stone-900">{table.label}</span>
+                    <span className="ml-2 text-xs text-stone-500">
+                      {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => act({ action: "mark_served", orderId: order.id })}
+                    className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  >
+                    Served ✅
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mx-auto max-w-3xl">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
+            Open tables ({active.length})
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {active.length === 0 && (
+              <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-stone-400 sm:col-span-2">
+                No open tables
+              </p>
+            )}
+            {active.map((t) => {
+              const s = t.session!;
+              return (
+                <article
+                  key={t.tableId}
+                  className={`rounded-2xl bg-white p-4 shadow-sm ${
+                    t.call
+                      ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
+                      : "ring-1 ring-stone-200/60"
                   }`}
                 >
-                  {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
-                </button>
-                <div className="mt-2 flex gap-4 text-xs text-stone-600">
-                  <span>
-                    {s.orders.length} order{s.orders.length !== 1 ? "s" : ""}
-                  </span>
-                  <span>billed {inr(s.ordered)}</span>
-                  {s.discountPct > 0 && (
-                    <span className="font-bold text-rose-600">-{s.discountPct}% 🎡</span>
-                  )}
-                  <span>+GST {inr(s.gst)}</span>
-                  {s.service > 0 && <span>+svc {inr(s.service)}</span>}
-                  {s.serviceWaived && <span className="text-stone-400">svc waived</span>}
-                  <span>paid {inr(s.paid)}</span>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span
-                    className={`text-sm font-extrabold ${
-                      s.due > 0 ? "text-rose-600" : "text-green-600"
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+                      {t.label}
+                      {s.langs.map((l) => (
+                        <span
+                          key={l}
+                          title="language this table ordered in"
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                        >
+                          {LANG_BADGE[l]?.label ?? l.toUpperCase()}
+                        </span>
+                      ))}
+                    </span>
+                    <span className="text-[11px] text-stone-400">
+                      open {minutesAgo(s.since, true)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const who = prompt(
+                        `Who is serving ${t.label}?`,
+                        s.attendant ?? lastAttendant,
+                      );
+                      if (who === null) return;
+                      if (who.trim()) setLastAttendant(who.trim());
+                      fetch("/api/floor", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "attendant",
+                          sessionId: s.id,
+                          attendant: who,
+                        }),
+                      }).then(load);
+                    }}
+                    className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                      s.attendant ? "bg-violet-100 text-violet-700" : "bg-stone-100 text-stone-400"
                     }`}
                   >
-                    {s.due > 0 ? `Due ${inr(s.due)}` : "Settled ✓"}
-                  </span>
-                  {s.due > 0 && (
-                    <div className="flex gap-1.5">
-                      <a
-                        href={`/bill/${s.id}`}
-                        target="_blank"
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-                      >
-                        🧾 Bill
-                      </a>
-                      <button
-                        onClick={() => {
-                          const utr = prompt(
-                            `UPI reference / UTR for ${t.label} (${inr(s.due)}) — paste from your UPI app, or leave blank:`,
-                            "",
-                          );
-                          if (utr === null) return;
-                          act({
-                            action: "mark_paid",
-                            sessionId: s.id,
-                            amount: s.due,
-                            method: "upi_intent",
-                            utr,
-                          });
-                        }}
-                        className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-                      >
-                        Paid UPI
-                      </button>
-                      <button
-                        onClick={() =>
-                          act({
-                            action: "mark_paid",
-                            sessionId: s.id,
-                            amount: s.due,
-                            method: "cash",
-                          })
-                        }
-                        className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-                      >
-                        Paid cash
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-        <p className="mt-4 text-center text-[11px] text-stone-400">
-          Marking paid records the payment and closes the table&apos;s tab.
-        </p>
-      </section>
-    </main>
+                    {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
+                  </button>
+                  <div className="mt-2 flex gap-4 text-xs text-stone-600">
+                    <span>
+                      {s.orders.length} order{s.orders.length !== 1 ? "s" : ""}
+                    </span>
+                    <span>billed {inr(s.ordered)}</span>
+                    {s.discountPct > 0 && (
+                      <span className="font-bold text-rose-600">-{s.discountPct}% 🎡</span>
+                    )}
+                    <span>+GST {inr(s.gst)}</span>
+                    {s.service > 0 && <span>+svc {inr(s.service)}</span>}
+                    {s.serviceWaived && <span className="text-stone-400">svc waived</span>}
+                    <span>paid {inr(s.paid)}</span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span
+                      className={`text-sm font-extrabold ${
+                        s.due > 0 ? "text-rose-600" : "text-green-600"
+                      }`}
+                    >
+                      {s.due > 0 ? `Due ${inr(s.due)}` : "Settled ✓"}
+                    </span>
+                    {s.due > 0 && (
+                      <div className="flex gap-1.5">
+                        <a
+                          href={`/bill/${s.id}`}
+                          target="_blank"
+                          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+                        >
+                          🧾 Bill
+                        </a>
+                        <button
+                          onClick={() => {
+                            const utr = prompt(
+                              `UPI reference / UTR for ${t.label} (${inr(s.due)}) — paste from your UPI app, or leave blank:`,
+                              "",
+                            );
+                            if (utr === null) return;
+                            act({
+                              action: "mark_paid",
+                              sessionId: s.id,
+                              amount: s.due,
+                              method: "upi_intent",
+                              utr,
+                            });
+                          }}
+                          className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                        >
+                          Paid UPI
+                        </button>
+                        <button
+                          onClick={() =>
+                            act({
+                              action: "mark_paid",
+                              sessionId: s.id,
+                              amount: s.due,
+                              method: "cash",
+                            })
+                          }
+                          className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                        >
+                          Paid cash
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-center text-[11px] text-stone-400">
+            Marking paid records the payment and closes the table&apos;s tab.
+          </p>
+        </section>
+      </main>
     </AdminShell>
   );
 }

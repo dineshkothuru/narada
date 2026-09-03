@@ -71,9 +71,7 @@ export async function GET() {
               // speaks one can choose to pick the table up
               langs: [
                 ...new Set(
-                  session.orders
-                    .map((o) => o.lang)
-                    .filter((l): l is string => Boolean(l)),
+                  session.orders.map((o) => o.lang).filter((l): l is string => Boolean(l)),
                 ),
               ],
               // full bill: discount + GST + service charge, minus what's paid
@@ -118,13 +116,10 @@ export async function PATCH(req: NextRequest) {
       // nobody has, whoever attends the call takes it — without stealing a
       // table someone already claimed
       if (body.attendedBy?.trim() && body.sessionId) {
-        await sbFetch(
-          `sessions?id=eq.${encodeURIComponent(body.sessionId)}&attendant=is.null`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ attendant: body.attendedBy.trim().slice(0, 40) }),
-          },
-        );
+        await sbFetch(`sessions?id=eq.${encodeURIComponent(body.sessionId)}&attendant=is.null`, {
+          method: "PATCH",
+          body: JSON.stringify({ attendant: body.attendedBy.trim().slice(0, 40) }),
+        });
       }
       return NextResponse.json({ ok: true });
     }
@@ -162,7 +157,11 @@ export async function PATCH(req: NextRequest) {
           amount_inr: amount,
           method: body.method === "cash" ? "cash" : "upi_intent",
           status: "confirmed",
-          reference: [bill.billNo, body.utr ? `UTR ${body.utr.trim().slice(0, 40)}` : null, "confirmed by staff"]
+          reference: [
+            bill.billNo,
+            body.utr ? `UTR ${body.utr.trim().slice(0, 40)}` : null,
+            "confirmed by staff",
+          ]
             .filter(Boolean)
             .join(" · "),
         }),

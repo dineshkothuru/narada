@@ -6,12 +6,7 @@ import type { NextRequest } from "next/server";
 // endpoints and the paid AI keys. Move to Upstash/Redis for real enforcement.
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
-export function rateLimit(
-  req: NextRequest,
-  key: string,
-  max: number,
-  windowMs = 60_000,
-): boolean {
+export function rateLimit(req: NextRequest, key: string, max: number, windowMs = 60_000): boolean {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||

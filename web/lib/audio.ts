@@ -10,11 +10,7 @@ export async function blobToWavBase64(blob: Blob): Promise<string> {
   await ctx.close();
 
   const targetRate = 16000;
-  const offline = new OfflineAudioContext(
-    1,
-    Math.ceil(decoded.duration * targetRate),
-    targetRate,
-  );
+  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
   const src = offline.createBufferSource();
   src.buffer = decoded;
   src.connect(offline.destination);

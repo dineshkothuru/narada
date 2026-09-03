@@ -106,8 +106,7 @@ export const STRINGS: Record<Lang, Strings> = {
     placeOrder: "Place order",
     payToOrder: "Pay & place order",
     orderSent: "Order sent to the kitchen!",
-    orderSentNote:
-      "Sit back — your food is on its way. You can keep ordering more rounds anytime.",
+    orderSentNote: "Sit back — your food is on its way. You can keep ordering more rounds anytime.",
     payUpi: "Pay {amount} via UPI",
     payLater: "Pay later — continue browsing",
     reviewOrder: "Review & order →",
@@ -184,8 +183,7 @@ export const STRINGS: Record<Lang, Strings> = {
     placeOrder: "ऑर्डर करें",
     payToOrder: "भुगतान करें और ऑर्डर करें",
     orderSent: "ऑर्डर किचन में भेज दिया गया!",
-    orderSentNote:
-      "आराम से बैठिए — खाना बन रहा है। आप कभी भी और ऑर्डर कर सकते हैं।",
+    orderSentNote: "आराम से बैठिए — खाना बन रहा है। आप कभी भी और ऑर्डर कर सकते हैं।",
     payUpi: "UPI से {amount} भुगतान करें",
     payLater: "बाद में भुगतान करें — ब्राउज़ करते रहें",
     reviewOrder: "ऑर्डर देखें →",
@@ -262,8 +260,7 @@ export const STRINGS: Record<Lang, Strings> = {
     placeOrder: "ఆర్డర్ చేయండి",
     payToOrder: "చెల్లించి ఆర్డర్ చేయండి",
     orderSent: "ఆర్డర్ కిచెన్‌కు పంపబడింది!",
-    orderSentNote:
-      "హాయిగా కూర్చోండి — మీ భోజనం సిద్ధమవుతోంది. ఎప్పుడైనా మరిన్ని ఆర్డర్ చేయవచ్చు.",
+    orderSentNote: "హాయిగా కూర్చోండి — మీ భోజనం సిద్ధమవుతోంది. ఎప్పుడైనా మరిన్ని ఆర్డర్ చేయవచ్చు.",
     payUpi: "UPI ద్వారా {amount} చెల్లించండి",
     payLater: "తర్వాత చెల్లించండి — బ్రౌజ్ చేస్తూ ఉండండి",
     reviewOrder: "ఆర్డర్ చూడండి →",

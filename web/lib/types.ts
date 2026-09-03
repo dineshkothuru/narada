@@ -1,5 +1,3 @@
-export type Lang = "en" | "hi" | "te";
-
 export type Localized = { en: string; hi: string; te: string };
 
 export type MenuCategory = {

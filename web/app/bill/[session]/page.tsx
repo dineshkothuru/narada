@@ -3,11 +3,7 @@ import { inr } from "@/lib/format";
 import PrintButton from "./PrintButton";
 
 // Printable bill / receipt — 80mm thermal friendly, works for staff and guests.
-export default async function BillPage({
-  params,
-}: {
-  params: Promise<{ session: string }>;
-}) {
+export default async function BillPage({ params }: { params: Promise<{ session: string }> }) {
   const { session } = await params;
   let bill;
   try {
@@ -40,9 +36,7 @@ export default async function BillPage({
             <h1 className="font-display text-xl font-semibold text-stone-900">
               {bill.restaurantName}
             </h1>
-            {bill.gstin && (
-              <p className="text-[10px] text-stone-500">GSTIN: {bill.gstin}</p>
-            )}
+            {bill.gstin && <p className="text-[10px] text-stone-500">GSTIN: {bill.gstin}</p>}
             <p className="mt-1 text-[11px] font-bold text-stone-700">
               {bill.tableLabel} · {settled ? "TAX INVOICE" : "BILL PREVIEW"}
             </p>

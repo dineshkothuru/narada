@@ -48,9 +48,7 @@ export async function POST(req: NextRequest) {
     }
     const restaurantId = restaurants[0].id;
     const variant = ui_variant === "stories" ? "stories" : "classic";
-    const existing = await sbFetch<{ label: string; code: string }[]>(
-      `tables?select=label,code`,
-    );
+    const existing = await sbFetch<{ label: string; code: string }[]>(`tables?select=label,code`);
     const takenCodes = new Set(existing.map((t) => t.code));
     const uniqueCode = (base: string) => {
       let code = base || "table";
@@ -61,9 +59,7 @@ export async function POST(req: NextRequest) {
     };
 
     const seats =
-      typeof capacity === "number" && capacity > 0 && capacity <= 50
-        ? Math.floor(capacity)
-        : 4;
+      typeof capacity === "number" && capacity > 0 && capacity <= 50 ? Math.floor(capacity) : 4;
     const rows: Record<string, string | number>[] = [];
     if (typeof count === "number" && count > 0) {
       // batch: continue numbering after the highest existing "Table N"

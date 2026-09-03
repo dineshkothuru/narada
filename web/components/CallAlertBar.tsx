@@ -35,9 +35,7 @@ export default function CallAlertBar({ calls }: { calls: OpenCall[] }) {
               <span className="text-sm font-bold">🔔 {c.label}</span>
               <CallTimer since={c.since} compact />
               {c.attendant && (
-                <span className="text-[11px] font-semibold text-rose-100">
-                  · {c.attendant}
-                </span>
+                <span className="text-[11px] font-semibold text-rose-100">· {c.attendant}</span>
               )}
             </span>
           ))}

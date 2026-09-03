@@ -61,9 +61,9 @@ export async function computeBill(sessionId: string, tipOverride?: number): Prom
         `table:tables(label),orders(status,items:order_items(name,qty,unit_price,gst_pct)),` +
         `payments(amount_inr,status)&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
     ),
-    sbFetch<
-      { name: string; service_charge_pct: number; gstin: string | null }[]
-    >(`restaurants?select=name,service_charge_pct,gstin&limit=1`),
+    sbFetch<{ name: string; service_charge_pct: number; gstin: string | null }[]>(
+      `restaurants?select=name,service_charge_pct,gstin&limit=1`,
+    ),
   ]);
   if (sessions.length === 0) throw new Error("unknown session");
   const s = sessions[0];

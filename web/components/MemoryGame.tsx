@@ -6,9 +6,7 @@ import { MEMORY_EMOJIS, MEMORY_LEVELS } from "@/lib/games";
 type Card = { id: number; emoji: string; matched: boolean };
 
 function buildDeck(pairs: number): Card[] {
-  const emojis = [...MEMORY_EMOJIS]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, pairs);
+  const emojis = [...MEMORY_EMOJIS].sort(() => Math.random() - 0.5).slice(0, pairs);
   return [...emojis, ...emojis]
     .map((emoji, id) => ({ id, emoji, matched: false }))
     .sort(() => Math.random() - 0.5);
@@ -71,9 +69,7 @@ export default function MemoryGame({
       setMoves((m) => m + 1);
       const [a, b] = next;
       if (deck[a].emoji === deck[b].emoji) {
-        setDeck((d) =>
-          d.map((c, i) => (i === a || i === b ? { ...c, matched: true } : c)),
-        );
+        setDeck((d) => d.map((c, i) => (i === a || i === b ? { ...c, matched: true } : c)));
         setFlippedSafe([]);
       } else {
         lockRef.current = true;
@@ -129,9 +125,7 @@ export default function MemoryGame({
         </button>
       )}
       {levelClear && level === MEMORY_LEVELS.length - 1 && (
-        <p className="animate-pop mt-3 text-center text-sm font-bold text-green-600">
-          🎉
-        </p>
+        <p className="animate-pop mt-3 text-center text-sm font-bold text-green-600">🎉</p>
       )}
     </div>
   );

@@ -12,9 +12,9 @@ export async function getApiKeys(): Promise<{ gemini: string; sarvam: string }> 
   const envGemini = process.env.GEMINI_API_KEY || "";
   const envSarvam = process.env.SARVAM_API_KEY || "";
   try {
-    const rows = await sbFetch<
-      { gemini_api_key: string | null; sarvam_api_key: string | null }[]
-    >(`restaurants?select=gemini_api_key,sarvam_api_key&limit=1`);
+    const rows = await sbFetch<{ gemini_api_key: string | null; sarvam_api_key: string | null }[]>(
+      `restaurants?select=gemini_api_key,sarvam_api_key&limit=1`,
+    );
     const keys = {
       gemini: rows[0]?.gemini_api_key || envGemini,
       sarvam: rows[0]?.sarvam_api_key || envSarvam,

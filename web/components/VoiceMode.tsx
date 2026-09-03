@@ -171,9 +171,7 @@ export default function VoiceMode({
       };
       recorder.start();
     } catch {
-      setError(
-        "Microphone unavailable — allow mic access for this site, then try again.",
-      );
+      setError("Microphone unavailable — allow mic access for this site, then try again.");
       setStatus("idle");
     }
   }, [cleanupListening, handleResult, onClose, onTurn]);
@@ -339,9 +337,7 @@ export default function VoiceMode({
                     : "bg-stone-500/30"
               }`}
               style={
-                status === "listening"
-                  ? { transform: `scale(${1 + level * 0.6})` }
-                  : undefined
+                status === "listening" ? { transform: `scale(${1 + level * 0.6})` } : undefined
               }
             />
             <span
@@ -367,7 +363,8 @@ export default function VoiceMode({
 
           <div className="min-w-0 flex-1 text-left">
             <p className="text-[11px] font-bold text-white">
-              Narada · <span className="font-medium text-stone-400">{error ? "⚠️" : statusText}</span>
+              Narada ·{" "}
+              <span className="font-medium text-stone-400">{error ? "⚠️" : statusText}</span>
             </p>
             <p className="line-clamp-2 text-xs leading-snug text-stone-300">
               {error ?? (lastAnna || strings.voiceHint)}

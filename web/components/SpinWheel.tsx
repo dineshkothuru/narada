@@ -69,13 +69,17 @@ export default function SpinWheel({
           className="h-64 w-64"
           style={{
             transform: `rotate(${deg}deg)`,
-            transition: spinning
-              ? "transform 4.2s cubic-bezier(0.15, 0.9, 0.28, 1)"
-              : undefined,
+            transition: spinning ? "transform 4.2s cubic-bezier(0.15, 0.9, 0.28, 1)" : undefined,
           }}
         >
           {WHEEL.map((s, i) => (
-            <path key={i} d={sliceArc(i, 124, 130, 130)} fill={s.color} stroke="#fff" strokeWidth="2" />
+            <path
+              key={i}
+              d={sliceArc(i, 124, 130, 130)}
+              fill={s.color}
+              stroke="#fff"
+              strokeWidth="2"
+            />
           ))}
           {WHEEL.map((s, i) => {
             const mid = ((i * SLICE_DEG + SLICE_DEG / 2 - 90) * Math.PI) / 180;
@@ -93,8 +97,12 @@ export default function SpinWheel({
                 fill="#fff"
                 transform={`rotate(${i * SLICE_DEG + SLICE_DEG / 2} ${tx} ${ty})`}
               >
-                <tspan x={tx} dy="-6">{s.emoji}</tspan>
-                <tspan x={tx} dy="13">{s.label}</tspan>
+                <tspan x={tx} dy="-6">
+                  {s.emoji}
+                </tspan>
+                <tspan x={tx} dy="13">
+                  {s.label}
+                </tspan>
               </text>
             );
           })}

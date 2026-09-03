@@ -8,13 +8,7 @@ import MemoryGame from "./MemoryGame";
 import SpinWheel from "./SpinWheel";
 import StoryViewer from "./StoryViewer";
 import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
-import type {
-  AnnaResponse,
-  CartLine,
-  ChatMessage,
-  MenuItem,
-  MenuPayload,
-} from "@/lib/types";
+import type { AnnaResponse, CartLine, ChatMessage, MenuItem, MenuPayload } from "@/lib/types";
 
 import { inr } from "@/lib/format";
 
@@ -34,9 +28,7 @@ function VegMark({ isVeg }: { isVeg: boolean }) {
         isVeg ? "border-green-600" : "border-red-600"
       }`}
     >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${isVeg ? "bg-green-600" : "bg-red-600"}`}
-      />
+      <span className={`h-1.5 w-1.5 rounded-full ${isVeg ? "bg-green-600" : "bg-red-600"}`} />
     </span>
   );
 }
@@ -66,9 +58,7 @@ function ItemPhoto({
     );
   }
   return (
-    <div className={`${className} grid place-items-center bg-stone-100 text-4xl`}>
-      {emoji}
-    </div>
+    <div className={`${className} grid place-items-center bg-stone-100 text-4xl`}>{emoji}</div>
   );
 }
 
@@ -111,9 +101,16 @@ export default function OrderExperience({
   const [myOrderIds, setMyOrderIds] = useState<string[]>([]);
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
   const [bill, setBill] = useState<{
-    gross: number; discountPct: number; discount: number; taxable: number;
-    gst: number; serviceChargePct: number; serviceWaived: boolean; service: number;
-    tip: number; net: number;
+    gross: number;
+    discountPct: number;
+    discount: number;
+    taxable: number;
+    gst: number;
+    serviceChargePct: number;
+    serviceWaived: boolean;
+    service: number;
+    tip: number;
+    net: number;
   } | null>(null);
   const [tip, setTip] = useState(0);
   const [placing, setPlacing] = useState(false);
@@ -156,10 +153,7 @@ export default function OrderExperience({
     myOrderIdsRef.current = myOrderIds;
   }, [myOrderIds]);
 
-  const MENU_BY_ID = useMemo(
-    () => new Map(menuItems.map((m) => [m.id, m])),
-    [menuItems],
-  );
+  const MENU_BY_ID = useMemo(() => new Map(menuItems.map((m) => [m.id, m])), [menuItems]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -215,7 +209,18 @@ export default function OrderExperience({
         }),
       );
     } catch {}
-  }, [hydrated, cart, messages, lang, spinDone, discountPct, orderPlaced, guestName, myOrderIds, storageKey]);
+  }, [
+    hydrated,
+    cart,
+    messages,
+    lang,
+    spinDone,
+    discountPct,
+    orderPlaced,
+    guestName,
+    myOrderIds,
+    storageKey,
+  ]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -276,7 +281,6 @@ export default function OrderExperience({
     };
   }, [orderPlaced?.sessionId, orderPlaced?.orderId]);
 
-
   // live bill (GST + service charge + tip) whenever the order sheet is open
   useEffect(() => {
     const sessionId = orderPlaced?.sessionId;
@@ -309,8 +313,7 @@ export default function OrderExperience({
   };
 
   const total = useMemo(
-    () =>
-      cart.reduce((sum, l) => sum + (MENU_BY_ID.get(l.itemId)?.priceInr ?? 0) * l.qty, 0),
+    () => cart.reduce((sum, l) => sum + (MENU_BY_ID.get(l.itemId)?.priceInr ?? 0) * l.qty, 0),
     [cart, MENU_BY_ID],
   );
   const itemCount = useMemo(() => cart.reduce((n, l) => n + l.qty, 0), [cart]);
@@ -326,9 +329,7 @@ export default function OrderExperience({
       }
       const qty = line.qty + delta;
       if (qty <= 0) return prev.filter((l) => l.itemId !== itemId);
-      return prev.map((l) =>
-        l.itemId === itemId ? { ...l, qty, notes: notes ?? l.notes } : l,
-      );
+      return prev.map((l) => (l.itemId === itemId ? { ...l, qty, notes: notes ?? l.notes } : l));
     });
   };
 
@@ -365,9 +366,7 @@ export default function OrderExperience({
         const line = nextCart.find((l) => l.itemId === a.itemId);
         nextCart = line
           ? nextCart.map((l) =>
-              l.itemId === a.itemId
-                ? { ...l, qty: l.qty + qty, notes: a.notes ?? l.notes }
-                : l,
+              l.itemId === a.itemId ? { ...l, qty: l.qty + qty, notes: a.notes ?? l.notes } : l,
             )
           : [...nextCart, { itemId: a.itemId, qty, notes: a.notes }];
         setToast(`+ ${item.name[curLang]} ×${qty}`);
@@ -434,9 +433,7 @@ export default function OrderExperience({
     }
   };
 
-  const voiceTurn = async (
-    body: Record<string, unknown>,
-  ): Promise<VoiceTurnResult> => {
+  const voiceTurn = async (body: Record<string, unknown>): Promise<VoiceTurnResult> => {
     try {
       const res = await fetch("/api/voice", {
         method: "POST",
@@ -467,9 +464,7 @@ export default function OrderExperience({
       if (spoken && spoken !== langRef.current) setLang(spoken);
       setMessages((m) => [
         ...m,
-        ...(data.transcript
-          ? [{ role: "user" as const, text: data.transcript }]
-          : []),
+        ...(data.transcript ? [{ role: "user" as const, text: data.transcript }] : []),
         { role: "assistant" as const, text: data.reply },
       ]);
       const confirmed = applyAnnaActions(data);
@@ -570,13 +565,13 @@ export default function OrderExperience({
   const payable = bill
     ? bill.net
     : orderPlaced
-    ? Math.round(
-        (rounds.length
-          ? rounds.reduce((s, r) => s + Number(r.total_inr), 0)
-          : orderPlaced.total) *
-          (1 - discountPct / 100),
-      )
-    : 0;
+      ? Math.round(
+          (rounds.length
+            ? rounds.reduce((s, r) => s + Number(r.total_inr), 0)
+            : orderPlaced.total) *
+            (1 - discountPct / 100),
+        )
+      : 0;
 
   const upiLink = orderPlaced
     ? `upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(
@@ -631,19 +626,11 @@ export default function OrderExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rounds, lang]);
   const statusEmojiFor = (status: string) =>
-    status === "served"
-      ? "✅"
-      : status === "ready"
-        ? "🔔"
-        : status === "preparing"
-          ? "👨‍🍳"
-          : "⏳";
+    status === "served" ? "✅" : status === "ready" ? "🔔" : status === "preparing" ? "👨‍🍳" : "⏳";
   const heroDishes = useMemo<MenuItem[]>(() => {
     const avail = menuItems.filter((m) => m.isAvailable);
     const specials = avail.filter((m) => m.tags.includes("chef-special"));
-    const best = avail.filter(
-      (m) => m.tags.includes("bestseller") && !specials.includes(m),
-    );
+    const best = avail.filter((m) => m.tags.includes("bestseller") && !specials.includes(m));
     return [...specials.slice(0, 2), ...best.slice(0, 2)];
   }, [menuItems]);
   const statusLabel = statusLabelFor(orderStatus);
@@ -652,130 +639,130 @@ export default function OrderExperience({
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-36">
       {/* Dark hero zone */}
       <div className="rounded-b-[2rem] bg-gradient-to-b from-stone-950 to-stone-900 shadow-xl shadow-stone-950/25">
-      <header className="px-5 pt-8 pb-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-rose-400 uppercase">
-              {tableLabel} · {t.dineIn}
-            </p>
-            <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-white">
-              {restaurant.name}
-            </h1>
-            <p className="mt-0.5 text-xs text-stone-400">{restaurant.tagline}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex rounded-full bg-white/10 p-0.5">
-              {LANGS.map((l) => (
-                <button
-                  key={l.code}
-                  onClick={() => setLang(l.code)}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
-                    lang === l.code ? "bg-white text-stone-900" : "text-stone-400"
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
+        <header className="px-5 pt-8 pb-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-rose-400 uppercase">
+                {tableLabel} · {t.dineIn}
+              </p>
+              <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-white">
+                {restaurant.name}
+              </h1>
+              <p className="mt-0.5 text-xs text-stone-400">{restaurant.tagline}</p>
             </div>
-            <button
-              onClick={() => setVegOnly((v) => !v)}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                vegOnly
-                  ? "border-green-400 bg-green-500/15 text-green-300"
-                  : "border-white/20 text-stone-300"
-              }`}
-            >
-              <VegMark isVeg /> {t.veg}
-            </button>
-            <button
-              onClick={callWaiter}
-              className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
-            >
-              🔔 {t.callWaiter}
-            </button>
-            {menu.uiVariant === "stories" && (
-              <button
-                onClick={() => setStoriesOpen(true)}
-                className="flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-300 transition active:scale-95"
-              >
-                ✨ Stories
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Hero carousel: specials, offers, Narada */}
-      <div className="pt-1 pb-6">
-        <HeroCarousel>
-          {[
-            ...heroDishes.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  changeQty(item.id, 1);
-                  setToast(`+ ${item.name[lang]}`);
-                }}
-                className="relative block h-44 w-full overflow-hidden rounded-3xl text-left shadow-md transition active:scale-[0.98]"
-              >
-                <ItemPhoto
-                  imageUrl={item.imageUrl}
-                  emoji={item.emoji}
-                  alt={item.name.en}
-                  className="absolute inset-0 h-full w-full"
-                />
-                <span className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/25 to-transparent" />
-                <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-stone-900">
-                  {item.tags.includes("chef-special") ? t.heroSpecial : t.bestseller}
-                </span>
-                <span className="absolute bottom-3 left-4 right-20">
-                  <span className="font-display block truncate text-xl font-semibold text-white">
-                    {item.name[lang]}
-                  </span>
-                  <span className="text-sm font-semibold text-stone-200">
-                    {inr(item.priceInr)}
-                  </span>
-                </span>
-                <span className="absolute right-3 bottom-4 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-extrabold text-white shadow">
-                  {t.add}
-                </span>
-              </button>
-            )),
-            ...(!spinDone
-              ? [
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex rounded-full bg-white/10 p-0.5">
+                {LANGS.map((l) => (
                   <button
-                    key="spin"
-                    onClick={() => setWheelOpen(true)}
-                    className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-700 px-6 text-left shadow-md transition active:scale-[0.98]"
+                    key={l.code}
+                    onClick={() => setLang(l.code)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
+                      lang === l.code ? "bg-white text-stone-900" : "text-stone-400"
+                    }`}
                   >
-                    <span className="text-6xl">🎡</span>
-                    <span>
-                      <span className="font-display block text-xl font-semibold text-white">
-                        {t.spinBanner}
-                      </span>
-                      <span className="mt-1 block text-xs text-sky-100">{t.spinSub}</span>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setVegOnly((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  vegOnly
+                    ? "border-green-400 bg-green-500/15 text-green-300"
+                    : "border-white/20 text-stone-300"
+                }`}
+              >
+                <VegMark isVeg /> {t.veg}
+              </button>
+              <button
+                onClick={callWaiter}
+                className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
+              >
+                🔔 {t.callWaiter}
+              </button>
+              {menu.uiVariant === "stories" && (
+                <button
+                  onClick={() => setStoriesOpen(true)}
+                  className="flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-300 transition active:scale-95"
+                >
+                  ✨ Stories
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Hero carousel: specials, offers, Narada */}
+        <div className="pt-1 pb-6">
+          <HeroCarousel>
+            {[
+              ...heroDishes.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    changeQty(item.id, 1);
+                    setToast(`+ ${item.name[lang]}`);
+                  }}
+                  className="relative block h-44 w-full overflow-hidden rounded-3xl text-left shadow-md transition active:scale-[0.98]"
+                >
+                  <ItemPhoto
+                    imageUrl={item.imageUrl}
+                    emoji={item.emoji}
+                    alt={item.name.en}
+                    className="absolute inset-0 h-full w-full"
+                  />
+                  <span className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/25 to-transparent" />
+                  <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold text-stone-900">
+                    {item.tags.includes("chef-special") ? t.heroSpecial : t.bestseller}
+                  </span>
+                  <span className="absolute bottom-3 left-4 right-20">
+                    <span className="font-display block truncate text-xl font-semibold text-white">
+                      {item.name[lang]}
                     </span>
-                  </button>,
-                ]
-              : []),
-            <button
-              key="anna"
-              onClick={() => setVoiceOpen(true)}
-              className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-rose-600 px-6 text-left shadow-md transition active:scale-[0.98]"
-            >
-              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-white/15 text-4xl">
-                🎙️
-              </span>
-              <span>
-                <span className="font-display block text-xl font-semibold text-white">
-                  {t.talkToAnna}
+                    <span className="text-sm font-semibold text-stone-200">
+                      {inr(item.priceInr)}
+                    </span>
+                  </span>
+                  <span className="absolute right-3 bottom-4 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-extrabold text-white shadow">
+                    {t.add}
+                  </span>
+                </button>
+              )),
+              ...(!spinDone
+                ? [
+                    <button
+                      key="spin"
+                      onClick={() => setWheelOpen(true)}
+                      className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-700 px-6 text-left shadow-md transition active:scale-[0.98]"
+                    >
+                      <span className="text-6xl">🎡</span>
+                      <span>
+                        <span className="font-display block text-xl font-semibold text-white">
+                          {t.spinBanner}
+                        </span>
+                        <span className="mt-1 block text-xs text-sky-100">{t.spinSub}</span>
+                      </span>
+                    </button>,
+                  ]
+                : []),
+              <button
+                key="anna"
+                onClick={() => setVoiceOpen(true)}
+                className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-rose-600 px-6 text-left shadow-md transition active:scale-[0.98]"
+              >
+                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-white/15 text-4xl">
+                  🎙️
                 </span>
-                <span className="mt-1 block text-xs text-rose-100">{t.voiceHint}</span>
-              </span>
-            </button>,
-          ]}
-        </HeroCarousel>
-      </div>
+                <span>
+                  <span className="font-display block text-xl font-semibold text-white">
+                    {t.talkToAnna}
+                  </span>
+                  <span className="mt-1 block text-xs text-rose-100">{t.voiceHint}</span>
+                </span>
+              </button>,
+            ]}
+          </HeroCarousel>
+        </div>
       </div>
 
       {/* Sticky zone: live order banner + category chips */}
@@ -840,9 +827,7 @@ export default function OrderExperience({
           </div>
         )}
         {categories.map((cat) => {
-          const items = menuItems.filter(
-            (m) => m.categoryId === cat.id && (!vegOnly || m.isVeg),
-          );
+          const items = menuItems.filter((m) => m.categoryId === cat.id && (!vegOnly || m.isVeg));
           if (items.length === 0) return null;
           return (
             <section
@@ -866,9 +851,7 @@ export default function OrderExperience({
                         itemRefs.current[item.id] = el;
                       }}
                       className={`flex gap-4 py-4 transition-all duration-500 ${
-                        highlighted
-                          ? "-mx-2 rounded-2xl bg-rose-50 px-2 ring-2 ring-rose-400"
-                          : ""
+                        highlighted ? "-mx-2 rounded-2xl bg-rose-50 px-2 ring-2 ring-rose-400" : ""
                       } ${!item.isAvailable ? "opacity-45 grayscale" : ""}`}
                     >
                       <div
@@ -995,11 +978,13 @@ export default function OrderExperience({
           />
           <div className="animate-sheet-up relative flex flex-col items-center rounded-t-[2rem] bg-white px-5 pt-3 pb-10">
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-stone-200" />
-            <h2 className="font-display text-2xl font-semibold text-stone-900">
-              {t.spinBanner}
-            </h2>
+            <h2 className="font-display text-2xl font-semibold text-stone-900">{t.spinBanner}</h2>
             <p className="mb-5 text-xs text-stone-400">{t.spinSub}</p>
-            <SpinWheel strings={{ spin: t.spin }} resolveSpin={resolveSpin} onResult={onWheelResult} />
+            <SpinWheel
+              strings={{ spin: t.spin }}
+              resolveSpin={resolveSpin}
+              onResult={onWheelResult}
+            />
             {spinResult !== null && (
               <>
                 <div
@@ -1101,9 +1086,7 @@ export default function OrderExperience({
                     onClick={() => setGameOpen(true)}
                     className="mt-5 w-full rounded-2xl bg-stone-900 px-5 py-4 text-left shadow-lg transition active:scale-[0.98]"
                   >
-                    <span className="block text-sm font-bold text-white">
-                      {t.playTitle}
-                    </span>
+                    <span className="block text-sm font-bold text-white">{t.playTitle}</span>
                     <span className="block text-xs text-stone-300">{t.playSub}</span>
                   </button>
                 )}
@@ -1144,7 +1127,9 @@ export default function OrderExperience({
                     </div>
                     {bill.discount > 0 && (
                       <div className="flex justify-between py-0.5 text-rose-600">
-                        <span>🎡 {t.discountApplied.replace("{pct}", String(bill.discountPct))}</span>
+                        <span>
+                          🎡 {t.discountApplied.replace("{pct}", String(bill.discountPct))}
+                        </span>
                         <span className="font-semibold">− {inr(bill.discount)}</span>
                       </div>
                     )}
@@ -1257,9 +1242,7 @@ export default function OrderExperience({
                   {tableLabel} · {t.payNote}
                 </p>
                 {cart.length === 0 ? (
-                  <p className="py-10 text-center text-sm text-stone-400">
-                    {t.emptyCart}
-                  </p>
+                  <p className="py-10 text-center text-sm text-stone-400">{t.emptyCart}</p>
                 ) : (
                   <div className="mt-4 flex flex-col gap-3">
                     {cart.map((line) => {
@@ -1281,9 +1264,7 @@ export default function OrderExperience({
                               {item.name[lang]}
                             </p>
                             {line.notes && (
-                              <p className="truncate text-[11px] text-rose-600">
-                                ✎ {line.notes}
-                              </p>
+                              <p className="truncate text-[11px] text-rose-600">✎ {line.notes}</p>
                             )}
                             <p className="text-xs text-stone-400">
                               {inr(item.priceInr)} {t.each}

@@ -30,7 +30,7 @@ Prereqs: Node 20+, a free [Supabase](https://supabase.com) project, a
 
 ```bash
 git clone https://github.com/<owner>/narada
-cd narada/web
+cd narada
 npm install
 ```
 
@@ -48,8 +48,9 @@ npm install
 3. **Run** — `npm run dev`, then open http://localhost:3000 and pick a table.
 
 Where to click:
+
 - `/t/t1-demo` — the customer experience (each table's QR points at its own code).
-  Tap the 🎙️ button and *talk* to Narada — Telugu, Hindi, or English.
+  Tap the 🎙️ button and _talk_ to Narada — Telugu, Hindi, or English.
 - `/kitchen` — live kitchen dashboard (orders arrive here). Needs the staff PIN.
 - `/admin` — menu availability, prices, payment timing, UPI ID, staff PIN, and
   the Gemini/Sarvam API keys. Same PIN.
@@ -84,17 +85,17 @@ Order fired to kitchen dashboard / printer
 
 ## Components
 
-| # | Component | Tech | Notes |
-|---|-----------|------|-------|
-| 1 | Customer PWA | Next.js + Tailwind | Menu, cart, mic button, payment screen. Mobile-first. |
-| 2 | Backend API | Node.js (Fastify/Express) | Menu CRUD, orders, sessions, payment webhooks. |
-| 3 | Voice pipeline | WebSocket server | Streams mic audio → Sarvam STT → Gemini → Sarvam TTS → audio back. |
-| 4 | Agent brain | Gemini (function calling) | System prompt = full menu JSON + rules. Tools: `answer from menu`, `add_to_cart`, `remove_from_cart`, `get_cart`, `confirm_order`. |
-| 5 | Speech | Sarvam AI | Saarika (STT, streaming) + Bulbul (TTS). Built for Indic languages — the reason to pick it over Google/OpenAI speech. |
-| 6 | Payments | Razorpay or Cashfree (recommended) or raw UPI intent | See payment options below. |
-| 7 | Kitchen view | Simple web dashboard | Live orders per table; mark preparing/served. |
-| 8 | Admin | Web dashboard | Menu editor, table/QR generator, order history. |
-| 9 | Database | Postgres (Supabase is a fast start) | menus, items, tables, orders, payments. |
+| #   | Component      | Tech                                                 | Notes                                                                                                                              |
+| --- | -------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Customer PWA   | Next.js + Tailwind                                   | Menu, cart, mic button, payment screen. Mobile-first.                                                                              |
+| 2   | Backend API    | Node.js (Fastify/Express)                            | Menu CRUD, orders, sessions, payment webhooks.                                                                                     |
+| 3   | Voice pipeline | WebSocket server                                     | Streams mic audio → Sarvam STT → Gemini → Sarvam TTS → audio back.                                                                 |
+| 4   | Agent brain    | Gemini (function calling)                            | System prompt = full menu JSON + rules. Tools: `answer from menu`, `add_to_cart`, `remove_from_cart`, `get_cart`, `confirm_order`. |
+| 5   | Speech         | Sarvam AI                                            | Saarika (STT, streaming) + Bulbul (TTS). Built for Indic languages — the reason to pick it over Google/OpenAI speech.              |
+| 6   | Payments       | Razorpay or Cashfree (recommended) or raw UPI intent | See payment options below.                                                                                                         |
+| 7   | Kitchen view   | Simple web dashboard                                 | Live orders per table; mark preparing/served.                                                                                      |
+| 8   | Admin          | Web dashboard                                        | Menu editor, table/QR generator, order history.                                                                                    |
+| 9   | Database       | Postgres (Supabase is a fast start)                  | menus, items, tables, orders, payments.                                                                                            |
 
 ## Who talks to whom (your Sarvam→Gemini question)
 
@@ -119,6 +120,7 @@ no server-side payment confirmation, so staff verify payment on their own UPI ap
 (normal practice in Indian restaurants). No Razorpay/gateway integration.
 
 **Payment timing is an admin setting** per restaurant (`restaurants.payment_timing`):
+
 - `post` (default): order fires to the kitchen first, customer pays at the end —
   leaves the waiting window free for engagement (see below).
 - `pre`: customer pays to place the order.
@@ -135,7 +137,8 @@ no server-side payment confirmation, so staff verify payment on their own UPI ap
 ## Identity & order updates
 
 No login, no location, no phone number to start ordering — scanning the table's QR
-*is* the identity (table session). Order status updates:
+_is_ the identity (table session). Order status updates:
+
 - **In-app (live)**: Supabase Realtime on `orders` — status changes (preparing →
   served) push to the customer's open page and the kitchen dashboard.
 - **WhatsApp (roadmap)**: optional phone number at checkout (admin setting), via

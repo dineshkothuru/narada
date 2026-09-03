@@ -30,19 +30,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       setCalls(
         (d.tables ?? [])
           .filter((t: { calling: boolean }) => t.calling)
-          .map(
-            (t: {
-              id: string;
-              label: string;
-              callSince: string;
-              attendant: string | null;
-            }) => ({
-              id: t.id,
-              label: t.label,
-              since: t.callSince,
-              attendant: t.attendant,
-            }),
-          ),
+          .map((t: { id: string; label: string; callSince: string; attendant: string | null }) => ({
+            id: t.id,
+            label: t.label,
+            since: t.callSince,
+            attendant: t.attendant,
+          })),
       );
     } catch {}
   }, []);

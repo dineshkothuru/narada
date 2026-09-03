@@ -257,4 +257,3 @@ export const MENU: MenuItem[] = [
     tags: [],
   },
 ];
-

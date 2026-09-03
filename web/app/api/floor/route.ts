@@ -101,11 +101,7 @@ export async function GET() {
           pending,
           ready: readyCount,
           langs: session
-            ? [
-                ...new Set(
-                  session.orders.map((o) => o.lang).filter((l): l is string => Boolean(l)),
-                ),
-              ]
+            ? [...new Set(session.orders.map((o) => o.lang).filter((l): l is string => Boolean(l)))]
             : [],
           due,
           attendant: session?.attendant ?? null,
@@ -143,15 +139,14 @@ export async function GET() {
 // Seat guests, merge/unmerge tables.
 export async function PATCH(req: NextRequest) {
   try {
-    const { action, sessionId, tableId, guests, intoSessionId, attendant } =
-      (await req.json()) as {
-        action: "seat" | "merge" | "unmerge" | "attendant";
-        sessionId?: string;
-        tableId?: string;
-        guests?: number;
-        intoSessionId?: string;
-        attendant?: string;
-      };
+    const { action, sessionId, tableId, guests, intoSessionId, attendant } = (await req.json()) as {
+      action: "seat" | "merge" | "unmerge" | "attendant";
+      sessionId?: string;
+      tableId?: string;
+      guests?: number;
+      intoSessionId?: string;
+      attendant?: string;
+    };
 
     if (action === "attendant" && sessionId) {
       await sbFetch(`sessions?id=eq.${encodeURIComponent(sessionId)}`, {

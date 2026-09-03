@@ -94,18 +94,27 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const ALLOWED_TAGS = ["chef-special", "bestseller", "spicy"];
-    const { itemId, is_available, price_inr, tags, description, spice_level, is_veg, allergens, gst_pct } =
-      (await req.json()) as {
-        itemId: string;
-        is_available?: boolean;
-        price_inr?: number;
-        tags?: string[];
-        description?: string;
-        spice_level?: number;
-        is_veg?: boolean;
-        allergens?: string[];
-        gst_pct?: number;
-      };
+    const {
+      itemId,
+      is_available,
+      price_inr,
+      tags,
+      description,
+      spice_level,
+      is_veg,
+      allergens,
+      gst_pct,
+    } = (await req.json()) as {
+      itemId: string;
+      is_available?: boolean;
+      price_inr?: number;
+      tags?: string[];
+      description?: string;
+      spice_level?: number;
+      is_veg?: boolean;
+      allergens?: string[];
+      gst_pct?: number;
+    };
     if (!itemId) return NextResponse.json({ error: "itemId required" }, { status: 400 });
     const patch: Record<string, unknown> = {};
     if (typeof is_available === "boolean") patch.is_available = is_available;

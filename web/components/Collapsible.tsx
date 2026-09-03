@@ -40,9 +40,7 @@ export default function Collapsible({
             </span>
           )}
           {hint && !open && (
-            <span className="hidden truncate text-[11px] text-stone-400 sm:block">
-              · {hint}
-            </span>
+            <span className="hidden truncate text-[11px] text-stone-400 sm:block">· {hint}</span>
           )}
         </button>
         {open && actions}
