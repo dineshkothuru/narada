@@ -352,6 +352,7 @@ export default function OrderExperience({
       });
       const data = res.ok ? await res.json() : {};
       setOrderPlaced({ total: data.total ?? snapshotTotal, orderId: data.orderId ?? null });
+      if (typeof data.discountPct === "number") setDiscountPct(data.discountPct);
     } catch {
       setOrderPlaced({ total: snapshotTotal, orderId: null });
     } finally {
@@ -375,11 +376,24 @@ export default function OrderExperience({
     } catch {}
   };
 
-  const onWheelResult = (idx: number) => {
+  const onWheelResult = async (idx: number) => {
     const reward = WHEEL[idx].reward;
     setSpinResult(idx);
     setSpinDone(true);
-    if (reward.type === "discount") setDiscountPct(reward.pct);
+    const pct = reward.type === "discount" ? reward.pct : 0;
+    if (pct > 0) setDiscountPct(pct);
+    try {
+      // server tracks one spin per table session — its answer is authoritative
+      const res = await fetch("/api/reward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableCode, type: "spin", pct }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (typeof d.discountPct === "number") setDiscountPct(d.discountPct);
+      }
+    } catch {}
   };
 
   const payable = orderPlaced
@@ -814,7 +828,15 @@ export default function OrderExperience({
                         levelClear: t.levelClear,
                         nextLevel: t.nextLevel,
                       }}
-                      onAllLevelsComplete={() => setCompItem("Gulab Jamun (2 pcs)")}
+                      onAllLevelsComplete={() => {
+                        setCompItem("Gulab Jamun (2 pcs)");
+                        // fire the free dessert to the kitchen as a ₹0 ticket
+                        fetch("/api/reward", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tableCode, type: "comp" }),
+                        }).catch(() => {});
+                      }}
                     />
                   </div>
                 )}

@@ -6,6 +6,7 @@ type SessionRow = {
   id: string;
   table_id: string;
   created_at: string;
+  discount_pct: number;
   orders: { id: string; status: string; total_inr: number; created_at: string }[];
   payments: { amount_inr: number; status: string }[];
 };
@@ -16,7 +17,7 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,orders(id,status,total_inr,created_at),payments(amount_inr,status)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,discount_pct,orders(id,status,total_inr,created_at),payments(amount_inr,status)&status=eq.active`,
       ),
       sbFetch<CallRow[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -46,7 +47,12 @@ export async function GET() {
               orders: session.orders,
               ordered,
               paid,
-              due: Math.max(0, ordered - paid),
+              discountPct: session.discount_pct,
+              // spin discount is server-tracked and applied to the bill here
+              due: Math.max(
+                0,
+                Math.round(ordered * (1 - (session.discount_pct || 0) / 100)) - paid,
+              ),
             }
           : null,
       };

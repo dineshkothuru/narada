@@ -3,7 +3,7 @@ import { sbFetch } from "@/lib/supabase-server";
 import type { CartLine } from "@/lib/types";
 
 type TableRow = { id: string; restaurant_id: string; label: string };
-type SessionRow = { id: string };
+type SessionRow = { id: string; discount_pct?: number };
 type ItemRow = { id: string; name: string; price_inr: number };
 type OrderRow = { id: string; status: string; created_at: string };
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const table = tables[0];
 
     let sessions = await sbFetch<SessionRow[]>(
-      `sessions?select=id&table_id=eq.${table.id}&status=eq.active&limit=1`,
+      `sessions?select=id,discount_pct&table_id=eq.${table.id}&status=eq.active&limit=1`,
     );
     if (sessions.length === 0) {
       sessions = await sbFetch<SessionRow[]>(`sessions`, {
@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
       orderId: order.id,
       orderNo: order.id.slice(0, 8).toUpperCase(),
       total,
+      discountPct: session.discount_pct ?? 0,
       sessionId: session.id,
       tableLabel: table.label,
     });
