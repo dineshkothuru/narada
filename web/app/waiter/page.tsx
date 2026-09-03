@@ -378,10 +378,18 @@ export default function WaiterPage() {
                 <div className="mt-3 flex items-center justify-between">
                   <span
                     className={`text-sm font-extrabold ${
-                      s.due > 0 ? "text-rose-600" : "text-green-600"
+                      s.orders.length === 0
+                        ? "text-stone-300"
+                        : s.due > 0
+                          ? "text-rose-600"
+                          : "text-green-600"
                     }`}
                   >
-                    {s.due > 0 ? `Due ${inr(s.due)}` : "Settled ✓"}
+                    {s.orders.length === 0
+                      ? "—"
+                      : s.due > 0
+                        ? `Due ${inr(s.due)}`
+                        : "Settled ✓"}
                   </span>
                   {s.due > 0 && (
                     <div className="flex flex-wrap justify-end gap-1.5">
@@ -413,21 +421,36 @@ export default function WaiterPage() {
                           </button>
                           <button
                             onClick={async () => {
-                              const utr = await ask.prompt({
-                                title: `${t.label} paid ${inr(s.due)}`,
+                              const out = await ask.form({
+                                title: `${t.label} · bill ${inr(s.due)}`,
                                 message:
-                                  "Paste the reference from the guest's UPI app, or leave it blank.",
-                                label: "UPI reference / UTR",
-                                placeholder: "optional",
+                                  "Anything received above the bill is recorded as a tip.",
+                                fields: [
+                                  {
+                                    name: "amount",
+                                    label: "Amount received (₹)",
+                                    defaultValue: String(s.due),
+                                    inputMode: "numeric",
+                                    required: true,
+                                    hint: `Bill is ${inr(s.due)}`,
+                                  },
+                                  {
+                                    name: "utr",
+                                    label: "UPI reference / UTR",
+                                    placeholder: "optional",
+                                  },
+                                ],
                                 confirmLabel: "Record payment",
                               });
-                              if (utr === null) return;
+                              if (out === null) return;
+                              const amount = Number(out.amount);
+                              if (!Number.isFinite(amount) || amount <= 0) return;
                               act({
                                 action: "record_payment",
                                 sessionId: s.id,
-                                amount: s.due,
+                                amount,
                                 method: "upi_intent",
-                                utr,
+                                utr: out.utr,
                                 collectedBy: lastAttendant,
                               });
                             }}
@@ -437,16 +460,23 @@ export default function WaiterPage() {
                           </button>
                           <button
                             onClick={async () => {
-                              const yes = await ask.confirm({
-                                title: `Took ${inr(s.due)} in cash?`,
-                                message: `This closes ${t.label}'s tab.`,
-                                confirmLabel: "Yes, recorded",
+                              const kept = await ask.prompt({
+                                title: `${t.label} · bill ${inr(s.due)}`,
+                                message:
+                                  "Enter what you kept after handing back change. Anything above the bill is recorded as a tip.",
+                                label: "Cash kept (₹)",
+                                defaultValue: String(s.due),
+                                inputMode: "numeric",
+                                required: true,
+                                confirmLabel: "Record payment",
                               });
-                              if (!yes) return;
+                              if (kept === null) return;
+                              const amount = Number(kept);
+                              if (!Number.isFinite(amount) || amount <= 0) return;
                               act({
                                 action: "record_payment",
                                 sessionId: s.id,
-                                amount: s.due,
+                                amount,
                                 method: "cash",
                                 collectedBy: lastAttendant,
                               });

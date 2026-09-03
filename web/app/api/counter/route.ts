@@ -90,10 +90,7 @@ export async function PATCH(req: NextRequest) {
 
     // raising the bill is the counter's alone
     if (body.action === "generate_bill" && body.sessionId) {
-      const result = await generateBill(
-        body.sessionId,
-        typeof body.tip === "number" ? body.tip : 0,
-      );
+      const result = await generateBill(body.sessionId);
       if ("error" in result) {
         return NextResponse.json({ error: result.error }, { status: result.status });
       }

@@ -19,20 +19,27 @@ export type ConfirmSpec = {
   danger?: boolean;
 };
 
-export type PromptSpec = {
-  kind: "prompt";
-  title: string;
-  message?: string;
+export type Field = {
+  name: string;
   label?: string;
   placeholder?: string;
   defaultValue?: string;
-  confirmLabel?: string;
   inputMode?: "text" | "numeric";
+  hint?: string;
   required?: boolean;
 };
 
-type Spec = ConfirmSpec | PromptSpec;
-type Pending = { spec: Spec; resolve: (value: string | boolean | null) => void };
+export type FormSpec = {
+  kind: "form";
+  title: string;
+  message?: string;
+  fields: Field[];
+  confirmLabel?: string;
+};
+
+type Spec = ConfirmSpec | FormSpec;
+type Answer = boolean | Record<string, string> | null;
+type Pending = { spec: Spec; resolve: (value: Answer) => void };
 
 let publish: ((p: Pending | null) => void) | null = null;
 let toastPublish: ((message: string | null) => void) | null = null;
@@ -50,14 +57,48 @@ function open<T>(spec: Spec): Promise<T> {
 
 export const ask = {
   confirm: (spec: Omit<ConfirmSpec, "kind">) => open<boolean>({ ...spec, kind: "confirm" }),
-  prompt: (spec: Omit<PromptSpec, "kind">) => open<string | null>({ ...spec, kind: "prompt" }),
+
+  // several answers in one box, so taking a payment does not mean tapping
+  // through a chain of dialogs
+  form: (spec: Omit<FormSpec, "kind">) =>
+    open<Record<string, string> | null>({ ...spec, kind: "form" }),
+
+  prompt: async (spec: {
+    title: string;
+    message?: string;
+    label?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    confirmLabel?: string;
+    inputMode?: "text" | "numeric";
+    required?: boolean;
+  }) => {
+    const out = await open<Record<string, string> | null>({
+      kind: "form",
+      title: spec.title,
+      message: spec.message,
+      confirmLabel: spec.confirmLabel,
+      fields: [
+        {
+          name: "value",
+          label: spec.label,
+          placeholder: spec.placeholder,
+          defaultValue: spec.defaultValue,
+          inputMode: spec.inputMode,
+          required: spec.required,
+        },
+      ],
+    });
+    return out === null ? null : (out.value ?? "");
+  },
+
   toast: (message: string) => toastPublish?.(message),
 };
 
 export function DialogHost() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     publish = setPending;
@@ -75,7 +116,7 @@ export function DialogHost() {
   }, [toast]);
 
   const close = useCallback(
-    (value: string | boolean | null) => {
+    (value: Answer) => {
       setPending((p) => {
         p?.resolve(value);
         return null;
@@ -98,7 +139,7 @@ export function DialogHost() {
     // a dialog is a decision — the page behind it should not scroll away
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    inputRef.current?.select();
+    formRef.current?.querySelector("input")?.select();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
@@ -127,32 +168,43 @@ export function DialogHost() {
               <p className="mt-1 text-xs leading-relaxed text-stone-500">{spec.message}</p>
             )}
 
-            {spec.kind === "prompt" ? (
+            {spec.kind === "form" ? (
               <form
+                ref={formRef}
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const v = inputRef.current?.value ?? "";
-                  if (spec.required && !v.trim()) return;
-                  close(v);
+                  const data = new FormData(e.currentTarget);
+                  const out: Record<string, string> = {};
+                  for (const f of spec.fields) {
+                    const v = String(data.get(f.name) ?? "");
+                    if (f.required && !v.trim()) return;
+                    out[f.name] = v;
+                  }
+                  close(out);
                 }}
               >
-                {spec.label && (
-                  <label
-                    htmlFor="narada-dialog-input"
-                    className="mt-4 block text-[10px] font-bold tracking-widest text-stone-400 uppercase"
-                  >
-                    {spec.label}
-                  </label>
-                )}
-                <input
-                  id="narada-dialog-input"
-                  ref={inputRef}
-                  autoFocus
-                  defaultValue={spec.defaultValue ?? ""}
-                  placeholder={spec.placeholder}
-                  inputMode={spec.inputMode ?? "text"}
-                  className="mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400"
-                />
+                {spec.fields.map((f, i) => (
+                  <div key={f.name} className="mt-4">
+                    {f.label && (
+                      <label
+                        htmlFor={`narada-dialog-${f.name}`}
+                        className="block text-[10px] font-bold tracking-widest text-stone-400 uppercase"
+                      >
+                        {f.label}
+                      </label>
+                    )}
+                    <input
+                      id={`narada-dialog-${f.name}`}
+                      name={f.name}
+                      autoFocus={i === 0}
+                      defaultValue={f.defaultValue ?? ""}
+                      placeholder={f.placeholder}
+                      inputMode={f.inputMode ?? "text"}
+                      className="mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400"
+                    />
+                    {f.hint && <p className="mt-1 text-[11px] text-stone-400">{f.hint}</p>}
+                  </div>
+                ))}
                 <div className="mt-5 flex gap-2">
                   <button
                     type="button"
