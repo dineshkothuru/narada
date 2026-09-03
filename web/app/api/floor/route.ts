@@ -16,6 +16,7 @@ type SessionRow = {
   created_at: string;
   guests: number | null;
   merged_into: string | null;
+  attendant: string | null;
   orders: { id: string; status: string; total_inr: number }[];
 };
 
@@ -25,14 +26,14 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,zone&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,guests,merged_into,orders(id,status,total_inr)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,guests,merged_into,attendant,orders(id,status,total_inr)&status=eq.active`,
       ),
-      sbFetch<{ table_id: string }[]>(
-        `waiter_calls?select=table_id&status=eq.open`,
+      sbFetch<{ id: string; table_id: string; created_at: string }[]>(
+        `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
       ),
     ]);
 
-    const calling = new Set(calls.map((c) => c.table_id));
+    const callByTable = new Map(calls.map((c) => [c.table_id, c]));
     const byTableId = new Map(tables.map((t) => [t.id, t]));
 
     // merged sessions bill through their primary; group them for display
@@ -84,7 +85,10 @@ export async function GET() {
           served,
           pending,
           due,
-          calling: calling.has(t.id),
+          attendant: session?.attendant ?? null,
+          calling: callByTable.has(t.id),
+          callId: callByTable.get(t.id)?.id ?? null,
+          callSince: callByTable.get(t.id)?.created_at ?? null,
         };
       }),
     );
@@ -114,14 +118,28 @@ export async function GET() {
 // Seat guests, merge/unmerge tables.
 export async function PATCH(req: NextRequest) {
   try {
-    const { action, sessionId, tableId, guests, intoSessionId } =
+    const { action, sessionId, tableId, guests, intoSessionId, attendant } =
       (await req.json()) as {
-        action: "seat" | "merge" | "unmerge";
+        action: "seat" | "merge" | "unmerge" | "attendant";
         sessionId?: string;
         tableId?: string;
         guests?: number;
         intoSessionId?: string;
+        attendant?: string;
       };
+
+    if (action === "attendant" && sessionId) {
+      await sbFetch(`sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          attendant:
+            typeof attendant === "string" && attendant.trim()
+              ? attendant.trim().slice(0, 40)
+              : null,
+        }),
+      });
+      return NextResponse.json({ ok: true });
+    }
 
     if (action === "seat" && tableId) {
       const tables = await sbFetch<{ restaurant_id: string }[]>(

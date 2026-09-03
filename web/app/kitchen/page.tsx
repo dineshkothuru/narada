@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import AdminShell from "@/components/AdminShell";
 
 type KitchenItem = {
   id: string;
@@ -107,6 +108,7 @@ export default function KitchenPage() {
   };
 
   return (
+    <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
       <header className="mx-auto mb-5 flex max-w-6xl items-center justify-between">
         <div>
@@ -200,5 +202,6 @@ export default function KitchenPage() {
         })}
       </div>
     </main>
+    </AdminShell>
   );
 }

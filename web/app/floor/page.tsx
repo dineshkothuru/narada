@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@/lib/format";
+import CallTimer from "@/components/CallTimer";
 
 type FloorTable = {
   id: string;
@@ -20,7 +22,10 @@ type FloorTable = {
   served: number;
   pending: number;
   due: number;
+  attendant: string | null;
   calling: boolean;
+  callId: string | null;
+  callSince: string | null;
 };
 
 type Stats = {
@@ -87,6 +92,7 @@ export default function FloorPage() {
   const freeTables = tables.filter((t) => t.status === "free");
 
   return (
+    <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
       <header className="mx-auto mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
         <div>
@@ -184,9 +190,12 @@ export default function FloorPage() {
                     {t.guests ? ` · ${t.guests} guests` : ""}
                   </p>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${st.chip}`}>
-                  {t.calling ? "🔔 CALLING" : st.label.toUpperCase()}
-                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${st.chip}`}>
+                    {st.label.toUpperCase()}
+                  </span>
+                  {t.calling && t.callSince && <CallTimer since={t.callSince} compact />}
+                </div>
               </div>
 
               {t.mergedWith.length > 0 && (
@@ -204,8 +213,22 @@ export default function FloorPage() {
                 </button>
               ) : (
                 <>
-                  <div className="mt-2 flex gap-3 text-[11px] text-stone-600">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-600">
                     <span>{minutesAgo(t.since!, true)}</span>
+                    <button
+                      onClick={() => {
+                        const who = prompt(`Who is serving ${t.label}?`, t.attendant ?? "");
+                        if (who === null) return;
+                        act({ action: "attendant", sessionId: t.sessionId, attendant: who });
+                      }}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                        t.attendant
+                          ? "bg-violet-100 text-violet-700"
+                          : "bg-stone-100 text-stone-400"
+                      }`}
+                    >
+                      {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
+                    </button>
                     <span>
                       {t.served}/{t.rounds} served
                     </span>
@@ -259,6 +282,7 @@ export default function FloorPage() {
         </p>
       )}
     </main>
+    </AdminShell>
   );
 }
 

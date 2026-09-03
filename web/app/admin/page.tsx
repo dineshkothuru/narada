@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AdminShell from "@/components/AdminShell";
+import Collapsible from "@/components/Collapsible";
 
 type AdminItem = {
   id: string;
@@ -199,8 +201,10 @@ export default function AdminPage() {
     "mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400";
 
   return (
+    <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-      <header className="mx-auto mb-5 flex max-w-3xl flex-wrap items-center justify-between gap-2">
+      <div className="mx-auto flex max-w-3xl flex-col gap-3">
+      <header className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
             {restaurant?.name ?? "Narada"} · Admin
@@ -250,11 +254,8 @@ export default function AdminPage() {
       )}
 
       {restaurant && (
-        <section className="mx-auto mb-6 max-w-3xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-          <h2 className="text-xs font-bold tracking-widest text-stone-500 uppercase">
-            Settings
-          </h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <Collapsible title="Settings" hint="payment, UPI, GST, PIN, API keys">
+          <div className="grid gap-4 sm:grid-cols-3">
             <label className="text-xs font-semibold text-stone-600">
               Payment timing
               <select
@@ -368,15 +369,15 @@ export default function AdminPage() {
               />
             </label>
           </div>
-        </section>
+        </Collapsible>
       )}
 
       {/* Tables: add/rename/remove, per-table UI experience, QR links */}
-      <section className="mx-auto mb-6 max-w-3xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold tracking-widest text-stone-500 uppercase">
-            Tables ({tables.length})
-          </h2>
+      <Collapsible
+        title="Tables"
+        badge={String(tables.length)}
+        hint="capacity, QR links, per-table theme"
+        actions={
           <div className="flex items-center gap-2">
             <Link
               href="/admin/qr"
@@ -391,8 +392,9 @@ export default function AdminPage() {
               + Add tables
             </button>
           </div>
-        </div>
-        <p className="mt-1 text-[11px] text-stone-400">
+        }
+      >
+        <p className="text-[11px] text-stone-400">
           Each table gets its own QR link and can run a different experience —
           Classic list or Feast Stories.
         </p>
@@ -569,21 +571,22 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
-      </section>
+      </Collapsible>
 
       {/* Staff: each person gets their own PIN; role decides which screens open */}
-      <section className="mx-auto mb-6 max-w-3xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold tracking-widest text-stone-500 uppercase">
-            Staff &amp; logins
-          </h2>
+      <Collapsible
+        title="Staff & logins"
+        badge={String(staff.length)}
+        hint="roles and PINs"
+        actions={
           <button
             onClick={() => setAddingStaff((v) => !v)}
             className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
           >
             + Add staff
           </button>
-        </div>
+        }
+      >
         {addingStaff && (
           <form
             onSubmit={async (e) => {
@@ -681,23 +684,17 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
-      </section>
+      </Collapsible>
 
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <>
         {categories.map((cat) => {
           const list = items.filter((i) => i.category_id === cat.id);
           return (
-            <section
+            <Collapsible
               key={cat.id}
-              className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-stone-200/60"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-stone-800">
-                  {cat.emoji} {cat.name}
-                  <span className="ml-2 text-xs font-medium text-stone-400">
-                    {list.length} dishes
-                  </span>
-                </h2>
+              title={`${cat.emoji ?? ""} ${cat.name}`}
+              badge={`${list.length} dishes`}
+              actions={
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setAddingTo(addingTo === cat.id ? null : cat.id)}
@@ -713,7 +710,8 @@ export default function AdminPage() {
                     ✕
                   </button>
                 </div>
-              </div>
+              }
+            >
 
               {addingTo === cat.id && (
                 <form
@@ -883,7 +881,7 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            </Collapsible>
           );
         })}
 
@@ -920,7 +918,9 @@ export default function AdminPage() {
           dishes appear greyed out to customers; new dishes show in English until
           translations are added.
         </p>
+      </>
       </div>
     </main>
+    </AdminShell>
   );
 }

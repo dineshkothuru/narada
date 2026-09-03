@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@/lib/format";
 
 type AdminOrder = {
@@ -80,6 +81,7 @@ export default function AdminOrdersPage() {
       .reduce((s, p) => s + Number(p.amount_inr), 0);
 
   return (
+    <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
       <header className="mx-auto mb-5 flex max-w-4xl flex-wrap items-center justify-between gap-2">
         <div>
@@ -260,5 +262,6 @@ export default function AdminOrdersPage() {
         })}
       </section>
     </main>
+    </AdminShell>
   );
 }

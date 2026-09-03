@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import AdminShell from "@/components/AdminShell";
 
 type WaiterTable = {
   tableId: string;
@@ -14,6 +15,7 @@ type WaiterTable = {
     orders: { id: string; status: string; total_inr: number; created_at: string }[];
     ordered: number;
     paid: number;
+    attendant: string | null;
     discountPct: number;
     gst: number;
     service: number;
@@ -23,10 +25,26 @@ type WaiterTable = {
 };
 
 import { inr, minutesAgo } from "@/lib/format";
+import CallTimer from "@/components/CallTimer";
 
 export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // remembered per device so a waiter types their name once per shift
+  const [lastAttendant, setLastAttendant] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return localStorage.getItem("narada:staff-name") ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (lastAttendant) localStorage.setItem("narada:staff-name", lastAttendant);
+    } catch {}
+  }, [lastAttendant]);
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +85,7 @@ export default function WaiterPage() {
   const active = tables.filter((t) => t.session);
 
   return (
+    <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
       <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between">
         <div>
@@ -105,14 +124,25 @@ export default function WaiterPage() {
                 key={t.call!.id}
                 className="flex animate-pulse items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-4 shadow-sm"
               >
-                <span className="text-sm font-bold text-stone-900">
+                <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
                   {t.label}
-                  <span className="ml-2 text-xs font-medium text-stone-400">
-                    {minutesAgo(t.call!.created_at, true)} ago
-                  </span>
+                  <CallTimer since={t.call!.created_at} />
                 </span>
                 <button
-                  onClick={() => act({ action: "ack_call", callId: t.call!.id })}
+                  onClick={() => {
+                    const who = prompt(
+                      `Attending ${t.label} — your name (shown as this table's attendant):`,
+                      lastAttendant,
+                    );
+                    if (who === null) return;
+                    if (who.trim()) setLastAttendant(who.trim());
+                    act({
+                      action: "ack_call",
+                      callId: t.call!.id,
+                      sessionId: t.session?.id,
+                      attendedBy: who,
+                    });
+                  }}
                   className="rounded-full bg-stone-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
                 >
                   On it ✋
@@ -143,6 +173,32 @@ export default function WaiterPage() {
                     open {minutesAgo(s.since, true)}
                   </span>
                 </div>
+                <button
+                  onClick={() => {
+                    const who = prompt(
+                      `Who is serving ${t.label}?`,
+                      s.attendant ?? lastAttendant,
+                    );
+                    if (who === null) return;
+                    if (who.trim()) setLastAttendant(who.trim());
+                    fetch("/api/floor", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        action: "attendant",
+                        sessionId: s.id,
+                        attendant: who,
+                      }),
+                    }).then(load);
+                  }}
+                  className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                    s.attendant
+                      ? "bg-violet-100 text-violet-700"
+                      : "bg-stone-100 text-stone-400"
+                  }`}
+                >
+                  {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
+                </button>
                 <div className="mt-2 flex gap-4 text-xs text-stone-600">
                   <span>
                     {s.orders.length} order{s.orders.length !== 1 ? "s" : ""}
@@ -217,5 +273,6 @@ export default function WaiterPage() {
         </p>
       </section>
     </main>
+    </AdminShell>
   );
 }

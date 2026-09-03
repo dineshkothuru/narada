@@ -8,6 +8,7 @@ type SessionRow = {
   table_id: string;
   created_at: string;
   discount_pct: number;
+  attendant: string | null;
   orders: { id: string; status: string; total_inr: number; created_at: string }[];
   payments: { amount_inr: number; status: string }[];
 };
@@ -18,7 +19,7 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,discount_pct,orders(id,status,total_inr,created_at),payments(amount_inr,status)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,discount_pct,attendant,orders(id,status,total_inr,created_at),payments(amount_inr,status)&status=eq.active`,
       ),
       sbFetch<CallRow[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -58,6 +59,7 @@ export async function GET() {
               gst: bills.get(session.id)?.gst ?? 0,
               service: bills.get(session.id)?.service ?? 0,
               serviceWaived: bills.get(session.id)?.serviceWaived ?? false,
+              attendant: session.attendant,
               // full bill: discount + GST + service charge, minus what's paid
               due: Math.max(0, (bills.get(session.id)?.net ?? ordered) - paid),
             }
@@ -76,6 +78,7 @@ export async function PATCH(req: NextRequest) {
     const body = (await req.json()) as {
       action: "ack_call" | "mark_paid";
       callId?: string;
+      attendedBy?: string;
       sessionId?: string;
       amount?: number;
       tip?: number;
@@ -85,8 +88,22 @@ export async function PATCH(req: NextRequest) {
     if (body.action === "ack_call" && body.callId) {
       await sbFetch(`waiter_calls?id=eq.${encodeURIComponent(body.callId)}`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "done" }),
+        body: JSON.stringify({
+          status: "done",
+          acked_at: new Date().toISOString(),
+          acked_by:
+            typeof body.attendedBy === "string" && body.attendedBy.trim()
+              ? body.attendedBy.trim().slice(0, 40)
+              : null,
+        }),
       });
+      // whoever attends becomes this table's attendant for the visit
+      if (body.attendedBy && body.sessionId) {
+        await sbFetch(`sessions?id=eq.${encodeURIComponent(body.sessionId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ attendant: body.attendedBy.trim().slice(0, 40) }),
+        });
+      }
       return NextResponse.json({ ok: true });
     }
     if (body.action === "mark_paid" && body.sessionId) {
