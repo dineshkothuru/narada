@@ -22,7 +22,7 @@ type WaiterTable = {
       status: string;
       total_inr: number;
       created_at: string;
-      items: { name: string; qty: number }[];
+      items: { id: string; name: string; qty: number; status: string }[];
     }[];
     ordered: number;
     paid: number;
@@ -152,11 +152,14 @@ export default function WaiterPage() {
   };
 
   const calls = tables.filter((t) => t.call);
-  // food the kitchen has plated and is waiting for a waiter to carry out
-  const readyRounds = tables.flatMap((t) =>
-    (t.session?.orders ?? [])
-      .filter((o) => o.status === "ready")
-      .map((order) => ({ table: t, order })),
+  // every dish the kitchen has plated, whether or not the rest of its round is
+  // done — a starter waiting on a slow main should not sit under the lamp
+  const readyItems = tables.flatMap((t) =>
+    (t.session?.orders ?? []).flatMap((order) =>
+      (order.items ?? [])
+        .filter((it) => it.status === "ready")
+        .map((item) => ({ table: t, order, item })),
+    ),
   );
   const active = tables.filter((t) => t.session);
   const toClean = tables.filter((t) => !t.session && t.needsCleaning);
@@ -243,31 +246,42 @@ export default function WaiterPage() {
         </section>
       )}
 
-      {readyRounds.length > 0 && (
+      {readyItems.length > 0 && (
         <section className="mb-5 max-w-5xl">
           <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
-            🔔 Ready to serve ({readyRounds.length})
+            🔔 Ready to serve ({readyItems.length})
           </h2>
           <div className="flex flex-col gap-2">
-            {readyRounds.map(({ table, order }) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between gap-3 rounded-2xl card-float border-l-4 border-amber-500 bg-white p-4"
-              >
-                <span className="min-w-0">
-                  <span className="text-sm font-bold text-stone-900">{table.label}</span>
-                  <span className="ml-2 text-xs text-stone-500">
-                    {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
-                  </span>
-                </span>
-                <button
-                  onClick={() => act({ action: "mark_served", orderId: order.id })}
-                  className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+            {readyItems.map(({ table, order, item }) => {
+              const stillCooking = order.items.filter(
+                (i) =>
+                  i.status !== "ready" && i.status !== "served" && i.status !== "cancelled",
+              ).length;
+              return (
+                <div
+                  key={item.id}
+                  className="card-float flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4"
                 >
-                  Served ✅
-                </button>
-              </div>
-            ))}
+                  <span className="min-w-0">
+                    <span className="text-sm font-bold text-stone-900">{table.label}</span>
+                    <span className="ml-2 text-xs font-semibold text-stone-700">
+                      {item.qty}× {item.name}
+                    </span>
+                    {stillCooking > 0 && (
+                      <span className="ml-2 text-[11px] text-stone-400">
+                        · {stillCooking} more still cooking
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => act({ action: "mark_item_served", itemId: item.id })}
+                    className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  >
+                    Served ✅
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

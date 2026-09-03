@@ -26,8 +26,9 @@ type KitchenOrder = {
 const ITEM_NEXT: Record<KitchenItem["status"], KitchenItem["status"]> = {
   queued: "preparing",
   preparing: "ready",
-  ready: "queued",
-  served: "queued",
+  // tapping a ready dish steps back to preparing — a correction, not a reset
+  ready: "preparing",
+  served: "ready",
 };
 
 const ITEM_BADGE: Record<KitchenItem["status"], string> = {
@@ -186,7 +187,7 @@ export default function KitchenPage() {
                         <li key={it.id}>
                           <button
                             onClick={() => cycleItem(it)}
-                            title="Tap to cycle: queued → preparing → ready"
+                            title="Tap to advance: queued → preparing → ready. Tap a ready dish to step it back."
                             className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
                               it.status === "served"
                                 ? "bg-green-50 text-stone-400 line-through"

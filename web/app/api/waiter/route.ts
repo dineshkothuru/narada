@@ -4,7 +4,7 @@ import { computeBill } from "@/lib/billing";
 import { recordPayment } from "@/lib/settle";
 import { cancelItem } from "@/lib/cancel";
 import { audit, actorFrom } from "@/lib/audit";
-import { deriveTableStatus } from "@/lib/status";
+import { deriveOrderStatus, deriveTableStatus } from "@/lib/status";
 
 type TableRow = {
   id: string;
@@ -27,7 +27,7 @@ type SessionRow = {
     total_inr: number;
     created_at: string;
     lang: string | null;
-    items: { name: string; qty: number }[];
+    items: { id: string; name: string; qty: number; status: string }[];
   }[];
   payments: { amount_inr: number; status: string }[];
 };
@@ -38,7 +38,7 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,needs_cleaning&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,discount_pct,guests,attendant,bill_no,orders(id,status,total_inr,created_at,lang,items:order_items(name,qty)),payments(amount_inr,status)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,discount_pct,guests,attendant,bill_no,orders(id,status,total_inr,created_at,lang,items:order_items(id,name,qty,status)),payments(amount_inr,status)&status=eq.active`,
       ),
       sbFetch<CallRow[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -126,7 +126,8 @@ export async function PATCH(req: NextRequest) {
         | "mark_served"
         | "clear_table"
         | "record_payment"
-        | "cancel_item";
+        | "cancel_item"
+        | "mark_item_served";
       itemId?: string;
       reason?: string;
       amount?: number;
@@ -165,6 +166,30 @@ export async function PATCH(req: NextRequest) {
       }
       return NextResponse.json({ ok: true });
     }
+    // a round rarely leaves the pass all at once — a starter is plated while
+    // the mains cook — so the waiter serves a single dish and the round's own
+    // status follows whatever is left
+    if (body.action === "mark_item_served" && body.itemId) {
+      await sbFetch(`order_items?id=eq.${encodeURIComponent(body.itemId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "served" }),
+      });
+      const rows = await sbFetch<{ order_id: string }[]>(
+        `order_items?select=order_id&id=eq.${encodeURIComponent(body.itemId)}&limit=1`,
+      );
+      if (rows.length > 0) {
+        const siblings = await sbFetch<{ status: string }[]>(
+          `order_items?select=status&order_id=eq.${rows[0].order_id}`,
+        );
+        const live = siblings.filter((s) => s.status !== "cancelled");
+        await sbFetch(`orders?id=eq.${rows[0].order_id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: deriveOrderStatus(live) }),
+        });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // the waiter carries the food, so the waiter closes the loop
     if (body.action === "mark_served" && body.orderId) {
       await sbFetch(`orders?id=eq.${encodeURIComponent(body.orderId)}`, {
