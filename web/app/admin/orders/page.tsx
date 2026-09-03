@@ -10,7 +10,7 @@ type AdminOrder = {
   id: string;
   status: string;
   total_inr: number;
-  placed_via: "ui" | "anna";
+  placed_via: "ui" | "anna" | "waiter";
   placed_by: string | null;
   created_at: string;
   session: {
@@ -101,7 +101,7 @@ export default function AdminOrdersPage() {
             onClick={() => setRange(r.key)}
             className={`rounded-full px-4 py-2 text-xs font-bold transition ${
               range === r.key
-                ? "bg-slate-900 text-white"
+                ? "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 "
                 : "bg-white text-slate-600 ring-1 ring-slate-200"
             }`}
           >
@@ -161,6 +161,17 @@ export default function AdminOrdersPage() {
       )}
 
       <section className="max-w-5xl overflow-hidden rounded-3xl panel panel-lift">
+        <div className="overflow-x-auto">
+        <div className="min-w-[760px]">
+        <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+          <span className="w-20 shrink-0">Table</span>
+          <span className="min-w-0 flex-1">Items</span>
+          <span className="w-24 shrink-0">Ordered by</span>
+          <span className="w-24 shrink-0">Kitchen</span>
+          <span className="w-20 shrink-0 text-right">Round</span>
+          <span className="w-24 shrink-0 text-right">Tab</span>
+          <span className="w-20 shrink-0 text-right">When</span>
+        </div>
         {orders.length === 0 && (
           <p className="py-10 text-center text-sm text-slate-400">No orders in this range</p>
         )}
@@ -168,7 +179,7 @@ export default function AdminOrdersPage() {
           const paid = paidFor(o);
           const isOpen = open === o.id;
           return (
-            <div key={o.id} className="border-b border-stone-100 last:border-0">
+            <div key={o.id} className="border-b border-slate-100 last:border-0">
               <button
                 onClick={() => setOpen(isOpen ? null : o.id)}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
@@ -179,30 +190,31 @@ export default function AdminOrdersPage() {
                 <span className="min-w-0 flex-1 truncate text-xs text-slate-500">
                   {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
                 </span>
-                {o.placed_via === "anna" && <span title="ordered by voice">🎙️</span>}
-                {o.placed_by && (
-                  <span className="hidden rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 sm:inline">
-                    {o.placed_by}
+                <span className="w-24 shrink-0 truncate text-[11px] text-slate-500">
+                  {o.placed_via === "anna" && <span title="ordered by voice">🎙️ </span>}
+                  {o.placed_via === "waiter" && <span title="taken by a waiter">🧑‍🍳 </span>}
+                  {o.placed_by ?? ""}
+                </span>
+                <span className="w-24 shrink-0">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                      STATUS_STYLE[o.status] ?? "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {o.status}
                   </span>
-                )}
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                    STATUS_STYLE[o.status] ?? "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {o.status}
                 </span>
                 <span className="w-20 shrink-0 text-right text-sm font-bold text-slate-800">
                   {Number(o.total_inr) === 0 ? "🎁 free" : inr(o.total_inr)}
                 </span>
-                <span className="hidden w-24 shrink-0 text-right text-[11px] font-semibold sm:block">
+                <span className="w-24 shrink-0 text-right text-[11px] font-semibold">
                   {o.session?.status === "closed" ? (
                     <span className="text-emerald-600">paid {inr(paid)}</span>
                   ) : (
-                    <span className="text-rose-600">open tab</span>
+                    <span className="text-slate-500">open tab</span>
                   )}
                 </span>
-                <span className="hidden w-20 shrink-0 text-right text-[11px] text-slate-400 sm:block">
+                <span className="w-20 shrink-0 text-right text-[11px] text-slate-400">
                   {minutesAgo(o.created_at)}
                 </span>
               </button>
@@ -245,6 +257,8 @@ export default function AdminOrdersPage() {
             </div>
           );
         })}
+        </div>
+        </div>
       </section>
     </main>
     </AdminShell>

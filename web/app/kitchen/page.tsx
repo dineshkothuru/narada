@@ -135,13 +135,13 @@ export default function KitchenPage() {
             {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
           </p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+        <span className="rounded-full px-3 py-1.5 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
           {orders.filter((o) => o.status !== "served").length} open ·{" "}
           {orders.filter((o) => o.status === "ready").length} awaiting pickup
         </span>
         <button
           onClick={() => setShowMenu((v) => !v)}
-          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+          className="rounded-full px-3 py-1.5 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
         >
           {showMenu ? "Hide" : "🚫 Sold out"}
         </button>
@@ -233,7 +233,7 @@ export default function KitchenPage() {
                       {NEXT[o.status] && (
                         <button
                           onClick={() => advance(o.id, NEXT[o.status]!.to)}
-                          className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                          className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-4 py-1.5 text-xs font-bold  transition active:scale-95"
                         >
                           {NEXT[o.status]!.label}
                         </button>

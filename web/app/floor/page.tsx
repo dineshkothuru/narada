@@ -83,6 +83,7 @@ export default function FloorPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
   const [mergeFrom, setMergeFrom] = useState<FloorTable | null>(null);
+  const [merging, setMerging] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/floor", { cache: "no-store" });
@@ -141,7 +142,8 @@ export default function FloorPage() {
           <p className="text-xs text-slate-500">
             Live table status, capacity and merges · refreshes every 5s
           </p>
-        </div>      </header>
+        </div>
+      </header>
 
       {stats && (
         <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
@@ -154,8 +156,38 @@ export default function FloorPage() {
         </section>
       )}
 
+      {merging && !mergeFrom && (
+        <div className="panel mb-4 max-w-5xl p-4">
+          <p className="text-sm font-bold text-slate-800">Pick the first table to merge:</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {tables
+              .filter((t) => t.sessionId && !t.isMerged)
+              .map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setMergeFrom(t)}
+                  className="rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
+                >
+                  {t.label}
+                </button>
+              ))}
+            {tables.filter((t) => t.sessionId && !t.isMerged).length < 2 && (
+              <span className="text-xs text-slate-500">
+                Two open tables are needed — seat guests first.
+              </span>
+            )}
+            <button
+              onClick={() => setMerging(false)}
+              className="rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {mergeFrom && (
-        <div className="mb-4 max-w-5xl rounded-2xl bg-slate-900 p-4 text-white">
+        <div className="panel mb-4 max-w-5xl p-4">
           <p className="text-sm font-bold">
             Merging {mergeFrom.label} — pick the table it should join:
           </p>
@@ -172,6 +204,7 @@ export default function FloorPage() {
                       intoSessionId: t.sessionId,
                     });
                     setMergeFrom(null);
+                    setMerging(false);
                   }}
                   className="rounded-full bg-white/15 px-4 py-2 text-xs font-bold ring-1 ring-white/25"
                 >
@@ -184,14 +217,32 @@ export default function FloorPage() {
               </span>
             )}
             <button
-              onClick={() => setMergeFrom(null)}
-              className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold"
+              onClick={() => {
+                setMergeFrom(null);
+                setMerging(false);
+              }}
+              className="rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
             >
               Cancel
             </button>
           </div>
         </div>
       )}
+
+      <div className="mb-2 flex max-w-5xl items-center justify-between">
+        <h2 className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+          Tables ({tables.length})
+        </h2>
+        <button
+          onClick={() => {
+            setMerging(true);
+            setMergeFrom(null);
+          }}
+          className="rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
+        >
+          🔗 Merge tables
+        </button>
+      </div>
 
       <div className="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {tables.map((t) => {
@@ -264,7 +315,7 @@ export default function FloorPage() {
                         if (!yes) return;
                         act({ action: "release", sessionId: t.sessionId });
                       }}
-                      className="flex-1 rounded-xl bg-slate-800 py-2 text-[11px] font-bold text-white transition active:scale-[0.98]"
+                      className="rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
                     >
                       Release
                     </button>
@@ -277,7 +328,7 @@ export default function FloorPage() {
                   </p>
                   <button
                     onClick={() => act({ action: "clear_table", tableId: t.id })}
-                    className="mt-3 w-full rounded-xl bg-slate-800 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                    className="mt-3 rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
                   >
                     ✓ Table ready
                   </button>
@@ -285,7 +336,7 @@ export default function FloorPage() {
               ) : t.status === "free" ? (
                 <button
                   onClick={() => seat(t)}
-                  className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                  className="mt-3 rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
                 >
                   Seat guests
                 </button>
@@ -303,18 +354,11 @@ export default function FloorPage() {
                     {t.isMerged ? (
                       <button
                         onClick={() => act({ action: "unmerge", sessionId: t.sessionId })}
-                        className="flex-1 rounded-xl bg-slate-900 py-2 text-[11px] font-bold text-white"
+                        className="rounded-full px-4 py-2 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 transition active:scale-95"
                       >
                         Unmerge
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => setMergeFrom(t)}
-                        className="flex-1 rounded-xl bg-slate-900 py-2 text-[11px] font-bold text-white"
-                      >
-                        Merge
-                      </button>
-                    )}
+                    ) : null}
                   </div>
                 </>
               )}

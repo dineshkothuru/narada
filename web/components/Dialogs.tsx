@@ -215,7 +215,7 @@ export function DialogHost() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                    className="flex-1 rounded-xl bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 py-2.5 text-xs font-bold  transition active:scale-[0.98]"
                   >
                     {spec.confirmLabel ?? "Save"}
                   </button>
@@ -246,7 +246,7 @@ export function DialogHost() {
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[110] flex justify-center px-4 print:hidden">
-          <div className="animate-[dialogIn_.14s_ease-out] rounded-full bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-xl">
+          <div className="animate-[dialogIn_.14s_ease-out] rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-5 py-2.5 text-xs font-bold  shadow-xl">
             {toast}
           </div>
         </div>

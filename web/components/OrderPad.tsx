@@ -224,7 +224,7 @@ export default function OrderPad({
           onClick={() => setCat(null)}
           className={`rounded-full px-3 py-1.5 text-xs font-bold ${
             cat === null
-              ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+              ? "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
               : "bg-white text-slate-600 ring-1 ring-slate-200"
           }`}
         >
@@ -236,7 +236,7 @@ export default function OrderPad({
             onClick={() => setCat(c.id === cat ? null : c.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-bold ${
               cat === c.id
-                ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                ? "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
                 : "bg-white text-slate-600 ring-1 ring-slate-200"
             }`}
           >
@@ -283,7 +283,7 @@ export default function OrderPad({
                     <button
                       onClick={() => add(i.id, 1)}
                       aria-label={`one more ${i.name}`}
-                      className="grid h-8 w-8 place-items-center rounded-full bg-slate-900 text-sm font-bold text-white"
+                      className="grid h-8 w-8 place-items-center rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 text-sm font-bold "
                     >
                       +
                     </button>
@@ -291,7 +291,7 @@ export default function OrderPad({
                 ) : (
                   <button
                     onClick={() => add(i.id, 1)}
-                    className="shrink-0 rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                    className="shrink-0 rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-4 py-1.5 text-xs font-bold  transition active:scale-95"
                   >
                     Add
                   </button>
@@ -353,7 +353,7 @@ export default function OrderPad({
             <button
               onClick={place}
               disabled={placing}
-              className="shrink-0 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-60"
+              className="shrink-0 rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-5 py-2.5 text-xs font-bold  transition active:scale-95 disabled:opacity-60"
             >
               {placing ? "Sending…" : `Send ${count} to kitchen`}
             </button>

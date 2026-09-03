@@ -128,7 +128,7 @@ export default function Page() {
                 <option value="classic">Classic list</option>
                 <option value="stories">Feast Stories</option>
               </select>
-              <button className="mt-2 w-full rounded-xl bg-slate-900 py-2 text-xs font-bold text-white">
+              <button className="mt-2 w-full rounded-xl bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 py-2 text-xs font-bold ">
                 Add
               </button>
             </form>

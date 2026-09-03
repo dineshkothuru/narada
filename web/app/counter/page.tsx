@@ -186,7 +186,7 @@ export default function CounterPage() {
           </p>
           <button
             onClick={() => setShowSoldOut((v) => !v)}
-            className="mt-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+            className="mt-2 rounded-full px-3 py-1.5 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
           >
             {showSoldOut ? "Hide menu availability" : "🚫 Sold out"}
           </button>
@@ -210,13 +210,13 @@ export default function CounterPage() {
             <>
               <button
                 onClick={() => setOpenTable({ id: t.sessionId, label: t.label })}
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                className="rounded-full px-3 py-1.5 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
               >
                 🧾 Details
               </button>
               <button
                 onClick={() => raiseBill(t)}
-                className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-4 py-1.5 text-xs font-bold  transition active:scale-95"
               >
                 Raise bill
               </button>
@@ -234,7 +234,7 @@ export default function CounterPage() {
             <>
               <button
                 onClick={() => setOpenTable({ id: t.sessionId, label: t.label })}
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                className="rounded-full px-3 py-1.5 text-xs font-bold bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
               >
                 🧾 Details
               </button>
@@ -252,19 +252,19 @@ export default function CounterPage() {
               </button>
               <button
                 onClick={() => takePayment(t, "upi_intent")}
-                className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold  transition active:scale-95"
               >
                 UPI
               </button>
               <button
                 onClick={() => takePayment(t, "card")}
-                className="rounded-full bg-sky-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold  transition active:scale-95"
               >
                 Card
               </button>
               <button
                 onClick={() => takePayment(t, "cash")}
-                className="rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold  transition active:scale-95"
               >
                 Cash
               </button>

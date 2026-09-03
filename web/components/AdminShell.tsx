@@ -234,7 +234,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   href={l.href}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
+                      ? "bg-slate-900 text-white"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >

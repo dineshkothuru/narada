@@ -63,7 +63,7 @@ export default function Home() {
             <Link
               key={s.href}
               href={s.href}
-              className="rounded-2xl bg-slate-900 px-3 py-3 text-center text-white shadow-sm transition active:scale-95"
+              className="rounded-2xl bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-3 py-3 text-center  shadow-sm transition active:scale-95"
             >
               <span className="block text-lg leading-none">{s.emoji}</span>
               <span className="mt-1 block text-sm font-semibold">{s.label}</span>

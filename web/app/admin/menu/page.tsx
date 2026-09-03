@@ -249,7 +249,7 @@ export default function Page() {
                               </div>
                             )}
                             <div className="flex flex-col gap-1.5">
-                              <label className="cursor-pointer rounded-xl bg-slate-900 px-4 py-2 text-center text-xs font-bold text-white">
+                              <label className="cursor-pointer rounded-xl bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-4 py-2 text-center text-xs font-bold ">
                                 {item.image_url ? "Replace photo" : "Upload photo"}
                                 <input
                                   type="file"

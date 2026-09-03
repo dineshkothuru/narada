@@ -270,7 +270,7 @@ export default function WaiterPage() {
             {calls.map((t) => (
               <div
                 key={t.call!.id}
-                className="flex animate-pulse items-center justify-between rounded-2xl panel panel-lift border-l-4 border-rose-500 p-4"
+                className="flex animate-pulse items-center justify-between rounded-2xl panel panel-lift p-4"
               >
                 <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
                   {t.label}
@@ -294,7 +294,7 @@ export default function WaiterPage() {
                       attendedBy: who,
                     });
                   }}
-                  className="rounded-full bg-slate-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-5 py-2 text-xs font-bold  transition active:scale-95"
                 >
                   On it ✋
                 </button>
@@ -333,7 +333,7 @@ export default function WaiterPage() {
                   </span>
                   <button
                     onClick={() => act({ action: "mark_item_served", itemId: item.id })}
-                    className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                    className="shrink-0 rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-5 py-2 text-xs font-bold  transition active:scale-95"
                   >
                     Served ✅
                   </button>
@@ -353,7 +353,7 @@ export default function WaiterPage() {
             {toClean.map((t) => (
               <div
                 key={t.tableId}
-                className="flex items-center justify-between gap-3 rounded-2xl panel panel-lift border-l-4 border-stone-400 p-4"
+                className="flex items-center justify-between gap-3 rounded-2xl panel panel-lift border-stone-400 p-4"
               >
                 <span className="min-w-0">
                   <span className="text-sm font-bold text-slate-900">{t.label}</span>
@@ -363,7 +363,7 @@ export default function WaiterPage() {
                 </span>
                 <button
                   onClick={() => act({ action: "clear_table", tableId: t.tableId })}
-                  className="shrink-0 rounded-full bg-slate-800 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  className="shrink-0 rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-5 py-2 text-xs font-bold  transition active:scale-95"
                 >
                   Table ready ✓
                 </button>
@@ -393,9 +393,7 @@ export default function WaiterPage() {
                   role="link"
                   tabIndex={0}
                   title={`Take ${t.label}'s order`}
-                  className={`tone-violet panel panel-lift flex cursor-pointer flex-wrap items-center justify-between gap-3 border-l-4 p-4 ${
-                    late ? "border-rose-500" : "border-violet-400"
-                  }`}
+                  className="tone-violet panel panel-lift flex cursor-pointer flex-wrap items-center justify-between gap-3 p-4"
                 >
                   <span className="min-w-0">
                     <span className="text-sm font-bold text-slate-900">{t.label}</span>
@@ -602,7 +600,7 @@ export default function WaiterPage() {
                                 collectedBy: lastAttendant,
                               });
                             }}
-                            className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                            className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold  transition active:scale-95"
                           >
                             Paid UPI
                           </button>
@@ -629,7 +627,7 @@ export default function WaiterPage() {
                                 collectedBy: lastAttendant,
                               });
                             }}
-                            className="rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                            className="rounded-full bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold  transition active:scale-95"
                           >
                             Paid cash
                           </button>

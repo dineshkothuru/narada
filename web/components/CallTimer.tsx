@@ -31,7 +31,7 @@ export default function CallTimer({
       ? "animate-pulse bg-rose-600 text-white"
       : level === "warn"
         ? "bg-amber-400 text-slate-900"
-        : "bg-slate-900 text-white";
+        : "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 ";
 
   return (
     <span

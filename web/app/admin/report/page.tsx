@@ -61,7 +61,7 @@ export default function ReportPage() {
             />
             <button
               onClick={() => window.print()}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white"
+              className="rounded-xl bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-4 py-2 text-xs font-bold "
             >
               🖨️ Print
             </button>

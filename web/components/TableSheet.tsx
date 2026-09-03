@@ -326,7 +326,7 @@ export default function TableSheet({
           {onShare && sheet && (
             <button
               onClick={() => onShare(sheet.net)}
-              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+              className="rounded-xl bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold  transition active:scale-[0.98]"
             >
               Share on WhatsApp
             </button>
