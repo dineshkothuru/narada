@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { SoldOutAlerts } from "@/components/SoldOut";
+import { Metric } from "@/components/Panel";
 import { inr, minutesAgo } from "@/lib/format";
 
 type AdminOrder = {
@@ -110,22 +111,19 @@ export default function AdminOrdersPage() {
       </div>
 
       {stats && (
-        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Sales (after discounts)", value: inr(stats.netExpected), tone: "text-slate-900" },
-            { label: "Collected", value: inr(stats.collected), tone: "text-green-600" },
-            { label: "Outstanding", value: inr(stats.outstanding), tone: "text-rose-600" },
-            { label: "Tables served", value: String(stats.tables), tone: "text-slate-900" },
-          ].map((c) => (
-            <div key={c.label} className="rounded-2xl panel panel-lift p-4">
-              <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-                {c.label}
-              </p>
-              <p className={`font-display mt-1 text-2xl font-semibold ${c.tone}`}>{c.value}</p>
-            </div>
+        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 lg:grid-cols-4">
+          {(
+            [
+              { label: "Sales (after discounts)", value: inr(stats.netExpected), tone: "indigo", icon: "🧾" },
+              { label: "Collected", value: inr(stats.collected), tone: "emerald", icon: "✅" },
+              { label: "Outstanding", value: inr(stats.outstanding), tone: "rose", icon: "⏳" },
+              { label: "Tables served", value: String(stats.tables), tone: "violet", icon: "🪑" },
+            ] as const
+          ).map((c) => (
+            <Metric key={c.label} tone={c.tone} label={c.label} value={c.value} icon={c.icon} />
           ))}
-          <div className="rounded-2xl panel panel-lift p-4 sm:col-span-2">
-            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+          <div className="tone-amber panel panel-lift p-4 sm:col-span-2">
+            <p className="panel-title text-[10px] font-bold tracking-widest uppercase">
               Top dishes
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -142,14 +140,14 @@ export default function AdminOrdersPage() {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl panel panel-lift p-4">
-            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+          <div className="tone-sky panel panel-lift p-4">
+            <p className="panel-title text-[10px] font-bold tracking-widest uppercase">
               Avg per table
             </p>
             <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
           </div>
-          <div className="rounded-2xl panel panel-lift p-4">
-            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+          <div className="tone-violet panel panel-lift p-4">
+            <p className="panel-title text-[10px] font-bold tracking-widest uppercase">
               🎙️ Voice orders
             </p>
             <p className="font-display mt-1 text-2xl font-semibold">

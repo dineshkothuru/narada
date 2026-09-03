@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { inr } from "@/lib/format";
+import { Metric, Panel } from "@/components/Panel";
 
 type Report = {
   day: string;
@@ -75,17 +76,14 @@ export default function ReportPage() {
           </p>
         ) : (
           <div className="flex max-w-5xl flex-col gap-3">
-            <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat label="Net takings" value={inr(r.net)} tone="text-slate-900" big />
-              <Stat label="Bills" value={String(r.bills)} />
-              <Stat label="Covers" value={String(r.covers)} />
-              <Stat label="Average bill" value={inr(r.averageBill)} />
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Metric tone="emerald" label="Net takings" value={inr(r.net)} icon="₹" />
+              <Metric tone="indigo" label="Bills" value={String(r.bills)} icon="🧾" />
+              <Metric tone="violet" label="Covers" value={String(r.covers)} icon="👥" />
+              <Metric tone="sky" label="Average bill" value={inr(r.averageBill)} icon="📈" />
             </section>
 
-            <section className="panel panel-lift p-4">
-              <h2 className="mb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-                How it adds up
-              </h2>
+            <Panel tone="emerald" title="How it adds up" hint="what the guests were charged">
               <dl className="text-xs">
                 <Row label="Food & drink" value={inr(r.gross)} />
                 {r.discount > 0 && (
@@ -101,12 +99,9 @@ export default function ReportPage() {
                   <dd className="font-display text-xl font-semibold">{inr(r.net)}</dd>
                 </div>
               </dl>
-            </section>
+            </Panel>
 
-            <section className="panel panel-lift p-4">
-              <h2 className="mb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-                How it was paid
-              </h2>
+            <Panel tone="sky" title="How it was paid" hint="across every method">
               {r.byMethod.map((m) => (
                 <div
                   key={m.method}
@@ -138,7 +133,7 @@ export default function ReportPage() {
                     : `${inr(r.variance)} collected above what was billed — check for a payment against the wrong table.`}
                 </p>
               )}
-            </section>
+            </Panel>
           </div>
         )}
       </main>
@@ -146,28 +141,6 @@ export default function ReportPage() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  tone,
-  big,
-}: {
-  label: string;
-  value: string;
-  tone?: string;
-  big?: boolean;
-}) {
-  return (
-    <div className="panel panel-lift p-4">
-      <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">{label}</p>
-      <p
-        className={`font-display mt-1 font-semibold ${big ? "text-2xl" : "text-xl"} ${tone ?? "text-slate-800"}`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function Row({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (

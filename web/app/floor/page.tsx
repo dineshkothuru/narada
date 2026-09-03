@@ -144,7 +144,7 @@ export default function FloorPage() {
         </div>      </header>
 
       {stats && (
-        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <Metric tone="emerald" label="Free tables" value={`${stats.free}/${stats.total}`} icon="🪑" />
           <Metric tone="indigo" label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} icon="🍽️" />
           <Metric tone="amber" label="Needs a bill" value={String(stats.settling)} icon="🧾" />

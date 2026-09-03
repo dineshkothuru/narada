@@ -52,9 +52,9 @@ export function Metric({
 }) {
   return (
     <div className={`tone-${tone} metric p-4`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-display text-3xl font-semibold text-slate-900 tabular-nums">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-2xl font-semibold whitespace-nowrap text-slate-900 tabular-nums lg:text-3xl">
             {value}
           </p>
           <p className="mt-1 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
@@ -63,7 +63,7 @@ export function Metric({
           {sub && <p className="mt-0.5 text-[11px] text-slate-400">{sub}</p>}
         </div>
         {icon && (
-          <span className="metric-badge grid h-9 w-9 shrink-0 place-items-center rounded-xl text-base">
+          <span className="metric-badge hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-sm sm:grid">
             {icon}
           </span>
         )}
