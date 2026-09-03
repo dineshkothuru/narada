@@ -202,6 +202,9 @@ export default function VoiceMode({
   );
 
   useEffect(() => {
+    // reset for StrictMode remounts — cleanup below marks the ref closed
+    closedRef.current = false;
+    discardRef.current = false;
     (async () => {
       setStatus("thinking");
       handleResult(await onGreet(), startListening);
