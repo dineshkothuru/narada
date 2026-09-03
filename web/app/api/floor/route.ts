@@ -3,6 +3,7 @@ import { sbFetch } from "@/lib/supabase-server";
 import { computeBill } from "@/lib/billing";
 import { deriveTableStatus } from "@/lib/status";
 import { audit, actorFrom } from "@/lib/audit";
+import { closeOpenCalls } from "@/lib/settle";
 
 type TableRow = {
   id: string;
@@ -175,10 +176,17 @@ export async function PATCH(req: NextRequest) {
           { status: 409 },
         );
       }
+      const released = await sbFetch<{ table_id: string }[]>(
+        `sessions?select=table_id&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
+      );
       await sbFetch(`sessions?id=eq.${encodeURIComponent(sessionId)}`, {
         method: "PATCH",
         body: JSON.stringify({ status: "closed", closed_at: new Date().toISOString() }),
       });
+      await closeOpenCalls(
+        released.map((r) => r.table_id),
+        "table released",
+      );
       await audit({
         action: "table_released",
         entity: "session",
@@ -194,6 +202,7 @@ export async function PATCH(req: NextRequest) {
         method: "PATCH",
         body: JSON.stringify({ needs_cleaning: false }),
       });
+      await closeOpenCalls([tableId], "table cleared");
       return NextResponse.json({ ok: true });
     }
 

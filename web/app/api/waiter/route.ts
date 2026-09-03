@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { computeBill } from "@/lib/billing";
-import { recordPayment } from "@/lib/settle";
+import { closeOpenCalls, recordPayment } from "@/lib/settle";
 import { cancelItem } from "@/lib/cancel";
 import { audit, actorFrom } from "@/lib/audit";
 import { deriveOrderStatus, deriveTableStatus } from "@/lib/status";
@@ -209,6 +209,7 @@ export async function PATCH(req: NextRequest) {
         method: "PATCH",
         body: JSON.stringify({ needs_cleaning: false }),
       });
+      await closeOpenCalls([body.tableId], "table cleared");
       return NextResponse.json({ ok: true });
     }
 

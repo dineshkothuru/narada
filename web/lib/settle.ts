@@ -25,6 +25,20 @@ export async function generateBill(sessionId: string) {
   return { ok: true, billNo: bill.billNo, net: bill.net } as const;
 }
 
+// Shared by every path that ends a visit.
+export async function closeOpenCalls(tableIds: string[], reason: string) {
+  if (tableIds.length === 0) return;
+  const list = tableIds.map(encodeURIComponent).join(",");
+  await sbFetch(`waiter_calls?table_id=in.(${list})&status=eq.open`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      status: "done",
+      acked_at: new Date().toISOString(),
+      acked_by: `auto · ${reason}`,
+    }),
+  });
+}
+
 export type PaymentInput = {
   sessionId: string;
   amount?: number;
@@ -123,6 +137,11 @@ export async function recordPayment(input: PaymentInput) {
     method: "PATCH",
     body: JSON.stringify({ needs_cleaning: true }),
   });
+
+  // A call nobody got to does not stop mattering — it stops existing. Settling
+  // the bill ends the visit, so any call still open for these tables is closed
+  // with it rather than ticking on a table that has already paid and left.
+  await closeOpenCalls(toClean, "bill settled");
 
   return { ok: true, due: 0, closed: true, billNo: session.bill_no } as const;
 }
