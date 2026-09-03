@@ -6,6 +6,8 @@ export type MenuCategory = {
   id: string;
   name: Localized;
   emoji: string;
+  // a "drink" section reads an item's 0-3 intensity as sweetness, not spice
+  kind?: "food" | "drink";
 };
 
 export type MenuItem = {

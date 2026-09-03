@@ -66,8 +66,15 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
         { name: string; upi_vpa: string | null; payment_timing: "pre" | "post" }[]
       >(`restaurants?select=name,upi_vpa,payment_timing&id=eq.${restaurant_id}&limit=1`),
       rest<
-        { id: string; name: string; name_hi: string | null; name_te: string | null; emoji: string | null }[]
-      >(`menu_categories?select=id,name,name_hi,name_te,emoji&restaurant_id=eq.${restaurant_id}&order=sort_order`),
+        {
+          id: string;
+          name: string;
+          name_hi: string | null;
+          name_te: string | null;
+          emoji: string | null;
+          kind: "food" | "drink" | null;
+        }[]
+      >(`menu_categories?select=id,name,name_hi,name_te,emoji,kind&restaurant_id=eq.${restaurant_id}&order=sort_order`),
       rest<
         {
           id: string;
@@ -108,6 +115,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
         id: c.id,
         name: loc(c.name, c.name_hi, c.name_te),
         emoji: c.emoji || "🍽️",
+        kind: c.kind === "drink" ? ("drink" as const) : ("food" as const),
       })),
       items: items.map((m) => ({
         id: m.id,

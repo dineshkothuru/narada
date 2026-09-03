@@ -6,7 +6,9 @@ export const ADMIN_COOKIE = "narada_admin";
 
 export type StaffRole = "admin" | "kitchen" | "waiter" | "reception";
 
+// api/admin/me is the "who am I" probe — any signed-in role may call it
 export const ROLE_ACCESS: Record<string, StaffRole[]> = {
+  "/api/admin/me": ["admin", "kitchen", "waiter", "reception"],
   "/admin": ["admin"],
   "/api/admin": ["admin"],
   "/kitchen": ["admin", "kitchen"],

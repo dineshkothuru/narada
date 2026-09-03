@@ -20,7 +20,9 @@ function buildSystemPrompt(menu: MenuPayload, cart: CartLine[], language: string
         description: m.description.en,
         price_inr: m.priceInr,
         veg: m.isVeg,
-        spice_level_0_to_3: m.spiceLevel,
+        ...(c.kind === "drink"
+          ? { sweetness_0_to_3: m.spiceLevel }
+          : { spice_level_0_to_3: m.spiceLevel }),
         allergens: m.allergens,
         tags: m.tags,
         ...(m.isAvailable ? {} : { SOLD_OUT_TODAY: true }),

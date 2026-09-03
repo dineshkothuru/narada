@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
@@ -113,7 +112,7 @@ export default function FloorPage() {
   return (
     <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-      <header className="mx-auto mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
+      <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
             Narada · Floor
@@ -121,22 +120,10 @@ export default function FloorPage() {
           <p className="text-xs text-stone-500">
             Live table status, capacity and merges · refreshes every 5s
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/waiter" className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
-            Waiter
-          </Link>
-          <Link href="/kitchen" className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
-            Kitchen
-          </Link>
-          <Link href="/admin" className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white">
-            Admin
-          </Link>
-        </div>
-      </header>
+        </div>      </header>
 
       {stats && (
-        <section className="mx-auto mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-green-600" />
           <Stat label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} tone="text-sky-600" />
           <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
@@ -145,7 +132,7 @@ export default function FloorPage() {
       )}
 
       {mergeFrom && (
-        <div className="mx-auto mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
+        <div className="mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
           <p className="text-sm font-bold">
             Merging {mergeFrom.label} — pick the table it should join:
           </p>
@@ -183,7 +170,7 @@ export default function FloorPage() {
         </div>
       )}
 
-      <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {tables.map((t) => {
           const st = STATUS[t.status];
           return (
@@ -305,7 +292,7 @@ export default function FloorPage() {
       </div>
 
       {freeTables.length > 0 && (
-        <p className="mx-auto mt-5 max-w-5xl text-center text-[11px] text-stone-400">
+        <p className="mt-5 max-w-5xl text-center text-[11px] text-stone-400">
           Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
         </p>
       )}

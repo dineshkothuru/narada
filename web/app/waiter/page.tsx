@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
 
 type WaiterTable = {
@@ -106,7 +105,7 @@ export default function WaiterPage() {
   return (
     <AdminShell>
     <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-      <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between">
+      <header className="mb-5 flex max-w-5xl items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
             Narada · Waiter
@@ -115,25 +114,10 @@ export default function WaiterPage() {
             Calls, running tabs &amp; payments · refreshes every 5s
             {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/kitchen"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            Kitchen
-          </Link>
-          <Link
-            href="/admin"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            Admin
-          </Link>
-        </div>
-      </header>
+        </div>      </header>
 
       {calls.length > 0 && (
-        <section className="mx-auto mb-5 max-w-3xl">
+        <section className="mb-5 max-w-5xl">
           <h2 className="mb-2 text-xs font-bold tracking-widest text-rose-600 uppercase">
             🔔 Waiter calls ({calls.length})
           </h2>
@@ -173,7 +157,7 @@ export default function WaiterPage() {
       )}
 
       {readyRounds.length > 0 && (
-        <section className="mx-auto mb-5 max-w-3xl">
+        <section className="mb-5 max-w-5xl">
           <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
             🔔 Ready to serve ({readyRounds.length})
           </h2>
@@ -201,7 +185,7 @@ export default function WaiterPage() {
         </section>
       )}
 
-      <section className="mx-auto max-w-3xl">
+      <section className="max-w-5xl">
         <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
           Open tables ({active.length})
         </h2>

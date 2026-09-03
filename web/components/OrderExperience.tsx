@@ -18,8 +18,19 @@ import type {
 
 import { inr } from "@/lib/format";
 
-function SpiceDots({ level }: { level: number }) {
+const SWEETNESS = ["", "Less sweet", "Regular", "Extra sweet"];
+
+// chillies on a mango juice read as nonsense — a drink's 0-3 intensity is
+// how sweet it is, so it gets words instead of peppers
+function SpiceDots({ level, kind }: { level: number; kind?: "food" | "drink" }) {
   if (level === 0) return null;
+  if (kind === "drink") {
+    return (
+      <span className="text-[10px] font-semibold text-stone-400">
+        {SWEETNESS[Math.min(level, 3)]}
+      </span>
+    );
+  }
   return (
     <span className="text-[10px] tracking-tight" aria-label={`spice level ${level}`}>
       {"🌶️".repeat(level)}
@@ -132,6 +143,8 @@ export default function OrderExperience({
   const itemRefs = useRef<Record<string, HTMLElement | null>>({});
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `narada:${tableCode}`;
+  const kindOf = (categoryId: string) =>
+    menu.categories.find((c) => c.id === categoryId)?.kind ?? "food";
 
   // stable refs so async voice turns and deferred confirms never see stale state
   const cartRef = useRef<CartLine[]>(cart);
@@ -877,7 +890,7 @@ export default function OrderExperience({
                       >
                         <div className="flex items-center gap-1.5">
                           <VegMark isVeg={item.isVeg} />
-                          <SpiceDots level={item.spiceLevel} />
+                          <SpiceDots level={item.spiceLevel} kind={kindOf(item.categoryId)} />
                           {!item.isAvailable ? (
                             <span className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
                               {t.soldOut}
@@ -1540,7 +1553,7 @@ export default function OrderExperience({
             <div className="px-5 pt-4 pb-8">
               <div className="flex items-center gap-2">
                 <VegMark isVeg={detailItem.isVeg} />
-                <SpiceDots level={detailItem.spiceLevel} />
+                <SpiceDots level={detailItem.spiceLevel} kind={kindOf(detailItem.categoryId)} />
                 {!detailItem.isAvailable && (
                   <span className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
                     {t.soldOut}

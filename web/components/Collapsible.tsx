@@ -9,6 +9,7 @@ export default function Collapsible({
   badge,
   actions,
   defaultOpen = false,
+  spanWhenOpen = false,
   children,
 }: {
   title: string;
@@ -16,11 +17,18 @@ export default function Collapsible({
   badge?: string;
   actions?: React.ReactNode;
   defaultOpen?: boolean;
+  // in a two-column list, an opened panel takes the full width — its contents
+  // are wide rows that would be cramped in half a page
+  spanWhenOpen?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className="rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/60">
+    <section
+      className={`rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/60 ${
+        spanWhenOpen && open ? "sm:col-span-2" : ""
+      }`}
+    >
       <div className="flex items-center gap-2 px-5 py-4">
         <button
           onClick={() => setOpen((v) => !v)}

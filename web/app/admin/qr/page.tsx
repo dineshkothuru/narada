@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import QRCode from "qrcode";
+import AdminShell from "@/components/AdminShell";
 
 type TableRow = { id: string; label: string; code: string };
 
@@ -34,7 +34,8 @@ export default function QrSheetPage() {
   }, []);
 
   return (
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6 print:bg-white print:p-0">
+    <AdminShell>
+      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6 print:bg-white print:p-0">
       <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between print:hidden">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
@@ -45,12 +46,6 @@ export default function QrSheetPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/admin"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            ← Admin
-          </Link>
           <button
             onClick={() => window.print()}
             className="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
@@ -89,6 +84,7 @@ export default function QrSheetPage() {
           </div>
         ))}
       </div>
-    </main>
+      </main>
+    </AdminShell>
   );
 }

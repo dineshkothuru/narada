@@ -6,21 +6,79 @@ import { usePathname } from "next/navigation";
 import CallTimer from "./CallTimer";
 import CallAlertBar, { type OpenCall } from "./CallAlertBar";
 
-const NAV = [
-  { href: "/admin", label: "Menu & settings", emoji: "⚙️" },
-  { href: "/admin/orders", label: "Orders", emoji: "🧾" },
-  { href: "/floor", label: "Floor", emoji: "🪑" },
-  { href: "/waiter", label: "Waiter", emoji: "🔔" },
-  { href: "/kitchen", label: "Kitchen", emoji: "👨‍🍳" },
-  { href: "/admin/qr", label: "QR codes", emoji: "🖨️" },
+type Role = "admin" | "kitchen" | "waiter" | "reception";
+
+const I = (p: string) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="shrink-0"
+  >
+    {p.split("|").map((d, i) => (
+      <path key={i} d={d} />
+    ))}
+  </svg>
+);
+
+const ICONS: Record<string, React.ReactNode> = {
+  floor: I("M3 21h18|M5 21V8h14v13|M9 12h6|M9 16h6|M8 8V5a4 4 0 0 1 8 0v3"),
+  waiter: I("M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9|M13.7 21a2 2 0 0 1-3.4 0"),
+  kitchen: I("M7 21h10|M12 3a4 4 0 0 1 4 4v7H8V7a4 4 0 0 1 4-4z|M8 14v7|M16 14v7"),
+  orders: I("M6 2h9l5 5v15H6z|M15 2v5h5|M9 12h6|M9 16h6"),
+  menu: I("M7 3v9a3 3 0 0 0 6 0V3|M10 12v9|M18 3v18|M18 3a3 3 0 0 1 0 6h-1"),
+  tables: I("M4 10h16|M12 10v10|M7 20l5-4 5 4|M6 4h12l2 6H4z"),
+  users: I("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 7a4 4 0 1 0 0 .01|M19 8v6|M22 11h-6"),
+  settings: I("M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z|M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.7 7.7 0 0 0-2.6-1.5L14 2h-4l-.5 2.6A7.7 7.7 0 0 0 6.9 6.1l-2.3-1-2 3.4 2 1.5a7.7 7.7 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.7 7.7 0 0 0 2.6 1.5L10 22h4l.5-2.6a7.7 7.7 0 0 0 2.6-1.5l2.3 1 2-3.4z")
+};
+
+// every screen declares which roles may see it — the sidebar shows only what the
+// signed-in person can actually open (middleware enforces the same rules server-side)
+type NavLink = { href: string; label: string; icon: string; roles: Role[] };
+const GROUPS: { label: string; links: NavLink[] }[] = [
+  {
+    label: "Service",
+    links: [
+      { href: "/floor", label: "Floor", icon: "floor", roles: ["admin", "reception", "waiter"] },
+      { href: "/waiter", label: "Waiter", icon: "waiter", roles: ["admin", "waiter"] },
+      { href: "/kitchen", label: "Kitchen", icon: "kitchen", roles: ["admin", "kitchen"] },
+    ],
+  },
+  {
+    label: "Restaurant",
+    links: [
+      { href: "/admin/orders", label: "Orders", icon: "orders", roles: ["admin"] },
+      { href: "/admin/menu", label: "Menu", icon: "menu", roles: ["admin"] },
+      { href: "/admin/tables", label: "Tables & QR", icon: "tables", roles: ["admin"] },
+    ],
+  },
+  {
+    label: "Setup",
+    links: [
+      { href: "/admin/users", label: "Users", icon: "users", roles: ["admin"] },
+      { href: "/admin", label: "Settings", icon: "settings", roles: ["admin"] },
+    ],
+  },
 ];
 
-// Left sidebar for every staff screen, with a live call watchlist so an
-// unattended table is visible from anywhere in the admin.
+const ROLE_LABEL: Record<Role, string> = {
+  admin: "Owner",
+  kitchen: "Kitchen",
+  waiter: "Waiter",
+  reception: "Reception",
+};
+
+// Shell for every staff screen: an always-open left rail plus a live call
+// watchlist, so an unattended table is visible from anywhere in the back office.
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [calls, setCalls] = useState<OpenCall[]>([]);
-  const [open, setOpen] = useState(false);
+  const [role, setRole] = useState<Role | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,6 +106,21 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const d = await res.json();
+        if (!cancelled && d.role) setRole(d.role);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const tick = () => {
       if (!document.hidden) load();
     };
@@ -66,94 +139,132 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     window.location.replace("/admin/login");
   };
 
+  const visible = (l: NavLink) => !role || l.roles.includes(role);
+  const groups = GROUPS.map((g) => ({ ...g, links: g.links.filter(visible) })).filter(
+    (g) => g.links.length > 0,
+  );
+  const flat = groups.flatMap((g) => g.links);
+  const isActive = (href: string) =>
+    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+  const watchesCalls = !role || role !== "kitchen";
+
   return (
-    <div className="flex min-h-dvh bg-stone-100">
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-stone-950 p-4 text-white transition-transform lg:static lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <Link href="/admin" className="font-display text-xl font-semibold">
-            🪈 Narada
-          </Link>
-          <button
-            onClick={() => setOpen(false)}
-            className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-sm lg:hidden"
-          >
-            ✕
-          </button>
+    <div className="flex min-h-dvh bg-stone-100 print:block print:bg-white">
+      {/* laptop / tablet: the rail is always open — no hamburger to hunt for */}
+      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-stone-200 bg-white md:flex print:hidden">
+        <div className="flex h-16 items-center gap-2 border-b border-stone-200 px-5">
+          <span className="text-xl">🪈</span>
+          <div className="min-w-0">
+            <span className="font-display block leading-tight font-semibold text-stone-900">
+              Narada
+            </span>
+            {role && (
+              <span className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                {ROLE_LABEL[role]}
+              </span>
+            )}
+          </div>
         </div>
 
-        <nav className="flex flex-col gap-1">
-          {NAV.map((n) => {
-            const active = pathname === n.href;
-            return (
-              <Link
-                key={n.href}
-                href={n.href}
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                  active ? "bg-rose-600 text-white" : "text-stone-300 hover:bg-white/10"
-                }`}
-              >
-                <span>{n.emoji}</span>
-                {n.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {groups.map((g) => (
+            <div key={g.label} className="mb-4">
+              <div className="px-3 pb-1 text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+                {g.label}
+              </div>
+              {g.links.map((l) => {
+                const active = isActive(l.href);
+                return (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      active
+                        ? "bg-rose-600 text-white shadow-sm"
+                        : "text-stone-600 hover:bg-stone-100"
+                    }`}
+                  >
+                    {ICONS[l.icon]}
+                    {l.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
 
-        <div className="mt-5 rounded-2xl bg-white/5 p-3">
-          <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-            Waiter calls
-          </p>
-          {calls.length === 0 ? (
-            <p className="mt-1.5 text-[11px] text-stone-500">All attended ✓</p>
-          ) : (
-            <div className="mt-2 flex flex-col gap-1.5">
-              {calls.map((c) => (
-                <Link
-                  key={c.id}
-                  href="/waiter"
-                  className="flex items-center justify-between gap-2 rounded-lg bg-white/10 px-2 py-1.5 text-[11px] font-bold"
-                >
-                  <span className="truncate">{c.label}</span>
-                  <CallTimer since={c.since} compact />
-                </Link>
-              ))}
+          {watchesCalls && (
+            <div className="mt-2 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200">
+              <p className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+                Waiter calls
+              </p>
+              {calls.length === 0 ? (
+                <p className="mt-1.5 text-[11px] text-stone-400">All attended ✓</p>
+              ) : (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {calls.map((c) => (
+                    <Link
+                      key={c.id}
+                      href="/waiter"
+                      className="flex items-center justify-between gap-2 rounded-lg bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200"
+                    >
+                      <span className="truncate">{c.label}</span>
+                      <CallTimer since={c.since} compact />
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </nav>
 
-        <button
-          onClick={logout}
-          className="mt-auto rounded-xl bg-white/10 px-3 py-2.5 text-sm font-semibold text-stone-300"
-        >
-          Log out
-        </button>
+        <div className="border-t border-stone-200 p-3">
+          <button
+            onClick={logout}
+            className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-stone-100"
+          >
+            Log out
+          </button>
+        </div>
       </aside>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-30 bg-stone-950/50 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
       <div className="min-w-0 flex-1">
-        <button
-          onClick={() => setOpen(true)}
-          className="sticky top-0 z-20 flex w-full items-center gap-2 border-b border-stone-200 bg-white px-4 py-3 text-sm font-bold text-stone-700 lg:hidden"
-        >
-          ☰ Menu
-          {calls.length > 0 && (
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-rose-600">
-              {calls.length} call{calls.length > 1 ? "s" : ""} waiting
-            </span>
-          )}
-        </button>
-        <CallAlertBar calls={calls} />
+        {/* phone: the same links as a scrolling rail, still always visible */}
+        <div className="sticky top-0 z-20 border-b border-stone-200 bg-white md:hidden print:hidden">
+          <div className="flex items-center gap-2 px-3 pt-2">
+            <span className="font-display text-sm font-semibold text-stone-900">🪈 Narada</span>
+            {role && (
+              <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-stone-500 uppercase">
+                {ROLE_LABEL[role]}
+              </span>
+            )}
+            <button
+              onClick={logout}
+              className="ml-auto text-xs font-semibold text-rose-600"
+            >
+              Log out
+            </button>
+          </div>
+          <nav className="flex gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none]">
+            {flat.map((l) => {
+              const active = isActive(l.href);
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    active
+                      ? "bg-rose-600 text-white"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                  }`}
+                >
+                  {ICONS[l.icon]}
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+        {watchesCalls && <CallAlertBar calls={calls} />}
         {children}
       </div>
     </div>
