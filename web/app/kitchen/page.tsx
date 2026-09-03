@@ -114,7 +114,7 @@ export default function KitchenPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+    <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
       <header className="mb-5 flex max-w-6xl items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">

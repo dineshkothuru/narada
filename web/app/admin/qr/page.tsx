@@ -35,7 +35,7 @@ export default function QrSheetPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6 print:bg-white print:p-0">
+      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6 print:bg-white print:p-0">
       <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between print:hidden">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
@@ -59,7 +59,7 @@ export default function QrSheetPage() {
         {tables.map((t) => (
           <div
             key={t.id}
-            className="flex flex-col items-center rounded-3xl bg-white p-5 text-center shadow-sm ring-1 ring-stone-200/60 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
+            className="flex flex-col items-center rounded-3xl bg-white p-5 text-center shadow-sm ring-1 ring-stone-200/80 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
           >
             <p className="font-display text-lg font-semibold text-stone-900">
               {restaurantName}

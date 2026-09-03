@@ -25,14 +25,17 @@ export default function Collapsible({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section
-      className={`rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/60 ${
+      className={`rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/80 ${
         spanWhenOpen && open ? "sm:col-span-2" : ""
       }`}
     >
-      <div className="flex items-center gap-2 px-5 py-4">
+      {/* the padding lives on the button, so the whole header row toggles —
+          not just the thin strip of text across its middle */}
+      <div className="flex items-center gap-2">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-3xl px-5 py-4 text-left"
         >
           <span
             className={`text-xs text-stone-400 transition-transform ${open ? "rotate-90" : ""}`}
@@ -53,7 +56,7 @@ export default function Collapsible({
             </span>
           )}
         </button>
-        {open && actions}
+        {open && <div className="pr-5">{actions}</div>}
       </div>
       {open && <div className="px-5 pb-5">{children}</div>}
     </section>

@@ -104,7 +104,7 @@ export default function WaiterPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+    <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
       <header className="mb-5 flex max-w-5xl items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
@@ -203,7 +203,7 @@ export default function WaiterPage() {
                 className={`rounded-2xl bg-white p-4 shadow-sm ${
                   t.call
                     ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
-                    : "ring-1 ring-stone-200/60"
+                    : "ring-1 ring-stone-200/80"
                 }`}
               >
                 <div className="flex items-center justify-between">

@@ -10,7 +10,7 @@ export default function Page() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
         <div className="flex max-w-5xl flex-col gap-3">
           <header className="mb-1">
             <h1 className="font-display text-2xl font-semibold text-stone-900">

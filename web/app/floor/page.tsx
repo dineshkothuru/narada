@@ -111,7 +111,7 @@ export default function FloorPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
+    <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
       <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-display text-2xl font-semibold text-stone-900">
@@ -303,7 +303,7 @@ export default function FloorPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
       <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">{label}</p>
       <p className={`font-display mt-1 text-2xl font-semibold ${tone ?? "text-stone-900"}`}>
         {value}

@@ -149,7 +149,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const watchesCalls = !role || role !== "kitchen";
 
   return (
-    <div className="flex min-h-dvh bg-stone-100 print:block print:bg-white">
+    <div className="flex min-h-dvh bg-[#eeebe8] print:block print:bg-white">
       {/* laptop / tablet: the rail is always open — no hamburger to hunt for */}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-stone-200 bg-white md:flex print:hidden">
         <div className="flex h-16 items-center gap-2 border-b border-stone-200 px-5">
