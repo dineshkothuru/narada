@@ -87,7 +87,8 @@ create table if not exists payments (
   id          uuid primary key default gen_random_uuid(),
   session_id  uuid not null references sessions(id) on delete cascade,
   amount_inr  numeric(10,2) not null,
-  method      text not null default 'upi_intent',  -- upi_intent | razorpay | cash
+  method      text not null default 'upi_intent'
+              check (method in ('upi_intent','cash','card')),
   status      text not null default 'pending'
               check (status in ('pending','confirmed','failed')),
   reference   text,                                 -- gateway payment id / staff note
@@ -176,6 +177,64 @@ create unique index if not exists idx_staff_pin on staff(outlet_id, pin);
 -- one active session per table (order/reward races resolve on this)
 create unique index if not exists uniq_active_session_per_table
   on sessions(table_id) where status = 'active';
+
+-- ============================================================
+-- v3 additions (live columns; see docs/migrate-live-columns.sql for the
+-- migration that brings a pre-existing DB up to this shape)
+-- ============================================================
+
+alter table outlets
+  add column if not exists service_charge_pct numeric(5,2) not null default 0,
+  add column if not exists gstin text,
+  add column if not exists bill_seq int not null default 0; -- monotonic invoice counter
+
+alter table tables
+  add column if not exists ui_variant text not null default 'classic'
+    check (ui_variant in ('classic','stories')),
+  add column if not exists capacity int not null default 4,
+  add column if not exists zone text,
+  add column if not exists needs_cleaning boolean not null default false;
+
+alter table menu_categories
+  add column if not exists kind text not null default 'food'
+    check (kind in ('food','drink'));
+
+alter table menu_items
+  add column if not exists gst_pct numeric(5,2) not null default 5;
+
+alter table sessions
+  add column if not exists guests int,
+  add column if not exists attendant text,             -- waiter who claimed the table
+  add column if not exists merged_into uuid references sessions(id),
+  add column if not exists service_waived boolean not null default false,
+  add column if not exists bill_no text,                -- minted once, at bill time
+  add column if not exists bill_gross numeric(10,2),
+  add column if not exists bill_discount numeric(10,2),
+  add column if not exists bill_gst numeric(10,2),
+  add column if not exists bill_service numeric(10,2),
+  add column if not exists bill_tip numeric(10,2),
+  add column if not exists bill_net numeric(10,2),
+  add column if not exists tip_to text,                 -- attendant frozen at bill time
+  add column if not exists settled_at timestamptz;
+
+alter table orders
+  add column if not exists lang text; -- en | hi | te
+
+alter table order_items
+  add column if not exists gst_pct numeric(5,2) not null default 5; -- frozen from the menu item
+
+alter table waiter_calls
+  add column if not exists acked_at timestamptz,
+  add column if not exists acked_by text;
+
+-- kitchen/waiter screens move orders and order_items through a 'ready' state
+alter table orders drop constraint if exists orders_status_check;
+alter table orders add constraint orders_status_check
+  check (status in ('placed','preparing','ready','served','cancelled'));
+
+alter table order_items drop constraint if exists order_items_status_check;
+alter table order_items add constraint order_items_status_check
+  check (status in ('queued','preparing','ready','served'));
 
 -- customer role must not read credentials or keys
 revoke select on table outlets from anon;
