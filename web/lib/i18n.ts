@@ -68,6 +68,15 @@ type Strings = {
   soldOut: string;
   menuTiles: string;
   storiesHint: string;
+  billSubtotal: string;
+  billGst: string;
+  billService: string;
+  billTip: string;
+  billTotal: string;
+  removeService: string;
+  serviceRemoved: string;
+  addTip: string;
+  viewBill: string;
   you: string;
   yourName: string;
   contains: string;
@@ -136,6 +145,15 @@ export const STRINGS: Record<Lang, Strings> = {
     soldOut: "Sold out",
     menuTiles: "Menu",
     storiesHint: "▲ swipe up for the next dish",
+    billSubtotal: "Sub total",
+    billGst: "GST",
+    billService: "Service charge",
+    billTip: "Tip",
+    billTotal: "Total",
+    removeService: "Remove service charge",
+    serviceRemoved: "Service charge removed",
+    addTip: "Add a tip",
+    viewBill: "🧾 View / print bill",
     you: "You",
     yourName: "Your name (optional — shows on the table's order)",
     contains: "Contains",
@@ -202,6 +220,15 @@ export const STRINGS: Record<Lang, Strings> = {
     soldOut: "उपलब्ध नहीं",
     menuTiles: "मेन्यू",
     storiesHint: "▲ अगली डिश के लिए ऊपर स्वाइप करें",
+    billSubtotal: "सब टोटल",
+    billGst: "जीएसटी",
+    billService: "सर्विस चार्ज",
+    billTip: "टिप",
+    billTotal: "कुल",
+    removeService: "सर्विस चार्ज हटाएँ",
+    serviceRemoved: "सर्विस चार्ज हटा दिया गया",
+    addTip: "टिप जोड़ें",
+    viewBill: "🧾 बिल देखें / प्रिंट करें",
     you: "आप",
     yourName: "आपका नाम (वैकल्पिक — टेबल के ऑर्डर पर दिखेगा)",
     contains: "इसमें है",
@@ -268,6 +295,15 @@ export const STRINGS: Record<Lang, Strings> = {
     soldOut: "అయిపోయింది",
     menuTiles: "మెనూ",
     storiesHint: "▲ తదుపరి వంటకానికి పైకి స్వైప్ చేయండి",
+    billSubtotal: "సబ్ టోటల్",
+    billGst: "జీఎస్టీ",
+    billService: "సర్వీస్ ఛార్జ్",
+    billTip: "టిప్",
+    billTotal: "మొత్తం",
+    removeService: "సర్వీస్ ఛార్జ్ తీసివేయండి",
+    serviceRemoved: "సర్వీస్ ఛార్జ్ తీసివేయబడింది",
+    addTip: "టిప్ జోడించండి",
+    viewBill: "🧾 బిల్లు చూడండి / ప్రింట్",
     you: "మీరు",
     yourName: "మీ పేరు (ఐచ్ఛికం — టేబుల్ ఆర్డర్‌పై కనిపిస్తుంది)",
     contains: "ఇందులో",

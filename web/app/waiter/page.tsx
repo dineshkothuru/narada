@@ -15,6 +15,9 @@ type WaiterTable = {
     ordered: number;
     paid: number;
     discountPct: number;
+    gst: number;
+    service: number;
+    serviceWaived: boolean;
     due: number;
   } | null;
 };
@@ -148,6 +151,9 @@ export default function WaiterPage() {
                   {s.discountPct > 0 && (
                     <span className="font-bold text-rose-600">-{s.discountPct}% 🎡</span>
                   )}
+                  <span>+GST {inr(s.gst)}</span>
+                  {s.service > 0 && <span>+svc {inr(s.service)}</span>}
+                  {s.serviceWaived && <span className="text-stone-400">svc waived</span>}
                   <span>paid {inr(s.paid)}</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
@@ -160,15 +166,28 @@ export default function WaiterPage() {
                   </span>
                   {s.due > 0 && (
                     <div className="flex gap-1.5">
+                      <a
+                        href={`/bill/${s.id}`}
+                        target="_blank"
+                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+                      >
+                        🧾 Bill
+                      </a>
                       <button
-                        onClick={() =>
+                        onClick={() => {
+                          const utr = prompt(
+                            `UPI reference / UTR for ${t.label} (${inr(s.due)}) — paste from your UPI app, or leave blank:`,
+                            "",
+                          );
+                          if (utr === null) return;
                           act({
                             action: "mark_paid",
                             sessionId: s.id,
                             amount: s.due,
                             method: "upi_intent",
-                          })
-                        }
+                            utr,
+                          });
+                        }}
                         className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
                       >
                         Paid UPI

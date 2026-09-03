@@ -4,7 +4,7 @@ import { lookupTable, getOrCreateSession } from "@/lib/table-session";
 import { rateLimit } from "@/lib/ratelimit";
 import type { CartLine } from "@/lib/types";
 
-type ItemRow = { id: string; name: string; price_inr: number };
+type ItemRow = { id: string; name: string; price_inr: number; gst_pct: number };
 type OrderRow = { id: string; status: string; created_at: string };
 
 export async function POST(req: NextRequest) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
     const [session, items] = await Promise.all([
       getOrCreateSession(table),
-      sbFetch<ItemRow[]>(`menu_items?select=id,name,price_inr&id=in.(${ids.join(",")})`),
+      sbFetch<ItemRow[]>(`menu_items?select=id,name,price_inr,gst_pct&id=in.(${ids.join(",")})`),
     ]);
     const byId = new Map(items.map((i) => [i.id, i]));
     const lines = cart
@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
           menu_item_id: l.itemId,
           name: byId.get(l.itemId)!.name,
           unit_price: byId.get(l.itemId)!.price_inr,
+          gst_pct: byId.get(l.itemId)!.gst_pct ?? 5,
           qty: l.qty,
           notes: l.notes ?? null,
         })),

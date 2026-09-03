@@ -110,6 +110,12 @@ export default function OrderExperience({
   const [guestName, setGuestName] = useState("");
   const [myOrderIds, setMyOrderIds] = useState<string[]>([]);
   const [detailItem, setDetailItem] = useState<MenuItem | null>(null);
+  const [bill, setBill] = useState<{
+    gross: number; discountPct: number; discount: number; taxable: number;
+    gst: number; serviceChargePct: number; serviceWaived: boolean; service: number;
+    tip: number; net: number;
+  } | null>(null);
+  const [tip, setTip] = useState(0);
   const [placing, setPlacing] = useState(false);
   const [wheelOpen, setWheelOpen] = useState(false);
   const [spinDone, setSpinDone] = useState(false);
@@ -270,6 +276,37 @@ export default function OrderExperience({
     };
   }, [orderPlaced?.sessionId, orderPlaced?.orderId]);
 
+
+  // live bill (GST + service charge + tip) whenever the order sheet is open
+  useEffect(() => {
+    const sessionId = orderPlaced?.sessionId;
+    if (!sessionId || !cartOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/bill?session=${sessionId}&tip=${tip}`);
+        if (!res.ok) return;
+        const d = await res.json();
+        if (!cancelled) setBill(d);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orderPlaced?.sessionId, cartOpen, tip, rounds]);
+
+  const patchBill = async (patch: { serviceWaived?: boolean; tip?: number }) => {
+    const sessionId = orderPlaced?.sessionId;
+    if (!sessionId) return;
+    try {
+      const res = await fetch("/api/bill", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, tableCode, ...patch }),
+      });
+      if (res.ok) setBill(await res.json());
+    } catch {}
+  };
 
   const total = useMemo(
     () =>
@@ -524,7 +561,9 @@ export default function OrderExperience({
     setSpinDone(true);
   };
 
-  const payable = orderPlaced
+  const payable = bill
+    ? bill.net
+    : orderPlaced
     ? Math.round(
         (rounds.length
           ? rounds.reduce((s, r) => s + Number(r.total_inr), 0)
@@ -1081,9 +1120,93 @@ export default function OrderExperience({
                   </div>
                 )}
 
+                {bill && (
+                  <div className="mt-5 w-full rounded-2xl bg-stone-50 p-4 text-left text-xs ring-1 ring-stone-200">
+                    <div className="flex justify-between py-0.5 text-stone-600">
+                      <span>{t.billSubtotal}</span>
+                      <span className="font-semibold">{inr(bill.gross)}</span>
+                    </div>
+                    {bill.discount > 0 && (
+                      <div className="flex justify-between py-0.5 text-rose-600">
+                        <span>🎡 {t.discountApplied.replace("{pct}", String(bill.discountPct))}</span>
+                        <span className="font-semibold">− {inr(bill.discount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-0.5 text-stone-600">
+                      <span>{t.billGst}</span>
+                      <span className="font-semibold">{inr(bill.gst)}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-0.5 text-stone-600">
+                      <span>
+                        {t.billService}
+                        {!bill.serviceWaived && bill.serviceChargePct > 0
+                          ? ` (${bill.serviceChargePct}%)`
+                          : ""}
+                      </span>
+                      <span className="font-semibold">
+                        {bill.serviceWaived ? "—" : inr(bill.service)}
+                      </span>
+                    </div>
+                    {bill.tip > 0 && (
+                      <div className="flex justify-between py-0.5 text-green-600">
+                        <span>{t.billTip}</span>
+                        <span className="font-semibold">{inr(bill.tip)}</span>
+                      </div>
+                    )}
+                    <div className="mt-2 flex justify-between border-t border-dashed border-stone-300 pt-2 text-sm font-extrabold text-stone-900">
+                      <span>{t.billTotal}</span>
+                      <span>{inr(bill.net)}</span>
+                    </div>
+
+                    {!bill.serviceWaived && bill.service > 0 && (
+                      <button
+                        onClick={() => patchBill({ serviceWaived: true })}
+                        className="mt-2 w-full rounded-lg bg-white py-2 text-[11px] font-bold text-stone-500 ring-1 ring-stone-200"
+                      >
+                        {t.removeService}
+                      </button>
+                    )}
+                    {bill.serviceWaived && (
+                      <p className="mt-2 text-center text-[10px] font-semibold text-stone-400">
+                        ✓ {t.serviceRemoved}
+                      </p>
+                    )}
+
+                    <p className="mt-3 text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                      {t.addTip}
+                    </p>
+                    <div className="mt-1 flex gap-1.5">
+                      {[0, 20, 50, 100].map((amt) => (
+                        <button
+                          key={amt}
+                          onClick={() => {
+                            setTip(amt);
+                            patchBill({ tip: amt });
+                          }}
+                          className={`flex-1 rounded-lg py-2 text-[11px] font-bold transition ${
+                            bill.tip === amt
+                              ? "bg-stone-900 text-white"
+                              : "bg-white text-stone-600 ring-1 ring-stone-200"
+                          }`}
+                        >
+                          {amt === 0 ? "—" : `₹${amt}`}
+                        </button>
+                      ))}
+                    </div>
+
+                    <a
+                      href={`/bill/${orderPlaced.sessionId}`}
+                      target="_blank"
+                      className="mt-3 block text-center text-[11px] font-bold text-stone-500 underline"
+                    >
+                      {t.viewBill}
+                    </a>
+                  </div>
+                )}
+
                 <a
                   href={upiLink}
-                  className="mt-5 w-full rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
+                  className="mt-4 w-full rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
                 >
                   {t.payUpi.replace("{amount}", inr(payable))}
                   {discountPct > 0 && (

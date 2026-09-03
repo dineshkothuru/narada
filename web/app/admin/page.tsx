@@ -15,6 +15,7 @@ type AdminItem = {
   tags: string[];
   spice_level: number;
   allergens: string[];
+  gst_pct: number;
 };
 type AdminCategory = { id: string; name: string; emoji: string | null };
 type StaffRow = {
@@ -33,6 +34,8 @@ type AdminRestaurant = {
   gemini_api_key: string | null;
   sarvam_api_key: string | null;
   comp_item_id: string | null;
+  service_charge_pct: number;
+  gstin: string | null;
 };
 
 export default function AdminPage() {
@@ -87,7 +90,19 @@ export default function AdminPage() {
 
   const patchItem = async (
     itemId: string,
-    patch: Partial<Pick<AdminItem, "is_available" | "price_inr" | "tags" | "description" | "spice_level" | "is_veg" | "allergens">>,
+    patch: Partial<
+      Pick<
+        AdminItem,
+        | "is_available"
+        | "price_inr"
+        | "tags"
+        | "description"
+        | "spice_level"
+        | "is_veg"
+        | "allergens"
+        | "gst_pct"
+      >
+    >,
   ) => {
     setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...patch } : i)));
     await fetch("/api/admin/menu", {
@@ -266,6 +281,39 @@ export default function AdminPage() {
                     patchSettings({ admin_pin: e.target.value });
                   }
                 }}
+                className={inputCls}
+              />
+            </label>
+            <label className="text-xs font-semibold text-stone-600">
+              Service charge %
+              <input
+                type="number"
+                min="0"
+                max="20"
+                step="0.5"
+                defaultValue={restaurant.service_charge_pct}
+                onBlur={(e) => {
+                  const v = Number(e.target.value);
+                  if (v !== restaurant.service_charge_pct && v >= 0 && v <= 20) {
+                    patchSettings({ service_charge_pct: String(v) });
+                  }
+                }}
+                className={inputCls}
+              />
+              <span className="mt-1 block text-[10px] font-normal text-stone-400">
+                Applied on the bill · guests may ask to waive it
+              </span>
+            </label>
+            <label className="text-xs font-semibold text-stone-600">
+              GSTIN
+              <input
+                defaultValue={restaurant.gstin ?? ""}
+                onBlur={(e) => {
+                  if (e.target.value !== (restaurant.gstin ?? "")) {
+                    patchSettings({ gstin: e.target.value });
+                  }
+                }}
+                placeholder="29ABCDE1234F1Z5"
                 className={inputCls}
               />
             </label>
@@ -557,6 +605,9 @@ export default function AdminPage() {
                       >
                         ⭐
                       </button>
+                      <span className="hidden text-[10px] font-bold text-stone-400 sm:inline">
+                        GST {item.gst_pct ?? 5}%
+                      </span>
                       <span className="flex items-center gap-1 text-sm font-semibold text-stone-600">
                         ₹
                         <input
@@ -630,6 +681,20 @@ export default function AdminPage() {
                             onChange={(e) => patchItem(item.id, { is_veg: e.target.checked })}
                           />
                           Veg
+                        </label>
+                        <label className="text-xs font-semibold text-stone-600">
+                          GST %
+                          <select
+                            defaultValue={String(item.gst_pct ?? 5)}
+                            onChange={(e) => patchItem(item.id, { gst_pct: Number(e.target.value) })}
+                            className={inputCls}
+                          >
+                            <option value="0">0% (exempt)</option>
+                            <option value="5">5% (restaurant standard)</option>
+                            <option value="12">12%</option>
+                            <option value="18">18% (packaged / AC premium)</option>
+                            <option value="28">28%</option>
+                          </select>
                         </label>
                         <input
                           defaultValue={item.allergens.join(", ")}

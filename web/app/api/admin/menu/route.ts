@@ -6,10 +6,10 @@ export async function GET() {
     const [cats, items, restaurants] = await Promise.all([
       sbFetch<unknown[]>(`menu_categories?select=id,name,emoji&order=sort_order`),
       sbFetch<unknown[]>(
-        `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens&order=sort_order`,
+        `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens,gst_pct&order=sort_order`,
       ),
       sbFetch<unknown[]>(
-        `restaurants?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key,comp_item_id&limit=1`,
+        `restaurants?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key,comp_item_id,service_charge_pct,gstin&limit=1`,
       ),
     ]);
     return NextResponse.json({ categories: cats, items, restaurant: restaurants[0] });
@@ -94,7 +94,7 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const ALLOWED_TAGS = ["chef-special", "bestseller", "spicy"];
-    const { itemId, is_available, price_inr, tags, description, spice_level, is_veg, allergens } =
+    const { itemId, is_available, price_inr, tags, description, spice_level, is_veg, allergens, gst_pct } =
       (await req.json()) as {
         itemId: string;
         is_available?: boolean;
@@ -104,6 +104,7 @@ export async function PATCH(req: NextRequest) {
         spice_level?: number;
         is_veg?: boolean;
         allergens?: string[];
+        gst_pct?: number;
       };
     if (!itemId) return NextResponse.json({ error: "itemId required" }, { status: 400 });
     const patch: Record<string, unknown> = {};
@@ -117,6 +118,9 @@ export async function PATCH(req: NextRequest) {
       patch.spice_level = Math.floor(spice_level);
     }
     if (typeof is_veg === "boolean") patch.is_veg = is_veg;
+    if (typeof gst_pct === "number" && gst_pct >= 0 && gst_pct <= 28) {
+      patch.gst_pct = gst_pct;
+    }
     if (Array.isArray(allergens)) {
       patch.allergens = allergens
         .map((a) => String(a).trim().toLowerCase().slice(0, 30))

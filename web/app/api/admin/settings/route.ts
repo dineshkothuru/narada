@@ -11,6 +11,8 @@ export async function PATCH(req: NextRequest) {
       gemini_api_key,
       sarvam_api_key,
       comp_item_id,
+      service_charge_pct,
+      gstin,
     } = (await req.json()) as {
       restaurantId: string;
       payment_timing?: "pre" | "post";
@@ -19,6 +21,8 @@ export async function PATCH(req: NextRequest) {
       gemini_api_key?: string;
       sarvam_api_key?: string;
       comp_item_id?: string | null;
+      service_charge_pct?: number;
+      gstin?: string;
     };
     if (!restaurantId) {
       return NextResponse.json({ error: "restaurantId required" }, { status: 400 });
@@ -29,6 +33,14 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof upi_vpa === "string" && upi_vpa.includes("@")) patch.upi_vpa = upi_vpa;
     if (typeof admin_pin === "string" && admin_pin.length >= 4) patch.admin_pin = admin_pin;
+    if (
+      typeof service_charge_pct === "number" &&
+      service_charge_pct >= 0 &&
+      service_charge_pct <= 20
+    ) {
+      patch.service_charge_pct = service_charge_pct;
+    }
+    if (typeof gstin === "string") patch.gstin = gstin.trim().slice(0, 20) || null;
     if (comp_item_id === null || typeof comp_item_id === "string") {
       patch.comp_item_id = comp_item_id || null;
     }
