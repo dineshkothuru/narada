@@ -33,7 +33,7 @@ Rules that every agent/session must keep:
 | --------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------- |
 | 0 tooling + safety net                                                                        | done                                        | `f42d3d3`, `f9c76ed`                         |
 | rename restaurant→outlet                                                                      | done                                        | `f5fc3af` + `docs/migrate-outlet-rename.sql` |
-| origin/main semantic parity watermark                                                         | `ab4d484`; ancestry merge pending           | relevant UI semantics ported locally         |
+| origin/main semantic parity watermark                                                         | `ab4d484`; ancestry merge complete          | merge commit `b4cae51`                       |
 | 1 monorepo scaffold                                                                           | done                                        | `d06df02`                                    |
 | 2 api foundation (auth plugin, repos, shared services, pglite harness)                        | done                                        | `6efe5aa`                                    |
 | 2 route ports: customer (session, order, bill, reward, waiter-call, voice)                    | done                                        | `e617338`                                    |
@@ -69,7 +69,7 @@ signup/login, takeaway and table ordering, all five seeded role logins, signup
 fields, and the Settings slug UI. Final pnpm gates pass: 93 files / 535 tests,
 typecheck, lint (8 warnings, 0 errors), format, knip, and production build.
 The semantic origin/main watermark remains `ab4d484`; relevant UI semantics are
-ported, but the ancestry merge is still pending.
+merged at `b4cae51`.
 
 The password-auth migration preserves legacy rows and their display name as
 `first_name`, removes the legacy PIN columns, and leaves incomplete identity
@@ -80,7 +80,6 @@ bootstrap values, then complete each remaining row in Admin > Users.
 
 1. **Apply the auth and tenant migrations to an existing database**: take a backup, run the migrations in the README order, bootstrap the first admin if needed, remove the bootstrap values, then complete legacy staff setup in Admin > Users.
 2. **Run live smoke tests** with a real `DATABASE_URL`: customer order, kitchen, waiter call, bill/settlement, admin menu edit, photo upload, and slug changes. Verify Railway, Redis, and production-browser/security behavior.
-3. **Complete the ancestry merge** with the current `origin/main` at semantic watermark `ab4d484`; relevant UI semantics have been ported locally and the merge remains pending.
 
 ## Follow-up: customer and outlet login
 
