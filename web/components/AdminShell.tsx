@@ -185,7 +185,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                     href={l.href}
                     className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       active
-                        ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/25"
+                        ? "bg-indigo-50 font-semibold text-indigo-700 ring-1 ring-indigo-100"
                         : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
@@ -258,7 +258,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   href={l.href}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >

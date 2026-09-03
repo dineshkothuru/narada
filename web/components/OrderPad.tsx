@@ -24,11 +24,16 @@ export default function OrderPad({
   tableLabel,
   categories,
   items,
+  /** rendered inside a popup rather than on its own page */
+  embedded = false,
+  onPlaced,
 }: {
   tableCode: string;
   tableLabel: string;
   categories: Cat[];
   items: Item[];
+  embedded?: boolean;
+  onPlaced?: () => void;
 }) {
   const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -38,6 +43,8 @@ export default function OrderPad({
   const [heard, setHeard] = useState<string | null>(null);
   const [missed, setMissed] = useState<string[]>([]);
   const [placing, setPlacing] = useState(false);
+  // a guest asking "read that back to me" is the normal end of taking an order
+  const [readBack, setReadBack] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
 
@@ -151,31 +158,35 @@ export default function OrderPad({
       setCart({});
       setHeard(null);
       setMissed([]);
-      router.push("/waiter");
+      if (onPlaced) onPlaced();
+      else router.push("/waiter");
     } finally {
       setPlacing(false);
     }
   };
 
   return (
-    <div className="flex max-w-6xl flex-col gap-3 pb-28">
+    <div className={`flex flex-col gap-3 ${embedded ? "" : "max-w-6xl pb-28"}`}>
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className={embedded ? "hidden" : undefined}>
           <h1 className="font-display text-2xl font-semibold text-slate-900">
             Order for {tableLabel}
           </h1>
           <p className="text-xs text-slate-500">
-            Tap to add, or hold the mic and say it — it goes in as a normal round.
+            Tap to add, or say it — it goes in as a normal round.
             {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
           </p>
         </div>
+        {embedded && error && (
+          <p className="text-xs font-semibold text-rose-600">{error}</p>
+        )}
         <div className="flex items-center gap-2">
+          {/* the mic is Narada's own affordance and looks the same wherever it
+              appears — the guest's floating orb and this are the same button */}
           <button
             onClick={listen}
-            className={`rounded-full px-5 py-2.5 text-xs font-bold transition active:scale-95 ${
-              listening
-                ? "animate-pulse bg-rose-600 text-white"
-                : "bg-indigo-600 text-white"
+            className={`rounded-full bg-rose-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-600/30 transition active:scale-95 ${
+              listening ? "animate-pulse" : ""
             }`}
           >
             {listening ? "⏹ Stop" : "🎙️ Speak the order"}
@@ -226,7 +237,7 @@ export default function OrderPad({
         ))}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`grid gap-2 ${embedded ? "" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
         {shown.map((i) => {
           const qty = cart[i.id] ?? 0;
           return (
@@ -240,7 +251,7 @@ export default function OrderPad({
                 {i.emoji}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-slate-800">
+                <span className="block text-sm font-semibold text-slate-800">
                   {i.name}
                 </span>
                 <span className="text-[11px] text-slate-500">
@@ -288,11 +299,40 @@ export default function OrderPad({
       </div>
 
       {count > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:left-60">
+        <div
+          className={
+            embedded
+              ? "sticky bottom-0 -mx-5 -mb-5 border-t border-slate-200 bg-white/95 p-3 backdrop-blur"
+              : "fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:left-60"
+          }
+        >
+          {readBack && (
+            <ul className="mx-auto mb-2 flex max-w-6xl flex-col gap-1 px-1">
+              {lines.map((l) => (
+                <li
+                  key={l.item.id}
+                  className="flex items-baseline justify-between gap-3 text-sm"
+                >
+                  <span className="font-semibold text-slate-800">
+                    {l.qty} × {l.item.name}
+                  </span>
+                  <span className="shrink-0 text-xs text-slate-500 tabular-nums">
+                    {inr(l.item.priceInr * l.qty)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="mx-auto flex max-w-6xl items-center gap-3 px-1">
-            <span className="min-w-0 flex-1 truncate text-xs text-slate-600">
-              {lines.map((l) => `${l.qty}× ${l.item.name}`).join(", ")}
-            </span>
+            <button
+              onClick={() => setReadBack((v) => !v)}
+              title="Show every line so you can read it back to the table"
+              className="min-w-0 flex-1 truncate text-left text-xs text-slate-600 underline decoration-slate-300 underline-offset-2"
+            >
+              {readBack
+                ? "Hide the list"
+                : `${lines.map((l) => `${l.qty}× ${l.item.name}`).join(", ")}`}
+            </button>
             <span className="font-display shrink-0 text-lg font-semibold text-slate-900 tabular-nums">
               {inr(total)}
             </span>

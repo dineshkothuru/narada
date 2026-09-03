@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { inr } from "@/lib/format";
 import { ask } from "./Dialogs";
+import OrderPad from "./OrderPad";
 
 type RoundItem = { id: string; name: string; qty: number; status: string };
 type Round = {
@@ -47,11 +48,17 @@ export default function TableSheet({
   onClose,
   onShare,
   onCancelItem,
+  tableCode,
+  /** render as a full page instead of a popup over the screen behind it */
+  page = false,
   actions,
 }: {
   sessionId: string;
   label: string;
   onClose: () => void;
+  /** enables the Menu tab, which adds another round to this table */
+  tableCode?: string;
+  page?: boolean;
   onShare?: (net: number) => void;
   /** staff only — voids a dish and takes it off the bill */
   onCancelItem?: (itemId: string, name: string) => Promise<void> | void;
@@ -59,6 +66,20 @@ export default function TableSheet({
 }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [error, setError] = useState(false);
+  // details and the menu are two views of one table, not two windows
+  const [tab, setTab] = useState<"details" | "menu">("details");
+  const [menu, setMenu] = useState<{
+    categories: { id: string; name: string; emoji: string }[];
+    items: {
+      id: string;
+      categoryId: string;
+      name: string;
+      priceInr: number;
+      isVeg: boolean;
+      isAvailable: boolean;
+      emoji: string;
+    }[];
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -85,6 +106,7 @@ export default function TableSheet({
   }, [load]);
 
   useEffect(() => {
+    if (page) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -95,21 +117,46 @@ export default function TableSheet({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose]);
+  }, [onClose, page]);
+
+  // the menu is only fetched when the tab is actually opened
+  useEffect(() => {
+    if (tab !== "menu" || menu || !tableCode) return;
+    let off = false;
+    fetch(`/api/waiter/menu?table=${encodeURIComponent(tableCode)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!off && d) setMenu(d);
+      })
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [tab, menu, tableCode]);
 
   const due = sheet ? Math.max(0, sheet.net - sheet.paid) : 0;
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      role={page ? undefined : "dialog"}
+      aria-modal={page ? undefined : "true"}
       aria-label={`${label} order details`}
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className={
+        page
+          ? "w-full"
+          : "fixed inset-0 z-[90] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      }
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (!page && e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="animate-[dialogIn_.16s_ease-out] flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-slate-200 sm:rounded-3xl">
+      <div
+        className={
+          page
+            ? "panel flex w-full max-w-3xl flex-col"
+            : "animate-[dialogIn_.16s_ease-out] flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-slate-200 sm:rounded-3xl"
+        }
+      >
         <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">
             <h2 className="font-display text-lg font-semibold text-slate-900">{label}</h2>
@@ -121,16 +168,51 @@ export default function TableSheet({
                 : "Loading…"}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-100 text-sm text-slate-500"
-          >
-            ✕
-          </button>
+          <span className="flex shrink-0 items-center gap-2">
+            {tableCode && (
+              <span className="flex rounded-full bg-slate-100 p-0.5">
+                {(["details", "menu"] as const).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setTab(k)}
+                    className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
+                      tab === k ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    }`}
+                  >
+                    {k === "details" ? "Details" : "Menu"}
+                  </button>
+                ))}
+              </span>
+            )}
+            <button
+              onClick={onClose}
+              aria-label={page ? "Back" : "Close"}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-100 text-sm text-slate-500"
+            >
+              {page ? "←" : "✕"}
+            </button>
+          </span>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className={`px-5 py-4 ${page ? "" : "min-h-0 flex-1 overflow-y-auto"}`}>
+          {tab === "menu" && tableCode ? (
+            menu ? (
+              <OrderPad
+                embedded
+                tableCode={tableCode}
+                tableLabel={label}
+                categories={menu.categories}
+                items={menu.items}
+                onPlaced={() => {
+                  setTab("details");
+                  load();
+                }}
+              />
+            ) : (
+              <p className="text-xs text-slate-400">Loading the menu…</p>
+            )
+          ) : (
+          <>
           {error && <p className="text-xs text-rose-600">Could not load this table.</p>}
           {!sheet && !error && <p className="text-xs text-slate-400">Loading…</p>}
 
@@ -228,6 +310,8 @@ export default function TableSheet({
                 </>
               )}
             </dl>
+          )}
+          </>
           )}
         </div>
 

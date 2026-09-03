@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminShell from "@/components/AdminShell";
 import { ask } from "@/components/Dialogs";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
@@ -72,9 +73,14 @@ const LANG_BADGE: Record<string, { label: string; cls: string }> = {
 
 
 export default function WaiterPage() {
+  const router = useRouter();
   const [tables, setTables] = useState<WaiterTable[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
+  const [openTable, setOpenTable] = useState<{
+    id: string;
+    label: string;
+    code: string;
+  } | null>(null);
   // a ticking clock so "12m with no order" keeps counting without a reload
   const [now, setNow] = useState(0);
   const [tips, setTips] = useState<{ rows: { attendant: string; tips: number; tables: number }[] } | null>(null);
@@ -380,7 +386,14 @@ export default function WaiterPage() {
               return (
                 <div
                   key={t.tableId}
-                  className={`tone-violet panel panel-lift flex flex-wrap items-center justify-between gap-3 border-l-4 p-4 ${
+                  onClick={() => router.push(`/waiter/table/${t.code}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") router.push(`/waiter/table/${t.code}`);
+                  }}
+                  role="link"
+                  tabIndex={0}
+                  title={`Take ${t.label}'s order`}
+                  className={`tone-violet panel panel-lift flex cursor-pointer flex-wrap items-center justify-between gap-3 border-l-4 p-4 ${
                     late ? "border-rose-500" : "border-violet-400"
                   }`}
                 >
@@ -402,7 +415,10 @@ export default function WaiterPage() {
                       </span>
                     )}
                   </span>
-                  <span className="flex shrink-0 gap-1.5">
+                  <span
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex shrink-0 gap-1.5"
+                  >
                     {!t.session!.attendant && (
                       <button
                         onClick={() => claim(t)}
@@ -411,12 +427,6 @@ export default function WaiterPage() {
                         I&apos;ll take it
                       </button>
                     )}
-                    <a
-                      href={`/waiter/order/${t.code}`}
-                      className="rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition active:scale-95"
-                    >
-                      Take order
-                    </a>
                   </span>
                 </div>
               );
@@ -440,7 +450,14 @@ export default function WaiterPage() {
             return (
               <article
                 key={t.tableId}
-                className={`tone-${t.call ? "rose" : (STATUS_TONE[s.status] ?? "slate")} panel panel-lift ${
+                onClick={() => router.push(`/waiter/table/${t.code}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") router.push(`/waiter/table/${t.code}`);
+                }}
+                role="button"
+                tabIndex={0}
+                title={`Open ${t.label}`}
+                className={`tone-${t.call ? "rose" : (STATUS_TONE[s.status] ?? "slate")} panel panel-lift cursor-pointer ${
                   t.call ? "ring-2 ring-rose-400" : ""
                 }`}
               >
@@ -470,7 +487,10 @@ export default function WaiterPage() {
                   </span>
                 </header>
                 <div className="p-4">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500"
+                >
                 <button
                   onClick={async () => {
                     const who = await ask.prompt({
@@ -533,21 +553,12 @@ export default function WaiterPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <a
-                    href={`/waiter/order/${t.code}`}
-                    className="rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-                  >
-                    + Order
-                  </a>
-                  <button
-                    onClick={() => setOpenTable({ id: s.id, label: t.label })}
-                    className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
-                  >
-                    Details
-                  </button>
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-3 flex flex-wrap items-center gap-1.5"
+                >
                   {s.due > 0 && (
-                    <div className="ml-auto flex gap-1.5">
+                    <div className="flex gap-1.5">
                       {!s.billNo ? (
                         // the counter raises the bill; a waiter can only carry
                         // it and take the money against it
@@ -650,6 +661,7 @@ export default function WaiterPage() {
             })
           }
           onCancelItem={cancelItem}
+          tableCode={openTable.code}
         />
       )}
     </main>

@@ -337,12 +337,21 @@ export default function FloorPage() {
                     >
                       {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
                     </button>
-                    <button
-                      onClick={() => setOpenTable({ id: t.sessionId!, label: t.label })}
-                      className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-600"
+                    <a
+                      href={
+                        takesOrders
+                          ? `/waiter/table/${t.code}`
+                          : undefined
+                      }
+                      onClick={(e) => {
+                        if (takesOrders) return;
+                        e.preventDefault();
+                        setOpenTable({ id: t.sessionId!, label: t.label });
+                      }}
+                      className="cursor-pointer rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-600"
                     >
                       {t.served}/{t.rounds} served · details
-                    </button>
+                    </a>
                     {t.due > 0 && (
                       <span className="font-bold text-rose-600">due {inr(t.due)}</span>
                     )}
