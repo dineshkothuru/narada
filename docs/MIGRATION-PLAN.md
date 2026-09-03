@@ -37,22 +37,22 @@ Rules that every agent/session must keep:
 | 2 route ports: staff (kitchen, waiter, tips, floor, counter)                                  | done                         | `67d3cf5`                                              |
 | 2 route ports: admin (categories, login, me, menu, orders, settings, staff, tables, image)    | done                         | `67d3cf5`                                              |
 | 2 wire-up/shared settle + cleanup                                                             | done                         | `a47172b`                                              |
-| 3 tests                                                                                       | done — 75 files / 532 passed | `e617338`, `67d3cf5`, `a47172b`                        |
+| 3 tests                                                                                       | done — 75 files / 535 passed | `e617338`, `67d3cf5`, `a47172b`, `177bf51`             |
 | 4 web batch 1: shell, router, RequireRole, login, kitchen, floor                              | done                         | `6b1a1d3`, `eac2649`                                   |
 | 4 web batch 2: waiter, counter, admin pages                                                   | done                         | `bc8ed7f`                                              |
 | 4 web batch 3: customer flow (`/t/:code` OrderExperience split, `/bill/:session`)             | done                         | `27b4c34`                                              |
 | schema: `docs/migrate-live-columns.sql` for ~25 columns the live DB has but schema.sql lacked | done                         | `6bdc093`                                              |
+| 4 customer UX/KOT alignment                                                                   | done                         | `177bf51`                                              |
 
 All committed work above has the required gates green.
 
 ## Next (in order)
 
-1. **Align customer UX with agentmemory decisions**: no visible chat transcript or language switcher; ordering is voice or manual menu. Display a stable UUID-derived KOT token across confirmation, session/order status, and kitchen views. No DB migration unless sequential human-readable tokens are later required.
-2. **Delete `web/`**: remove the legacy workspace and its root `package.json`, `knip.json`, `vitest.config.ts`, lint-staged, and CI references; move any last pure helper needed by `apps/web` into `packages/shared`. Keep the root dev command usable for api + web.
-3. **Rewrite `README.md`** for the new stack: env, SQL order, `npm run dev:api` (3001), `npm run dev:web` (5173), production `WEB_DIST`, and the real repo layout.
-4. **Live smoke test** with a real `DATABASE_URL`: customer order, kitchen, waiter call, bill/settlement, admin menu edit, and photo upload; fix parity issues and add the Playwright coverage. Add Playwright directly only if the existing tooling cannot run the flows.
-5. **Sync main once more** before opening the PR; after merge, new work lands on the new stack only.
-6. **Deferred (Phase 5)**: Dockerfile/Railway, pino request IDs, helmet, Supabase RLS review, and Redis rate limiting for multi-instance deployment.
+1. **Delete `web/`**: remove the legacy workspace and its root `package.json`, `knip.json`, `vitest.config.ts`, lint-staged, and CI references; move any last pure helper needed by `apps/web` into `packages/shared`. Keep the root dev command usable for api + web.
+2. **Rewrite `README.md`** for the new stack: env, SQL order, `npm run dev:api` (3001), `npm run dev:web` (5173), production `WEB_DIST`, and the real repo layout.
+3. **Live smoke test** with a real `DATABASE_URL`: customer order, kitchen, waiter call, bill/settlement, admin menu edit, and photo upload; fix parity issues and add the Playwright coverage. Add Playwright directly only if the existing tooling cannot run the flows.
+4. **Sync main once more** before opening the PR; after merge, new work lands on the new stack only.
+5. **Deferred (Phase 5)**: Dockerfile/Railway, pino request IDs, helmet, Supabase RLS review, and Redis rate limiting for multi-instance deployment.
 
 ## Gotchas collected so far
 
