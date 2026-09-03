@@ -9,6 +9,18 @@
       "next": {
         "entry": ["middleware.ts"]
       }
+    },
+    "apps/api": {
+      "ignore": ["src/db/**"],
+      "ignoreDependencies": ["@narada/shared", "kysely", "pg", "zod", "@types/pg"]
+    },
+    "apps/web": {
+      "vite": {},
+      "ignoreDependencies": ["lucide-react"]
+    },
+    "packages/shared": {
+      "ignore": ["src/schemas/**"],
+      "ignoreDependencies": ["zod"]
     }
   },
   "ignoreExportsUsedInFile": true

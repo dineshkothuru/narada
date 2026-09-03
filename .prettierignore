@@ -4,3 +4,4 @@ dist
 package-lock.json
 docs/*.sql
 web/public/_concept-*.html
+apps/web/dist

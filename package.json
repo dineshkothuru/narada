@@ -2,11 +2,15 @@
   "name": "narada",
   "private": true,
   "workspaces": [
-    "web"
+    "web",
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "npm run dev -w web",
-    "lint": "npm run lint --workspaces --if-present",
+    "dev:api": "npm run dev -w @narada/api",
+    "dev:web": "npm run dev -w @narada/web",
+    "lint": "eslint . && npm run lint -w web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "format": "prettier --write .",
@@ -19,13 +23,21 @@
     "prettier": "3.9.6",
     "knip": "6.34.0",
     "lint-staged": "17.4.1",
-    "simple-git-hooks": "2.14.0"
+    "simple-git-hooks": "2.14.0",
+    "@types/node": "^24",
+    "eslint": "^9",
+    "typescript-eslint": "^8",
+    "typescript": "^5"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
   },
+  "overrides": {
+    "vite": "^7"
+  },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json,css,md}": "prettier --write",
-    "web/**/*.{ts,tsx}": "npm run lint -w web --"
+    "web/**/*.{ts,tsx}": "npm run lint -w web --",
+    "{apps,packages}/**/*.{ts,tsx}": "eslint --fix"
   }
 }
