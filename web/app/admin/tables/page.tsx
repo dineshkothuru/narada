@@ -34,7 +34,7 @@ export default function Page() {
             </Link>
             <button
               onClick={() => setAddingTable((v) => !v)}
-              className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
+              className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200"
             >
               + Add tables
             </button>
@@ -156,7 +156,7 @@ export default function Page() {
                     load();
                   }
                 }}
-                className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 font-medium text-slate-800 outline-none hover:bg-slate-50 focus:bg-slate-50 focus:ring-2 focus:ring-rose-400"
+                className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 font-medium text-slate-800 outline-none hover:bg-slate-50 focus:bg-slate-50 focus:ring-2 focus:ring-indigo-400"
               />
               <a
                 href={`/t/${tb.code}`}
@@ -183,7 +183,7 @@ export default function Page() {
                     load();
                   }
                 }}
-                className="w-14 shrink-0 rounded-lg bg-slate-100 px-2 py-1.5 text-center text-xs font-bold outline-none focus:ring-2 focus:ring-rose-400"
+                className="w-14 shrink-0 rounded-lg bg-slate-100 px-2 py-1.5 text-center text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-400"
               />
               <select
                 value={tb.ui_variant}

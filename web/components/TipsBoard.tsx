@@ -46,7 +46,7 @@ export default function TipsBoard() {
               {r.tables} table{r.tables === 1 ? "" : "s"}
             </span>
           </span>
-          <span className="text-sm font-bold text-green-700">{inr(r.tips)}</span>
+          <span className="text-sm font-bold text-emerald-700">{inr(r.tips)}</span>
         </div>
       ))}
 

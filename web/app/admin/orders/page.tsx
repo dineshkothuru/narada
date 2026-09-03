@@ -44,7 +44,7 @@ const RANGES = [
 const STATUS_STYLE: Record<string, string> = {
   placed: "bg-rose-100 text-rose-700",
   preparing: "bg-sky-100 text-sky-700",
-  served: "bg-green-100 text-green-700",
+  served: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-slate-200 text-slate-500",
 };
 
@@ -123,7 +123,7 @@ export default function AdminOrdersPage() {
             <Metric key={c.label} tone={c.tone} label={c.label} value={c.value} icon={c.icon} />
           ))}
           <div className="tone-amber panel panel-lift p-4 sm:col-span-2">
-            <p className="panel-title text-[10px] font-bold tracking-widest uppercase">
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               Top dishes
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -141,13 +141,13 @@ export default function AdminOrdersPage() {
             </div>
           </div>
           <div className="tone-sky panel panel-lift p-4">
-            <p className="panel-title text-[10px] font-bold tracking-widest uppercase">
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               Avg per table
             </p>
             <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
           </div>
           <div className="tone-violet panel panel-lift p-4">
-            <p className="panel-title text-[10px] font-bold tracking-widest uppercase">
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               🎙️ Voice orders
             </p>
             <p className="font-display mt-1 text-2xl font-semibold">
@@ -197,7 +197,7 @@ export default function AdminOrdersPage() {
                 </span>
                 <span className="hidden w-24 shrink-0 text-right text-[11px] font-semibold sm:block">
                   {o.session?.status === "closed" ? (
-                    <span className="text-green-600">paid {inr(paid)}</span>
+                    <span className="text-emerald-600">paid {inr(paid)}</span>
                   ) : (
                     <span className="text-rose-600">open tab</span>
                   )}

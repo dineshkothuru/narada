@@ -200,7 +200,7 @@ export function DialogHost() {
                       defaultValue={f.defaultValue ?? ""}
                       placeholder={f.placeholder}
                       inputMode={f.inputMode ?? "text"}
-                      className="mt-1 w-full rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400"
+                      className="mt-1 w-full rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400"
                     />
                     {f.hint && <p className="mt-1 text-[11px] text-slate-400">{f.hint}</p>}
                   </div>

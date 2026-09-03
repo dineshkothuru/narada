@@ -101,7 +101,7 @@ export default async function BillPage({
                 />
               )
             )}
-            {bill.tip > 0 && <Row label="Tip" value={inr(bill.tip)} tone="text-green-600" />}
+            {bill.tip > 0 && <Row label="Tip" value={inr(bill.tip)} tone="text-emerald-600" />}
           </div>
 
           <div className="mt-3 flex items-center justify-between border-t-2 border-stone-800 pt-2">
@@ -109,7 +109,7 @@ export default async function BillPage({
             <span className="font-display text-xl font-semibold">{inr(bill.net)}</span>
           </div>
           {bill.paid > 0 && (
-            <p className="mt-1 text-right text-[11px] font-bold text-green-600">
+            <p className="mt-1 text-right text-[11px] font-bold text-emerald-600">
               Paid {inr(bill.paid)}
             </p>
           )}

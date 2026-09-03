@@ -45,10 +45,10 @@ const COLUMNS: {
   tone: Tone;
   heading: string;
 }[] = [
-  { status: "placed", title: "New", tone: "rose", heading: "text-rose-600" },
-  { status: "preparing", title: "Preparing", tone: "sky", heading: "text-sky-700" },
-  { status: "ready", title: "Ready — pick up", tone: "amber", heading: "text-amber-700" },
-  { status: "served", title: "Served", tone: "emerald", heading: "text-emerald-700" },
+  { status: "placed", title: "New", tone: "rose", heading: "text-slate-500" },
+  { status: "preparing", title: "Preparing", tone: "sky", heading: "text-slate-500" },
+  { status: "ready", title: "Ready — pick up", tone: "amber", heading: "text-slate-500" },
+  { status: "served", title: "Served", tone: "emerald", heading: "text-slate-500" },
 ];
 
 const NEXT: Record<string, { to: "preparing" | "ready"; label: string } | null> = {
@@ -202,7 +202,7 @@ export default function KitchenPage() {
                             title="Tap to advance: queued → preparing → ready. Tap a ready dish to step it back."
                             className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
                               it.status === "served"
-                                ? "bg-green-50 text-slate-400 line-through"
+                                ? "bg-emerald-50 text-slate-400 line-through"
                                 : it.status === "ready"
                                   ? "bg-amber-50 font-semibold text-slate-900"
                                   : it.status === "preparing"

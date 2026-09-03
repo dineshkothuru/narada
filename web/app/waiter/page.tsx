@@ -61,13 +61,13 @@ const STATUS_CHIP: Record<string, string> = {
   dining: "bg-sky-100 text-sky-700",
   settling: "bg-amber-100 text-amber-800",
   billed: "bg-sky-100 text-sky-800",
-  paid: "bg-green-100 text-green-700",
+  paid: "bg-emerald-100 text-emerald-700",
 };
 
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
   en: { label: "EN", cls: "bg-slate-200 text-slate-700" },
-  hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
-  te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
+  hi: { label: "हिं", cls: "bg-slate-100 text-slate-700" },
+  te: { label: "తె", cls: "bg-slate-100 text-slate-700" },
 };
 
 
@@ -249,7 +249,7 @@ export default function WaiterPage() {
               {lastAttendant} · {myTips.tables} table{myTips.tables === 1 ? "" : "s"} settled
             </p>
           </div>
-          <span className="font-display text-2xl font-semibold text-green-700">
+          <span className="font-display text-2xl font-semibold text-emerald-700">
             {inr(myTips.tips)}
           </span>
         </section>
@@ -257,7 +257,7 @@ export default function WaiterPage() {
 
       {calls.length > 0 && (
         <section className="mb-5 max-w-5xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-rose-600 uppercase">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
             🔔 Waiter calls ({calls.length})
           </h2>
           <div className="flex flex-col gap-2">
@@ -300,7 +300,7 @@ export default function WaiterPage() {
 
       {readyItems.length > 0 && (
         <section className="mb-5 max-w-5xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
             🔔 Ready to serve ({readyItems.length})
           </h2>
           <div className="flex flex-col gap-2">
@@ -312,7 +312,7 @@ export default function WaiterPage() {
               return (
                 <div
                   key={item.id}
-                  className="panel panel-lift flex items-center justify-between gap-3 border-l-4 border-amber-500 p-4"
+                  className="tone-amber panel panel-lift flex items-center justify-between gap-3 p-4"
                 >
                   <span className="min-w-0">
                     <span className="text-sm font-bold text-slate-900">{table.label}</span>
@@ -369,7 +369,7 @@ export default function WaiterPage() {
 
       {waitingToOrder.length > 0 && (
         <section className="mb-5 max-w-5xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-violet-700 uppercase">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
             ✋ Waiting to order ({waitingToOrder.length})
           </h2>
           <div className="flex flex-col gap-2">
@@ -406,15 +406,14 @@ export default function WaiterPage() {
                     {!t.session!.attendant && (
                       <button
                         onClick={() => claim(t)}
-                        className="rounded-full bg-violet-600 px-4 py-2 text-xs font-bold text-white transition active:scale-95"
+                        className="rounded-full bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition active:scale-95"
                       >
                         I&apos;ll take it
                       </button>
                     )}
                     <a
-                      href={`/t/${t.code}`}
-                      target="_blank"
-                      className="rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                      href={`/waiter/order/${t.code}`}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white transition active:scale-95"
                     >
                       Take order
                     </a>
@@ -527,7 +526,7 @@ export default function WaiterPage() {
                         ? "text-stone-300"
                         : s.due > 0
                           ? "text-rose-600"
-                          : "text-green-600"
+                          : "text-emerald-600"
                     }`}
                   >
                     {s.orders.length === 0
@@ -538,6 +537,12 @@ export default function WaiterPage() {
                   </span>
                   {s.due > 0 && (
                     <div className="flex flex-wrap justify-end gap-1.5">
+                      <a
+                        href={`/waiter/order/${t.code}`}
+                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200"
+                      >
+                        + Order
+                      </a>
                       <button
                         onClick={() => setOpenTable({ id: s.id, label: t.label })}
                         className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
@@ -560,7 +565,7 @@ export default function WaiterPage() {
                                 net: s.due,
                               })
                             }
-                            className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-green-700 ring-1 ring-green-200"
+                            className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200"
                           >
                             Share
                           </button>
@@ -599,7 +604,7 @@ export default function WaiterPage() {
                                 collectedBy: lastAttendant,
                               });
                             }}
-                            className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                            className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
                           >
                             Paid UPI
                           </button>

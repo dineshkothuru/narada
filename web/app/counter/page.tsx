@@ -203,7 +203,7 @@ export default function CounterPage() {
         <Section
           title={`Awaiting a bill (${awaitingBill.length})`}
           tone="amber"
-          heading="text-amber-700"
+          heading="text-slate-500"
           empty="Every open table has been billed."
           rows={awaitingBill}
           render={(t) => (
@@ -227,7 +227,7 @@ export default function CounterPage() {
         <Section
           title={`Raised, awaiting payment (${awaitingPayment.length})`}
           tone="emerald"
-          heading="text-emerald-700"
+          heading="text-slate-500"
           empty="Nothing is waiting to be paid."
           rows={awaitingPayment}
           render={(t) => (
@@ -246,13 +246,13 @@ export default function CounterPage() {
                     net: t.due,
                   })
                 }
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-green-700 ring-1 ring-green-200"
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200"
               >
                 Share
               </button>
               <button
                 onClick={() => takePayment(t, "upi_intent")}
-                className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                className="rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
               >
                 UPI
               </button>

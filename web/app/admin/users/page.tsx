@@ -32,7 +32,7 @@ export default function Page() {
         actions={
           <button
             onClick={() => setAddingStaff((v) => !v)}
-            className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
+            className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200"
           >
             + Add staff
           </button>
@@ -68,7 +68,7 @@ export default function Page() {
               <option value="admin">Admin</option>
             </select>
             <input name="pin" required minLength={4} placeholder="PIN (4+ digits)" className={inputCls} />
-            <button className="mt-1 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white">
+            <button className="mt-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white">
               Add
             </button>
           </form>
@@ -95,7 +95,7 @@ export default function Page() {
                     ? "bg-rose-100 text-rose-700"
                     : s.role === "kitchen"
                       ? "bg-sky-100 text-sky-700"
-                      : "bg-green-100 text-green-700"
+                      : "bg-emerald-100 text-emerald-700"
                 }`}
               >
                 {s.role}
@@ -137,7 +137,7 @@ export default function Page() {
                   load();
                 }}
                 className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                  s.active ? "bg-green-500" : "bg-slate-300"
+                  s.active ? "bg-emerald-500" : "bg-slate-300"
                 }`}
                 aria-label={s.active ? "disable login" : "enable login"}
               >

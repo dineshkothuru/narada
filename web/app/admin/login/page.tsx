@@ -58,7 +58,7 @@ function LoginForm() {
         onChange={(e) => setPin(e.target.value)}
         placeholder="PIN"
         autoFocus
-        className="mt-4 w-full rounded-xl bg-slate-100 px-4 py-3 text-center text-lg font-bold tracking-[0.4em] outline-none focus:ring-2 focus:ring-rose-400"
+        className="mt-4 w-full rounded-xl bg-slate-100 px-4 py-3 text-center text-lg font-bold tracking-[0.4em] outline-none focus:ring-2 focus:ring-indigo-400"
       />
       {error && (
         <p className="mt-2 text-center text-xs font-semibold text-rose-600">

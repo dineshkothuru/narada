@@ -87,11 +87,11 @@ export default function ReportPage() {
               <dl className="text-xs">
                 <Row label="Food & drink" value={inr(r.gross)} />
                 {r.discount > 0 && (
-                  <Row label="Discounts" value={`− ${inr(r.discount)}`} tone="text-green-700" />
+                  <Row label="Discounts" value={`− ${inr(r.discount)}`} tone="text-emerald-700" />
                 )}
                 <Row label="GST collected" value={inr(r.gst)} tone="font-semibold" />
                 {r.service > 0 && <Row label="Service charge" value={inr(r.service)} />}
-                {r.tips > 0 && <Row label="Tips" value={inr(r.tips)} tone="text-green-700" />}
+                {r.tips > 0 && <Row label="Tips" value={inr(r.tips)} tone="text-emerald-700" />}
                 <div className="mt-2 flex items-baseline justify-between border-t border-slate-200 pt-2">
                   <dt className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
                     Net

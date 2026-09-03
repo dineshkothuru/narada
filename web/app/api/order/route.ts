@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const { tableCode, cart, placedVia, guestName, lang } = (await req.json()) as {
       tableCode: string;
       cart: CartLine[];
-      placedVia?: "ui" | "anna";
+      placedVia?: "ui" | "anna" | "waiter";
       guestName?: string;
       lang?: string;
     };
@@ -60,7 +60,8 @@ export async function POST(req: NextRequest) {
         session_id: session.id,
         restaurant_id: table.restaurant_id,
         total_inr: total,
-        placed_via: placedVia === "anna" ? "anna" : "ui",
+        placed_via:
+          placedVia === "anna" ? "anna" : placedVia === "waiter" ? "waiter" : "ui",
         placed_by:
           typeof guestName === "string" && guestName.trim()
             ? guestName.trim().slice(0, 40)

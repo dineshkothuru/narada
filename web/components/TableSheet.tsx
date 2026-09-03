@@ -34,7 +34,7 @@ const ITEM_MARK: Record<string, { icon: string; cls: string }> = {
   queued: { icon: "⏳", cls: "text-slate-400" },
   preparing: { icon: "👨‍🍳", cls: "text-sky-600" },
   ready: { icon: "🔔", cls: "font-semibold text-amber-600" },
-  served: { icon: "✅", cls: "text-green-600" },
+  served: { icon: "✅", cls: "text-emerald-600" },
   cancelled: { icon: "✕", cls: "text-slate-400" },
 };
 
@@ -198,7 +198,7 @@ export default function TableSheet({
                 <Row
                   label={`Discount (${sheet.discountPct}%)`}
                   value={`− ${inr(sheet.discount)}`}
-                  tone="text-green-700"
+                  tone="text-emerald-700"
                 />
               )}
               <Row label="GST" value={inr(sheet.gst)} />
@@ -219,11 +219,11 @@ export default function TableSheet({
               </div>
               {sheet.paid > 0 && (
                 <>
-                  <Row label="Paid" value={inr(sheet.paid)} tone="text-green-700" />
+                  <Row label="Paid" value={inr(sheet.paid)} tone="text-emerald-700" />
                   <Row
                     label="Still due"
                     value={inr(due)}
-                    tone={due > 0 ? "font-bold text-rose-600" : "text-green-700"}
+                    tone={due > 0 ? "font-bold text-rose-600" : "text-emerald-700"}
                   />
                 </>
               )}
@@ -242,7 +242,7 @@ export default function TableSheet({
           {onShare && sheet && (
             <button
               onClick={() => onShare(sheet.net)}
-              className="rounded-xl bg-green-600 px-4 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+              className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
             >
               Share on WhatsApp
             </button>

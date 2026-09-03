@@ -38,7 +38,7 @@ export default function Page() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setAddingTo(addingTo === cat.id ? null : cat.id)}
-                    className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
+                    className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200"
                   >
                     + Add dish
                   </button>
@@ -84,7 +84,7 @@ export default function Page() {
                     className={`${inputCls} sm:col-span-5`}
                     rows={2}
                   />
-                  <button className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white">
+                  <button className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white">
                     Add
                   </button>
                 </form>
@@ -148,14 +148,14 @@ export default function Page() {
                               patchItem(item.id, { price_inr: v });
                             }
                           }}
-                          className="w-14 rounded-lg bg-slate-100 px-1.5 py-1 text-right text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400 sm:w-16 sm:px-2"
+                          className="w-14 rounded-lg bg-slate-100 px-1.5 py-1 text-right text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-400 sm:w-16 sm:px-2"
                         />
                       </span>
                       <button
                         onClick={() => patchItem(item.id, { is_available: !item.is_available })}
                         aria-label={item.is_available ? "mark sold out" : "mark available"}
                         className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                          item.is_available ? "bg-green-500" : "bg-slate-300"
+                          item.is_available ? "bg-emerald-500" : "bg-slate-300"
                         }`}
                       >
                         <span

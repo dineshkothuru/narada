@@ -9,8 +9,8 @@ import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
   en: { label: "EN", cls: "bg-slate-200 text-slate-700" },
-  hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
-  te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
+  hi: { label: "हिं", cls: "bg-slate-100 text-slate-700" },
+  te: { label: "తె", cls: "bg-slate-100 text-slate-700" },
 };
 
 
@@ -82,6 +82,9 @@ export default function FloorPage() {
   const [tables, setTables] = useState<FloorTable[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
+  // reception and the counter can see the floor but do not take orders, so the
+  // button only becomes an order pad for the people who do
+  const [role, setRole] = useState<string | null>(null);
   const [mergeFrom, setMergeFrom] = useState<FloorTable | null>(null);
 
   const load = useCallback(async () => {
@@ -128,6 +131,20 @@ export default function FloorPage() {
     act({ action: "seat", tableId: t.id, guests: Number(n) });
   };
 
+  useEffect(() => {
+    let off = false;
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!off && d?.role) setRole(d.role);
+      })
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, []);
+
+  const takesOrders = role === "waiter" || role === "admin";
   const freeTables = tables.filter((t) => t.status === "free");
 
   return (
@@ -255,11 +272,11 @@ export default function FloorPage() {
                   </p>
                   <div className="mt-3 flex gap-1.5">
                     <a
-                      href={`/t/${t.code}`}
-                      target="_blank"
+                      href={takesOrders ? `/waiter/order/${t.code}` : `/t/${t.code}`}
+                      target={takesOrders ? undefined : "_blank"}
                       className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
                     >
-                      Menu
+                      {takesOrders ? "Take order" : "Menu"}
                     </a>
                     <button
                       onClick={async () => {
@@ -292,7 +309,7 @@ export default function FloorPage() {
               ) : t.status === "free" ? (
                 <button
                   onClick={() => seat(t)}
-                  className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                  className="mt-3 w-full rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
                 >
                   Seat guests
                 </button>
@@ -332,11 +349,11 @@ export default function FloorPage() {
                   </div>
                   <div className="mt-3 flex gap-1.5">
                     <a
-                      href={`/t/${t.code}`}
-                      target="_blank"
+                      href={takesOrders ? `/waiter/order/${t.code}` : `/t/${t.code}`}
+                      target={takesOrders ? undefined : "_blank"}
                       className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
                     >
-                      Menu
+                      {takesOrders ? "+ Order" : "Menu"}
                     </a>
                     {t.sessionId && (
                       <a

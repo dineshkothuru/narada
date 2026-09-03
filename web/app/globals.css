@@ -138,13 +138,13 @@ body {
 }
 
 /* every tone declares the same four roles, so a panel only names its job */
-.tone-indigo  { --tone: #6366f1; --tone-ink: #4338ca; --tone-tint: #eef2ff; --tone-soft: #e0e7ff; }
-.tone-emerald { --tone: #10b981; --tone-ink: #047857; --tone-tint: #ecfdf5; --tone-soft: #d1fae5; }
-.tone-amber   { --tone: #f59e0b; --tone-ink: #b45309; --tone-tint: #fffbeb; --tone-soft: #fef3c7; }
-.tone-rose    { --tone: #f43f5e; --tone-ink: #be123c; --tone-tint: #fff1f2; --tone-soft: #ffe4e6; }
-.tone-sky     { --tone: #0ea5e9; --tone-ink: #0369a1; --tone-tint: #f0f9ff; --tone-soft: #e0f2fe; }
-.tone-violet  { --tone: #8b5cf6; --tone-ink: #6d28d9; --tone-tint: #f5f3ff; --tone-soft: #ede9fe; }
-.tone-slate   { --tone: #64748b; --tone-ink: #475569; --tone-tint: #f8fafc; --tone-soft: #e2e8f0; }
+.tone-indigo  { --tone: #6366f1; --tone-ink: #4338ca; --tone-tint: #f5f6ff; --tone-soft: #e0e7ff; }
+.tone-emerald { --tone: #10b981; --tone-ink: #047857; --tone-tint: #f3fdf8; --tone-soft: #d1fae5; }
+.tone-amber   { --tone: #f59e0b; --tone-ink: #b45309; --tone-tint: #fffdf4; --tone-soft: #fef3c7; }
+.tone-rose    { --tone: #f43f5e; --tone-ink: #be123c; --tone-tint: #fff7f8; --tone-soft: #ffe4e6; }
+.tone-sky     { --tone: #0ea5e9; --tone-ink: #0369a1; --tone-tint: #f5fbff; --tone-soft: #e0f2fe; }
+.tone-violet  { --tone: #8b5cf6; --tone-ink: #6d28d9; --tone-tint: #faf8ff; --tone-soft: #ede9fe; }
+.tone-slate   { --tone: #64748b; --tone-ink: #475569; --tone-tint: #fafbfc; --tone-soft: #e2e8f0; }
 
 .panel {
   background: #fff;
@@ -156,29 +156,34 @@ body {
   overflow: hidden;
 }
 
-/* the header band: a wash of the panel's own tone, fading out to the right */
+/* Colour is rationed. Only three things are allowed to carry it: the pill
+   beside a section title, a status chip, and the rule across a metric card.
+   Everything else — headers, titles, headings — stays neutral, so the colour
+   that remains actually means something. */
+/* a light strip so the header reads as a header, with the pill beside the
+   title carrying the only colour on it */
 .panel-head {
-  background: linear-gradient(100deg, var(--tone-tint) 0%, #fff 78%);
+  background: #f8fafc;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
-/* the little upright pill that starts every section title */
+/* the short upright line that starts every section title */
 .panel-pill {
-  width: 4px;
-  height: 18px;
+  width: 3px;
+  height: 16px;
   border-radius: 99px;
   background: var(--tone);
   flex-shrink: 0;
 }
 
-.panel-title { color: var(--tone-ink); }
+.panel-title { color: #1e293b; }
 
 /* a metric card wears its tone as a rule across the top */
 .metric {
   position: relative;
   background: #fff;
   border-radius: 14px;
-  padding-top: 4px;
+  padding-top: 3px;
   box-shadow:
     0 0 0 1px rgba(15, 23, 42, 0.07),
     0 1px 2px rgba(15, 23, 42, 0.04),
@@ -190,11 +195,11 @@ body {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
-  height: 4px;
+  height: 3px;
   background: var(--tone);
 }
 .metric-badge {
-  background: var(--tone-tint);
+  background: #f4f5f8;
   color: var(--tone-ink);
 }
 
