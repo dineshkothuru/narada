@@ -75,6 +75,8 @@ export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
+  // a ticking clock so "12m with no order" keeps counting without a reload
+  const [now, setNow] = useState(0);
   const [tips, setTips] = useState<{ rows: { attendant: string; tips: number; tables: number }[] } | null>(null);
   // remembered per device so a waiter types their name once per shift
   const [lastAttendant, setLastAttendant] = useState(() => {
@@ -119,6 +121,16 @@ export default function WaiterPage() {
   }, [load]);
 
   useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const t = setTimeout(tick, 0);
+    const iv = setInterval(tick, 15_000);
+    return () => {
+      clearTimeout(t);
+      clearInterval(iv);
+    };
+  }, []);
+
+  useEffect(() => {
     const loadTips = () => {
       fetch("/api/waiter/tips", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
@@ -129,6 +141,30 @@ export default function WaiterPage() {
     const iv = setInterval(loadTips, 30_000);
     return () => clearInterval(iv);
   }, []);
+
+  // a waiter claiming a table they are on their way to, without typing a name
+  // twice — the shift name is already remembered on this device
+  const claim = async (t: WaiterTable) => {
+    let who = lastAttendant.trim();
+    if (!who) {
+      const asked = await ask.prompt({
+        title: `Taking ${t.label}`,
+        message: "You'll be shown as this table's attendant.",
+        label: "Your name",
+        required: true,
+        confirmLabel: "Take it",
+      });
+      if (asked === null) return;
+      who = asked.trim();
+      if (who) setLastAttendant(who);
+    }
+    await fetch("/api/floor", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "attendant", sessionId: t.session!.id, attendant: who }),
+    });
+    load();
+  };
 
   const act = async (body: Record<string, unknown>) => {
     await fetch("/api/waiter", {
@@ -170,6 +206,14 @@ export default function WaiterPage() {
     ),
   );
   const active = tables.filter((t) => t.session);
+  // A party sitting with nothing ordered is the most urgent thing on this
+  // screen and the easiest to miss — it looks calm precisely because nothing
+  // has happened yet. It gets its own list, longest wait first, so a waiter is
+  // never deciding which of eleven identical cards to read.
+  const waitingToOrder = active
+    .filter((t) => t.session!.orders.length === 0)
+    .sort((a, b) => Date.parse(a.session!.since) - Date.parse(b.session!.since));
+  const running = active.filter((t) => t.session!.orders.length > 0);
   const toClean = tables.filter((t) => !t.session && t.needsCleaning);
   // "me" is the name this waiter attends tables under, remembered per device
   const myTips =
@@ -323,17 +367,76 @@ export default function WaiterPage() {
         </section>
       )}
 
+      {waitingToOrder.length > 0 && (
+        <section className="mb-5 max-w-5xl">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-violet-700 uppercase">
+            ✋ Waiting to order ({waitingToOrder.length})
+          </h2>
+          <div className="flex flex-col gap-2">
+            {waitingToOrder.map((t) => {
+              const mins = Math.max(0, Math.floor((now - Date.parse(t.session!.since)) / 60000));
+              // ten minutes seated with no order is a table nobody has been to
+              const late = mins >= 10;
+              return (
+                <div
+                  key={t.tableId}
+                  className={`tone-violet panel panel-lift flex flex-wrap items-center justify-between gap-3 border-l-4 p-4 ${
+                    late ? "border-rose-500" : "border-violet-400"
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="text-sm font-bold text-slate-900">{t.label}</span>
+                    {t.session!.guests && (
+                      <span className="ml-2 text-xs text-slate-500">
+                        🪑 {t.session!.guests} seated
+                      </span>
+                    )}
+                    <span
+                      className={`ml-2 text-xs font-bold ${late ? "text-rose-600" : "text-slate-500"}`}
+                    >
+                      {mins}m with no order
+                    </span>
+                    {!t.session!.attendant && (
+                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
+                        NOBODY ASSIGNED
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 gap-1.5">
+                    {!t.session!.attendant && (
+                      <button
+                        onClick={() => claim(t)}
+                        className="rounded-full bg-violet-600 px-4 py-2 text-xs font-bold text-white transition active:scale-95"
+                      >
+                        I&apos;ll take it
+                      </button>
+                    )}
+                    <a
+                      href={`/t/${t.code}`}
+                      target="_blank"
+                      className="rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                    >
+                      Take order
+                    </a>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="max-w-5xl">
         <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
-          Open tables ({active.length})
+          Running tables ({running.length})
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          {active.length === 0 && (
-            <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-slate-400 sm:col-span-2">
-              No open tables
+          {running.length === 0 && (
+            <p className="panel py-8 text-center text-xs text-slate-400 sm:col-span-2">
+              Nothing running
             </p>
           )}
-          {active.map((t) => {
+          {running.map((t) => {
             const s = t.session!;
             return (
               <article
