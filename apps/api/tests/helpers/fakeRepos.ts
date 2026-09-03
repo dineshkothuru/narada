@@ -204,6 +204,10 @@ export function makeFakeRepos(data: FakeDb): Repos {
         const m = byId(data.menu_items, id);
         if (m) Object.assign(m, patch);
       },
+      setImageUrl: async (id: string, url: string | null) => {
+        const m = byId(data.menu_items, id);
+        if (m) m.image_url = url;
+      },
       hideByCategory: async (categoryId: string) => {
         for (const m of data.menu_items) {
           if (m.category_id === categoryId) m.is_available = false;

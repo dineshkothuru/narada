@@ -10,6 +10,27 @@ import { env } from "./env.js";
 import { clientIp } from "./lib/ratelimit.js";
 import authPlugin from "./plugins/auth.js";
 import { makeRepos, type Repos } from "./repositories/index.js";
+import annaRoutes from "./routes/anna.js";
+import billRoutes from "./routes/bill.js";
+import orderRoutes from "./routes/order.js";
+import rewardRoutes from "./routes/reward.js";
+import sessionRoutes from "./routes/session.js";
+import voiceRoutes from "./routes/voice.js";
+import waiterCallRoutes from "./routes/waiterCall.js";
+import categoriesRoutes from "./routes/admin/categories.js";
+import imageRoutes from "./routes/admin/image.js";
+import loginRoutes from "./routes/admin/login.js";
+import meRoutes from "./routes/admin/me.js";
+import menuRoutes from "./routes/admin/menu.js";
+import ordersRoutes from "./routes/admin/orders.js";
+import settingsRoutes from "./routes/admin/settings.js";
+import staffRoutes from "./routes/admin/staff.js";
+import tablesRoutes from "./routes/admin/tables.js";
+import counterRoutes from "./routes/counter.js";
+import floorRoutes from "./routes/floor.js";
+import kitchenRoutes from "./routes/kitchen.js";
+import waiterRoutes from "./routes/waiter.js";
+import waiterTipsRoutes from "./routes/waiterTips.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -39,9 +60,31 @@ export function buildApp(opts?: BuildAppOptions): FastifyInstance {
   app.get("/health", health);
   app.get("/api/health", health);
 
-  // Who is logged in — drives which nav items and screens the UI offers.
-  // The auth plugin has already rejected an absent or expired cookie with 401.
-  app.get("/api/admin/me", async (request) => ({ role: request.staffRole }));
+  // Admin routes — moved out of this file into src/routes/admin/*.ts.
+  app.register(categoriesRoutes);
+  app.register(imageRoutes);
+  app.register(loginRoutes);
+  app.register(meRoutes);
+  app.register(menuRoutes);
+  app.register(ordersRoutes);
+  app.register(settingsRoutes);
+  app.register(staffRoutes);
+  app.register(tablesRoutes);
+
+  app.register(kitchenRoutes);
+  app.register(waiterRoutes);
+  app.register(waiterTipsRoutes);
+  app.register(floorRoutes);
+  app.register(counterRoutes);
+
+  // Customer-facing public routes.
+  app.register(sessionRoutes);
+  app.register(orderRoutes);
+  app.register(billRoutes);
+  app.register(rewardRoutes);
+  app.register(waiterCallRoutes);
+  app.register(annaRoutes);
+  app.register(voiceRoutes);
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error(error);

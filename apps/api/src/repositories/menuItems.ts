@@ -64,6 +64,11 @@ export function makeMenuItemsRepo(db: Kysely<DB>) {
       await db.updateTable("menu_items").set(patch).where("id", "=", id).execute();
     },
 
+    // dish photo: null clears it and the customer menu falls back to the emoji
+    setImageUrl: async (id: string, url: string | null) => {
+      await db.updateTable("menu_items").set({ image_url: url }).where("id", "=", id).execute();
+    },
+
     // a section whose dishes have order history cannot be deleted; hiding its
     // dishes is the fallback that keeps the history intact
     hideByCategory: async (categoryId: string) => {

@@ -132,7 +132,7 @@ describe("the settle flow end to end", () => {
     expect(preview.gst).toBe(14); // 5% of 280
     expect(preview.paid).toBe(0);
 
-    const raised = await generateBill(t.repos, session.id, 0);
+    const raised = await generateBill(t.repos, session.id);
     expect(raised.billNo).toMatch(/^NAR-\d{8}-0001$/);
     expect(raised.net).toBe(294);
     // the invoice counter really advanced on the outlet row

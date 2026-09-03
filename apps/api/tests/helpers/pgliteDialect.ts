@@ -27,7 +27,6 @@ class PGliteConnection implements DatabaseConnection {
     };
   }
 
-   
   async *streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {
     throw new Error("streaming is not supported by the pglite test dialect");
   }
