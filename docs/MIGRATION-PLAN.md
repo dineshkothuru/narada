@@ -26,33 +26,33 @@ Rules that every agent/session must keep:
 
 ## Status
 
-| Phase                                                                                         | State                                                                    | Commits                                                |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------ |
-| 0 tooling + safety net                                                                        | done                                                                     | `f42d3d3`, `f9c76ed`                                   |
-| rename restaurant→outlet                                                                      | done                                                                     | `f5fc3af` + `docs/migrate-outlet-rename.sql`           |
-| main syncs (×3)                                                                               | done                                                                     | `2e2f0eb`, `bce98d2`, `4579f98` — main is at `001f0dc` |
-| 1 monorepo scaffold                                                                           | done                                                                     | `d06df02`                                              |
-| 2 api foundation (auth plugin, repos, shared services, pglite harness)                        | done                                                                     | `6efe5aa`                                              |
-| 2 route ports: customer (session, order, bill, reward, waiter-call, anna, voice)              | in flight                                                                | —                                                      |
-| 2 route ports: staff (kitchen, waiter, tips, floor, counter)                                  | in flight                                                                | —                                                      |
-| 2 route ports: admin (categories, login, me, menu, orders, settings, staff, tables, image)    | in flight                                                                | —                                                      |
-| 3 tests                                                                                       | interleaved with 2 (services w/ fakes, `inject` per route, pglite repos) | —                                                      |
-| 4 web batch 1: shell, router, RequireRole, login, kitchen, floor                              | done                                                                     | `6b1a1d3`, `eac2649`                                   |
-| 4 web batch 2: waiter, counter, admin pages                                                   | done                                                                     | `bc8ed7f`                                              |
-| 4 web batch 3: customer flow (`/t/:code` OrderExperience split, `/bill/:session`)             | in flight                                                                | —                                                      |
-| schema: `docs/migrate-live-columns.sql` for ~25 columns the live DB has but schema.sql lacked | in flight                                                                | —                                                      |
+| Phase                                                                                         | State                        | Commits                                                |
+| --------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------ |
+| 0 tooling + safety net                                                                        | done                         | `f42d3d3`, `f9c76ed`                                   |
+| rename restaurant→outlet                                                                      | done                         | `f5fc3af` + `docs/migrate-outlet-rename.sql`           |
+| main syncs (×3)                                                                               | done                         | `2e2f0eb`, `bce98d2`, `4579f98` — main is at `001f0dc` |
+| 1 monorepo scaffold                                                                           | done                         | `d06df02`                                              |
+| 2 api foundation (auth plugin, repos, shared services, pglite harness)                        | done                         | `6efe5aa`                                              |
+| 2 route ports: customer (session, order, bill, reward, waiter-call, anna, voice)              | done                         | `e617338`                                              |
+| 2 route ports: staff (kitchen, waiter, tips, floor, counter)                                  | done                         | `67d3cf5`                                              |
+| 2 route ports: admin (categories, login, me, menu, orders, settings, staff, tables, image)    | done                         | `67d3cf5`                                              |
+| 2 wire-up/shared settle + cleanup                                                             | done                         | `a47172b`                                              |
+| 3 tests                                                                                       | done — 75 files / 532 passed | `e617338`, `67d3cf5`, `a47172b`                        |
+| 4 web batch 1: shell, router, RequireRole, login, kitchen, floor                              | done                         | `6b1a1d3`, `eac2649`                                   |
+| 4 web batch 2: waiter, counter, admin pages                                                   | done                         | `bc8ed7f`                                              |
+| 4 web batch 3: customer flow (`/t/:code` OrderExperience split, `/bill/:session`)             | done                         | `27b4c34`                                              |
+| schema: `docs/migrate-live-columns.sql` for ~25 columns the live DB has but schema.sql lacked | done                         | `6bdc093`                                              |
 
-Uncommitted at handoff time (if the session ended mid-flight): check `git status`; agents were told never to commit. Commit per area after running the gates on that workspace.
+All committed work above has the required gates green.
 
 ## Next (in order)
 
-1. **Land the in-flight work**: for each of customer/staff/admin routes, batch 3, schema migration — run the gates scoped to the workspace, fix, commit separately. Remove the remaining temporary knip ignores in `knip.json` (`zod` in api/shared, `lucide-react` in web) once wired.
-2. **Wire-up check**: `apps/api/src/app.ts` must register every route plugin; `npm run dev:api` + curl each `/api/*` path with fake env boots without DB (routes fail only at query time). Switch `apps/api/src/services/settle.ts` to import `splitPayment` from `@narada/shared` and delete `apps/api/src/lib/settle-math.ts`.
-3. **Delete `web/`**: `git rm -r web`, drop the `web` workspace from root `package.json`, `knip.json`, `vitest.config.ts`, `lint-staged` entries, `.github/workflows/ci.yml`; move any last pure helper the SPA still needed into `packages/shared`. Root `dev` script → concurrently run api + web (or document two terminals).
-4. **README rewrite**: run instructions = `npm install`, env (`DATABASE_URL` Supabase pooler string session mode, `SESSION_SECRET`, optional `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` for photo uploads, optional `GEMINI_API_KEY`/`SARVAM_API_KEY`), SQL order (schema.sql for fresh; migrate-i18n-columns → migrate-outlet-rename → migrate-live-columns for existing), `npm run dev:api` (3001) + `npm run dev:web` (5173), prod = api serves `apps/web/dist` via `WEB_DIST`. Update the "Repo layout" section to the real tree.
-5. **Live smoke test** (needs a real `DATABASE_URL` in `apps/api/.env`): scan `/t/t1-demo`, place an order, see it in `/kitchen`, call waiter, ask for bill, settle at `/counter`, admin login + menu edit + photo upload. Fix parity bugs found; add a Playwright spec for these three flows afterwards (Phase 3 tail).
-6. **Sync main once more** before opening the PR; after the PR merges, new work lands on the new stack only.
-7. **Deferred (Phase 5, not started)**: Dockerfile (multi-stage: build web, run api with `WEB_DIST`), Railway service, pino request ids, helmet, Supabase RLS review, Redis-backed rate limit if more than one instance.
+1. **Align customer UX with agentmemory decisions**: no visible chat transcript or language switcher; ordering is voice or manual menu. Display a stable UUID-derived KOT token across confirmation, session/order status, and kitchen views. No DB migration unless sequential human-readable tokens are later required.
+2. **Delete `web/`**: remove the legacy workspace and its root `package.json`, `knip.json`, `vitest.config.ts`, lint-staged, and CI references; move any last pure helper needed by `apps/web` into `packages/shared`. Keep the root dev command usable for api + web.
+3. **Rewrite `README.md`** for the new stack: env, SQL order, `npm run dev:api` (3001), `npm run dev:web` (5173), production `WEB_DIST`, and the real repo layout.
+4. **Live smoke test** with a real `DATABASE_URL`: customer order, kitchen, waiter call, bill/settlement, admin menu edit, and photo upload; fix parity issues and add the Playwright coverage. Add Playwright directly only if the existing tooling cannot run the flows.
+5. **Sync main once more** before opening the PR; after merge, new work lands on the new stack only.
+6. **Deferred (Phase 5)**: Dockerfile/Railway, pino request IDs, helmet, Supabase RLS review, and Redis rate limiting for multi-instance deployment.
 
 ## Gotchas collected so far
 
