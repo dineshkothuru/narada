@@ -68,9 +68,10 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
           name_hi: string | null;
           name_te: string | null;
           emoji: string | null;
+          kind: "food" | "drink" | null;
         }[]
       >(
-        `menu_categories?select=id,name,name_hi,name_te,emoji&outlet_id=eq.${outlet_id}&order=sort_order`,
+        `menu_categories?select=id,name,name_hi,name_te,emoji,kind&outlet_id=eq.${outlet_id}&order=sort_order`,
       ),
       rest<
         {
@@ -110,6 +111,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
         id: c.id,
         name: loc(c.name, c.name_hi, c.name_te),
         emoji: c.emoji || "🍽️",
+        kind: c.kind === "drink" ? ("drink" as const) : ("food" as const),
       })),
       items: items.map((m) => ({
         id: m.id,

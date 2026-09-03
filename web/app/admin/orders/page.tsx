@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@/lib/format";
 
@@ -82,31 +81,17 @@ export default function AdminOrdersPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-        <header className="mx-auto mb-5 flex max-w-4xl flex-wrap items-center justify-between gap-2">
+      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+        <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="font-display text-2xl font-semibold text-stone-900">Orders</h1>
             <p className="text-xs text-stone-500">
               Every round, its table, kitchen status and payment · refreshes every 15s
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin"
-              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-            >
-              ← Admin
-            </Link>
-            <Link
-              href="/kitchen"
-              className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
-            >
-              Kitchen
-            </Link>
-          </div>
+          </div>{" "}
         </header>
 
-        <div className="mx-auto mb-4 flex max-w-4xl gap-2">
+        <div className="mb-4 flex max-w-5xl gap-2">
           {RANGES.map((r) => (
             <button
               key={r.key}
@@ -123,7 +108,7 @@ export default function AdminOrdersPage() {
         </div>
 
         {stats && (
-          <section className="mx-auto mb-5 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-4">
+          <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               {
                 label: "Sales (after discounts)",
@@ -136,7 +121,7 @@ export default function AdminOrdersPage() {
             ].map((c) => (
               <div
                 key={c.label}
-                className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60"
+                className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80"
               >
                 <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                   {c.label}
@@ -144,7 +129,7 @@ export default function AdminOrdersPage() {
                 <p className={`font-display mt-1 text-2xl font-semibold ${c.tone}`}>{c.value}</p>
               </div>
             ))}
-            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60 sm:col-span-2">
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80 sm:col-span-2">
               <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 Top dishes
               </p>
@@ -162,13 +147,13 @@ export default function AdminOrdersPage() {
                 ))}
               </div>
             </div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
               <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 Avg per table
               </p>
               <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
             </div>
-            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
               <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 🎙️ Voice orders
               </p>
@@ -180,7 +165,7 @@ export default function AdminOrdersPage() {
           </section>
         )}
 
-        <section className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/60">
+        <section className="max-w-5xl overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/80">
           {orders.length === 0 && (
             <p className="py-10 text-center text-sm text-stone-400">No orders in this range</p>
           )}

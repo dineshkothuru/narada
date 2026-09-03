@@ -8,7 +8,9 @@ export const ADMIN_COOKIE = "narada_admin";
 
 export type StaffRole = "admin" | "kitchen" | "waiter" | "reception";
 
+// api/admin/me is the "who am I" probe — any signed-in role may call it
 export const ROLE_ACCESS: Record<string, StaffRole[]> = {
+  "/api/admin/me": ["admin", "kitchen", "waiter", "reception"],
   "/admin": ["admin"],
   "/api/admin": ["admin"],
   "/kitchen": ["admin", "kitchen"],
@@ -18,6 +20,27 @@ export const ROLE_ACCESS: Record<string, StaffRole[]> = {
   "/floor": ["admin", "waiter", "reception"],
   "/api/floor": ["admin", "waiter", "reception"],
 };
+
+// Longest match wins, and matching is segment-aware so "/admin" never claims
+// "/administrator". Picking the longest prefix means /api/admin/me keeps its
+// own wider rule no matter where it sits in the table above — the previous
+// first-match-wins scan silently depended on key order.
+export function rolesForPath(pathname: string): StaffRole[] | null {
+  let best: { prefix: string; roles: StaffRole[] } | null = null;
+  for (const [prefix, roles] of Object.entries(ROLE_ACCESS)) {
+    const matches = pathname === prefix || pathname.startsWith(`${prefix}/`);
+    if (matches && (!best || prefix.length > best.prefix.length)) {
+      best = { prefix, roles };
+    }
+  }
+  return best ? best.roles : null;
+}
+
+export function canAccess(pathname: string, role: StaffRole | null): boolean {
+  if (role === null) return false;
+  const roles = rolesForPath(pathname);
+  return roles === null || roles.includes(role);
+}
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 

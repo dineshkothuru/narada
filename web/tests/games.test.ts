@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MEMORY_EMOJIS, MEMORY_LEVELS, WHEEL, spinWheel } from "./games";
+import { MEMORY_EMOJIS, MEMORY_LEVELS, WHEEL, spinWheel } from "@/lib/games";
 
 afterEach(() => {
   vi.restoreAllMocks();

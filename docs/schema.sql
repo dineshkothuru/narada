@@ -165,7 +165,7 @@ create table if not exists staff (
   id            uuid primary key default gen_random_uuid(),
   outlet_id     uuid not null references outlets(id) on delete cascade,
   name          text not null,
-  role          text not null check (role in ('admin','kitchen','waiter')),
+  role          text not null check (role in ('admin','kitchen','waiter','reception')),
   pin           text not null,
   active        boolean not null default true,
   created_at    timestamptz not null default now()

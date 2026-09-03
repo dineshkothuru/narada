@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
@@ -17,7 +16,7 @@ type FloorTable = {
   code: string;
   capacity: number;
   zone: string | null;
-  status: "free" | "seated" | "dining" | "settling" | "paid";
+  status: "free" | "cleaning" | "seated" | "dining" | "settling" | "paid";
   sessionId: string | null;
   isMerged: boolean;
   mergedWith: string[];
@@ -37,6 +36,7 @@ type FloorTable = {
 type Stats = {
   total: number;
   free: number;
+  cleaning: number;
   seated: number;
   dining: number;
   settling: number;
@@ -47,6 +47,13 @@ type Stats = {
 
 const STATUS = {
   free: { ring: "ring-green-300", chip: "bg-green-100 text-green-700", label: "Free" },
+  // paid but still occupied: the party is gathering up and nobody has wiped
+  // the table down yet, so it must not be offered to the next guests
+  cleaning: {
+    ring: "ring-stone-300",
+    chip: "bg-stone-200 text-stone-600",
+    label: "Cleaning",
+  },
   seated: {
     ring: "ring-violet-300",
     chip: "bg-violet-100 text-violet-700",
@@ -114,38 +121,18 @@ export default function FloorPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-        <header className="mx-auto mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
+      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+        <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Floor</h1>
             <p className="text-xs text-stone-500">
               Live table status, capacity and merges · refreshes every 5s
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/waiter"
-              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-            >
-              Waiter
-            </Link>
-            <Link
-              href="/kitchen"
-              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-            >
-              Kitchen
-            </Link>
-            <Link
-              href="/admin"
-              className="rounded-full bg-stone-900 px-4 py-2 text-xs font-bold text-white"
-            >
-              Admin
-            </Link>
-          </div>
+          </div>{" "}
         </header>
 
         {stats && (
-          <section className="mx-auto mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
+          <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-5">
             <Stat
               label="Free tables"
               value={`${stats.free}/${stats.total}`}
@@ -157,12 +144,13 @@ export default function FloorPage() {
               tone="text-sky-600"
             />
             <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
+            <Stat label="Awaiting cleaning" value={String(stats.cleaning)} tone="text-stone-500" />
             <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
           </section>
         )}
 
         {mergeFrom && (
-          <div className="mx-auto mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
+          <div className="mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
             <p className="text-sm font-bold">
               Merging {mergeFrom.label} — pick the table it should join:
             </p>
@@ -201,7 +189,7 @@ export default function FloorPage() {
           </div>
         )}
 
-        <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tables.map((t) => {
             const st = STATUS[t.status];
             return (
@@ -252,7 +240,19 @@ export default function FloorPage() {
                   </p>
                 )}
 
-                {t.status === "free" ? (
+                {t.status === "cleaning" ? (
+                  <>
+                    <p className="mt-2 text-[11px] text-stone-500">
+                      Bill settled · waiting for the table to be cleared and wiped
+                    </p>
+                    <button
+                      onClick={() => act({ action: "clear_table", tableId: t.id })}
+                      className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                    >
+                      ✓ Table ready
+                    </button>
+                  </>
+                ) : t.status === "free" ? (
                   <button
                     onClick={() => seat(t)}
                     className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
@@ -325,7 +325,7 @@ export default function FloorPage() {
         </div>
 
         {freeTables.length > 0 && (
-          <p className="mx-auto mt-5 max-w-5xl text-center text-[11px] text-stone-400">
+          <p className="mt-5 max-w-5xl text-center text-[11px] text-stone-400">
             Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
           </p>
         )}
@@ -336,7 +336,7 @@ export default function FloorPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
       <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">{label}</p>
       <p className={`font-display mt-1 text-2xl font-semibold ${tone ?? "text-stone-900"}`}>
         {value}

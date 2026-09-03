@@ -4,7 +4,7 @@ import { sbFetch } from "@/lib/supabase-server";
 export async function GET() {
   try {
     const [cats, items, outlets] = await Promise.all([
-      sbFetch<unknown[]>(`menu_categories?select=id,name,emoji&order=sort_order`),
+      sbFetch<unknown[]>(`menu_categories?select=id,name,emoji,kind&order=sort_order`),
       sbFetch<unknown[]>(
         `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens,gst_pct&order=sort_order`,
       ),

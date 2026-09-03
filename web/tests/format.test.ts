@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inr, minutesAgo } from "./format";
+import { inr, minutesAgo } from "@/lib/format";
 
 describe("inr", () => {
   it("formats a number as Indian rupees with grouping", () => {

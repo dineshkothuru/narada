@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LANGS, STRINGS, type Lang } from "./i18n";
+import { LANGS, STRINGS, type Lang } from "@/lib/i18n";
 
 function checkValue(value: unknown, path: string) {
   if (typeof value === "function") return; // e.g. items(n)

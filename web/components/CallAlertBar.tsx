@@ -22,7 +22,7 @@ export default function CallAlertBar({ calls }: { calls: OpenCall[] }) {
   return (
     <Link
       href="/waiter"
-      className="sticky top-0 z-30 block overflow-hidden bg-rose-600 py-2 text-white shadow-lg"
+      className="sticky top-0 z-30 block overflow-hidden bg-rose-600 py-2 text-white shadow-lg print:hidden"
     >
       <div className="flex items-center gap-3">
         <span className="z-10 flex shrink-0 items-center gap-1.5 bg-rose-600 pr-3 pl-4 text-xs font-extrabold tracking-wider uppercase">

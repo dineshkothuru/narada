@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { computeBill } from "@/lib/billing";
+import { deriveTableStatus } from "@/lib/status";
 
 type TableRow = {
   id: string;
@@ -8,6 +9,7 @@ type TableRow = {
   code: string;
   capacity: number;
   zone: string | null;
+  needs_cleaning: boolean;
 };
 
 type SessionRow = {
@@ -24,7 +26,7 @@ type SessionRow = {
 export async function GET() {
   try {
     const [tables, sessions, calls] = await Promise.all([
-      sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,zone&order=label`),
+      sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,zone,needs_cleaning&order=label`),
       sbFetch<SessionRow[]>(
         `sessions?select=id,table_id,created_at,guests,merged_into,attendant,orders(id,status,total_inr,lang)&status=eq.active`,
       ),
@@ -79,18 +81,13 @@ export async function GET() {
           code: t.code,
           capacity: t.capacity,
           zone: t.zone,
-          // seated → ordering → dining → ready to settle (all food served,
-          // money still owed). A table that hasn't ordered yet is "seated",
-          // not "ready to settle".
-          status: !session
-            ? "free"
-            : rounds === 0
-              ? "seated"
-              : pending > 0
-                ? "dining"
-                : due > 0
-                  ? "settling"
-                  : "paid",
+          status: deriveTableStatus({
+            hasSession: Boolean(session),
+            needsCleaning: t.needs_cleaning,
+            rounds,
+            pending,
+            due,
+          }),
           sessionId: session?.id ?? null,
           isMerged: Boolean(session?.merged_into),
           mergedWith: groupTables,
@@ -122,6 +119,7 @@ export async function GET() {
       stats: {
         total: rows.length,
         free: rows.filter((r) => r.status === "free").length,
+        cleaning: rows.filter((r) => r.status === "cleaning").length,
         seated: rows.filter((r) => r.status === "seated").length,
         dining: rows.filter((r) => r.status === "dining").length,
         settling: rows.filter((r) => r.status === "settling").length,
@@ -140,13 +138,22 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const { action, sessionId, tableId, guests, intoSessionId, attendant } = (await req.json()) as {
-      action: "seat" | "merge" | "unmerge" | "attendant";
+      action: "seat" | "merge" | "unmerge" | "attendant" | "clear_table";
       sessionId?: string;
       tableId?: string;
       guests?: number;
       intoSessionId?: string;
       attendant?: string;
     };
+
+    // housekeeping is done — the table goes back into circulation
+    if (action === "clear_table" && tableId) {
+      await sbFetch(`tables?id=eq.${encodeURIComponent(tableId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ needs_cleaning: false }),
+      });
+      return NextResponse.json({ ok: true });
+    }
 
     if (action === "attendant" && sessionId) {
       await sbFetch(`sessions?id=eq.${encodeURIComponent(sessionId)}`, {
@@ -188,6 +195,11 @@ export async function PATCH(req: NextRequest) {
           outlet_id: tables[0].outlet_id,
           guests: n,
         }),
+      });
+      // seating it settles the question of whether it was cleaned
+      await sbFetch(`tables?id=eq.${encodeURIComponent(tableId)}&needs_cleaning=eq.true`, {
+        method: "PATCH",
+        body: JSON.stringify({ needs_cleaning: false }),
       });
       return NextResponse.json({ ok: true, sessionId: created[0].id });
     }

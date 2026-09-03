@@ -1,6 +1,7 @@
 // Offline fallback mirroring docs/seed.sql — used only when Supabase is
 // unreachable. The live menu (with translations) comes from lib/menu.ts.
-type MenuCategory = { id: string; name: string; emoji: string };
+// "drink" sections read the 0-3 intensity as sweetness, not spice
+type MenuCategory = { id: string; name: string; emoji: string; kind?: "food" | "drink" };
 type MenuItem = {
   id: string;
   categoryId: string;

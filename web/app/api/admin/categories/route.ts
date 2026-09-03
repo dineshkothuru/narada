@@ -3,7 +3,11 @@ import { sbFetch } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, emoji } = (await req.json()) as { name?: string; emoji?: string };
+    const { name, emoji, kind } = (await req.json()) as {
+      name?: string;
+      emoji?: string;
+      kind?: string;
+    };
     if (!name?.trim()) {
       return NextResponse.json({ error: "name required" }, { status: 400 });
     }
@@ -18,6 +22,7 @@ export async function POST(req: NextRequest) {
         outlet_id: outlets[0].id,
         name: name.trim().slice(0, 60),
         emoji: (emoji || "🍽️").slice(0, 8),
+        kind: kind === "drink" ? "drink" : "food",
         sort_order: (existing[0]?.sort_order ?? 0) + 1,
       }),
     });

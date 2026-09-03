@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { computeBill, finalizeBill } from "@/lib/billing";
 
-type TableRow = { id: string; label: string; code: string };
+type TableRow = { id: string; label: string; code: string; needs_cleaning: boolean };
 type SessionRow = {
   id: string;
   table_id: string;
@@ -24,7 +24,7 @@ type CallRow = { id: string; table_id: string; created_at: string };
 export async function GET() {
   try {
     const [tables, sessions, calls] = await Promise.all([
-      sbFetch<TableRow[]>(`tables?select=id,label,code&order=label`),
+      sbFetch<TableRow[]>(`tables?select=id,label,code,needs_cleaning&order=label`),
       sbFetch<SessionRow[]>(
         `sessions?select=id,table_id,created_at,discount_pct,attendant,orders(id,status,total_inr,created_at,lang,items:order_items(name,qty)),payments(amount_inr,status)&status=eq.active`,
       ),
@@ -55,6 +55,8 @@ export async function GET() {
         label: t.label,
         code: t.code,
         call: calls.find((c) => c.table_id === t.id) ?? null,
+        // paid and emptied, but not yet wiped down and handed back
+        needsCleaning: t.needs_cleaning,
         session: session
           ? {
               id: session.id,
@@ -90,8 +92,9 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      action: "ack_call" | "mark_paid" | "mark_served";
+      action: "ack_call" | "mark_paid" | "mark_served" | "clear_table";
       orderId?: string;
+      tableId?: string;
       callId?: string;
       attendedBy?: string;
       sessionId?: string;
@@ -136,9 +139,18 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // housekeeping done — the table goes back into circulation
+    if (body.action === "clear_table" && body.tableId) {
+      await sbFetch(`tables?id=eq.${encodeURIComponent(body.tableId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ needs_cleaning: false }),
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     if (body.action === "mark_paid" && body.sessionId) {
-      const sessions = await sbFetch<{ id: string; outlet_id: string }[]>(
-        `sessions?select=id,outlet_id&id=eq.${encodeURIComponent(body.sessionId)}&limit=1`,
+      const sessions = await sbFetch<{ id: string; outlet_id: string; table_id: string }[]>(
+        `sessions?select=id,outlet_id,table_id&id=eq.${encodeURIComponent(body.sessionId)}&limit=1`,
       );
       if (sessions.length === 0) {
         return NextResponse.json({ error: "unknown session" }, { status: 404 });
@@ -166,10 +178,35 @@ export async function PATCH(req: NextRequest) {
             .join(" · "),
         }),
       });
+      const closedAt = new Date().toISOString();
       await sbFetch(`sessions?id=eq.${encodeURIComponent(body.sessionId)}`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "closed", closed_at: new Date().toISOString() }),
+        body: JSON.stringify({ status: "closed", closed_at: closedAt }),
       });
+
+      // a merged group bills through its primary, so paying it closes the
+      // whole group — otherwise the joined tables would sit "dining" forever
+      const merged = await sbFetch<{ table_id: string }[]>(
+        `sessions?select=table_id&merged_into=eq.${encodeURIComponent(body.sessionId)}&status=eq.active`,
+      );
+      if (merged.length > 0) {
+        await sbFetch(
+          `sessions?merged_into=eq.${encodeURIComponent(body.sessionId)}&status=eq.active`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ status: "closed", closed_at: closedAt }),
+          },
+        );
+      }
+
+      // the guests are still sitting there, and the table needs wiping down —
+      // a waiter clears it once it is actually ready for the next party
+      const toClean = [sessions[0].table_id, ...merged.map((m) => m.table_id)];
+      await sbFetch(`tables?id=in.(${toClean.map(encodeURIComponent).join(",")})`, {
+        method: "PATCH",
+        body: JSON.stringify({ needs_cleaning: true }),
+      });
+
       return NextResponse.json({ ok: true, billNo: bill.billNo, net: bill.net });
     }
     return NextResponse.json({ error: "invalid action" }, { status: 400 });

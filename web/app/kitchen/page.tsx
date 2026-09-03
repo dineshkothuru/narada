@@ -114,8 +114,8 @@ export default function KitchenPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-        <header className="mx-auto mb-5 flex max-w-6xl items-center justify-between">
+      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+        <header className="mb-5 flex max-w-6xl items-center justify-between">
           <div>
             <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Kitchen</h1>
             <p className="text-xs text-stone-500">
@@ -130,7 +130,7 @@ export default function KitchenPage() {
           </span>
         </header>
 
-        <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {COLUMNS.map((col) => {
             const list = orders.filter((o) => o.status === col.status);
             return (
@@ -162,7 +162,7 @@ export default function KitchenPage() {
                           <li key={it.id}>
                             <button
                               onClick={() => cycleItem(it)}
-                              title="Tap to cycle: queued → preparing → served"
+                              title="Tap to cycle: queued → preparing → ready"
                               className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
                                 it.status === "served"
                                   ? "bg-green-50 text-stone-400 line-through"

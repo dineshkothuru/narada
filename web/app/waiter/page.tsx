@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
 
 type WaiterTable = {
@@ -9,6 +8,7 @@ type WaiterTable = {
   label: string;
   code: string;
   call: { id: string; created_at: string } | null;
+  needsCleaning: boolean;
   session: {
     id: string;
     since: string;
@@ -42,6 +42,9 @@ const LANG_BADGE: Record<string, { label: string; cls: string }> = {
 export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [tips, setTips] = useState<{
+    rows: { attendant: string; tips: number; tables: number }[];
+  } | null>(null);
   // remembered per device so a waiter types their name once per shift
   const [lastAttendant, setLastAttendant] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -84,6 +87,18 @@ export default function WaiterPage() {
     };
   }, [load]);
 
+  useEffect(() => {
+    const loadTips = () => {
+      fetch("/api/waiter/tips", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && setTips(d))
+        .catch(() => {});
+    };
+    loadTips();
+    const iv = setInterval(loadTips, 30_000);
+    return () => clearInterval(iv);
+  }, []);
+
   const act = async (body: Record<string, unknown>) => {
     await fetch("/api/waiter", {
       method: "PATCH",
@@ -101,36 +116,48 @@ export default function WaiterPage() {
       .map((order) => ({ table: t, order })),
   );
   const active = tables.filter((t) => t.session);
+  const toClean = tables.filter((t) => !t.session && t.needsCleaning);
+  // "me" is the name this waiter attends tables under, remembered per device
+  const myTips =
+    lastAttendant.trim() && tips
+      ? (tips.rows.find((r) => r.attendant === lastAttendant.trim()) ?? {
+          attendant: lastAttendant.trim(),
+          tips: 0,
+          tables: 0,
+        })
+      : null;
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-stone-100 p-4 sm:p-6">
-        <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between">
+      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+        <header className="mb-5 flex max-w-5xl items-center justify-between">
           <div>
             <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Waiter</h1>
             <p className="text-xs text-stone-500">
               Calls, running tabs &amp; payments · refreshes every 5s
               {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/kitchen"
-              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-            >
-              Kitchen
-            </Link>
-            <Link
-              href="/admin"
-              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-            >
-              Admin
-            </Link>
-          </div>
+          </div>{" "}
         </header>
 
+        {myTips && (
+          <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+            <div>
+              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                Your tips today
+              </p>
+              <p className="text-xs text-stone-500">
+                {lastAttendant} · {myTips.tables} table{myTips.tables === 1 ? "" : "s"} settled
+              </p>
+            </div>
+            <span className="font-display text-2xl font-semibold text-green-700">
+              {inr(myTips.tips)}
+            </span>
+          </section>
+        )}
+
         {calls.length > 0 && (
-          <section className="mx-auto mb-5 max-w-3xl">
+          <section className="mb-5 max-w-5xl">
             <h2 className="mb-2 text-xs font-bold tracking-widest text-rose-600 uppercase">
               🔔 Waiter calls ({calls.length})
             </h2>
@@ -170,7 +197,7 @@ export default function WaiterPage() {
         )}
 
         {readyRounds.length > 0 && (
-          <section className="mx-auto mb-5 max-w-3xl">
+          <section className="mb-5 max-w-5xl">
             <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
               🔔 Ready to serve ({readyRounds.length})
             </h2>
@@ -198,7 +225,36 @@ export default function WaiterPage() {
           </section>
         )}
 
-        <section className="mx-auto max-w-3xl">
+        {toClean.length > 0 && (
+          <section className="mb-5 max-w-5xl">
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
+              🧹 Awaiting cleaning ({toClean.length})
+            </h2>
+            <div className="flex flex-col gap-2">
+              {toClean.map((t) => (
+                <div
+                  key={t.tableId}
+                  className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-stone-400 bg-white p-4 shadow-sm"
+                >
+                  <span className="min-w-0">
+                    <span className="text-sm font-bold text-stone-900">{t.label}</span>
+                    <span className="ml-2 text-xs text-stone-500">
+                      Bill settled · clear and wipe before seating anyone
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => act({ action: "clear_table", tableId: t.tableId })}
+                    className="shrink-0 rounded-full bg-stone-800 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  >
+                    Table ready ✓
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="max-w-5xl">
           <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
             Open tables ({active.length})
           </h2>
@@ -216,7 +272,7 @@ export default function WaiterPage() {
                   className={`rounded-2xl bg-white p-4 shadow-sm ${
                     t.call
                       ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
-                      : "ring-1 ring-stone-200/60"
+                      : "ring-1 ring-stone-200/80"
                   }`}
                 >
                   <div className="flex items-center justify-between">

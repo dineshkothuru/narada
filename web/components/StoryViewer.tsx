@@ -61,6 +61,8 @@ export default function StoryViewer({
 
   const current = dishes[Math.min(index, dishes.length - 1)];
   const currentCat = categories.find((c) => c.id === current?.categoryId);
+  const kindOf = (categoryId: string) =>
+    categories.find((c) => c.id === categoryId)?.kind ?? "food";
   const catDishes = dishes.filter((d) => d.categoryId === current?.categoryId);
   const catPos = catDishes.findIndex((d) => d.id === current?.id);
 
@@ -158,7 +160,14 @@ export default function StoryViewer({
                       {strings.bestseller}
                     </span>
                   )}
-                  {item.spiceLevel > 0 && <span>{"🌶️".repeat(item.spiceLevel)}</span>}
+                  {item.spiceLevel > 0 &&
+                    (kindOf(item.categoryId) === "drink" ? (
+                      <span className="text-[10px] font-semibold text-stone-300">
+                        {["", "Less sweet", "Regular", "Extra sweet"][Math.min(item.spiceLevel, 3)]}
+                      </span>
+                    ) : (
+                      <span>{"🌶️".repeat(item.spiceLevel)}</span>
+                    ))}
                   <span
                     className={`inline-block h-3 w-3 rounded-[3px] border ${item.isVeg ? "border-green-400 bg-green-400/30" : "border-red-400 bg-red-400/30"}`}
                   />
