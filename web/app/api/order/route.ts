@@ -12,11 +12,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
   try {
-    const { tableCode, cart, placedVia, guestName } = (await req.json()) as {
+    const { tableCode, cart, placedVia, guestName, lang } = (await req.json()) as {
       tableCode: string;
       cart: CartLine[];
       placedVia?: "ui" | "anna";
       guestName?: string;
+      lang?: string;
     };
     if (!tableCode || !Array.isArray(cart) || cart.length === 0) {
       return NextResponse.json({ error: "tableCode and cart required" }, { status: 400 });
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
           typeof guestName === "string" && guestName.trim()
             ? guestName.trim().slice(0, 40)
             : null,
+        lang: ["en", "hi", "te"].includes(lang ?? "") ? lang : null,
       }),
     });
     const order = orders[0];

@@ -12,10 +12,17 @@ type WaiterTable = {
   session: {
     id: string;
     since: string;
-    orders: { id: string; status: string; total_inr: number; created_at: string }[];
+    orders: {
+      id: string;
+      status: string;
+      total_inr: number;
+      created_at: string;
+      items: { name: string; qty: number }[];
+    }[];
     ordered: number;
     paid: number;
     attendant: string | null;
+    langs: string[];
     discountPct: number;
     gst: number;
     service: number;
@@ -26,6 +33,12 @@ type WaiterTable = {
 
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
+const LANG_BADGE: Record<string, { label: string; cls: string }> = {
+  en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
+  hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
+  te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
+};
+
 
 export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
@@ -82,6 +95,12 @@ export default function WaiterPage() {
   };
 
   const calls = tables.filter((t) => t.call);
+  // food the kitchen has plated and is waiting for a waiter to carry out
+  const readyRounds = tables.flatMap((t) =>
+    (t.session?.orders ?? [])
+      .filter((o) => o.status === "ready")
+      .map((order) => ({ table: t, order })),
+  );
   const active = tables.filter((t) => t.session);
 
   return (
@@ -153,6 +172,35 @@ export default function WaiterPage() {
         </section>
       )}
 
+      {readyRounds.length > 0 && (
+        <section className="mx-auto mb-5 max-w-3xl">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
+            🔔 Ready to serve ({readyRounds.length})
+          </h2>
+          <div className="flex flex-col gap-2">
+            {readyRounds.map(({ table, order }) => (
+              <div
+                key={order.id}
+                className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4 shadow-sm"
+              >
+                <span className="min-w-0">
+                  <span className="text-sm font-bold text-stone-900">{table.label}</span>
+                  <span className="ml-2 text-xs text-stone-500">
+                    {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                  </span>
+                </span>
+                <button
+                  onClick={() => act({ action: "mark_served", orderId: order.id })}
+                  className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                >
+                  Served ✅
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="mx-auto max-w-3xl">
         <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
           Open tables ({active.length})
@@ -175,7 +223,18 @@ export default function WaiterPage() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-stone-900">{t.label}</span>
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+                    {t.label}
+                    {s.langs.map((l) => (
+                      <span
+                        key={l}
+                        title="language this table ordered in"
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                      >
+                        {LANG_BADGE[l]?.label ?? l.toUpperCase()}
+                      </span>
+                    ))}
+                  </span>
                   <span className="text-[11px] text-stone-400">
                     open {minutesAgo(s.since, true)}
                   </span>

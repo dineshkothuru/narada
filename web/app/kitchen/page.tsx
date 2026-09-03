@@ -8,14 +8,15 @@ type KitchenItem = {
   name: string;
   qty: number;
   notes: string | null;
-  status: "queued" | "preparing" | "served";
+  status: "queued" | "preparing" | "ready" | "served";
 };
 
 type KitchenOrder = {
   id: string;
-  status: "placed" | "preparing" | "served";
+  status: "placed" | "preparing" | "ready" | "served";
   total_inr: number;
   placed_via: "ui" | "anna";
+  lang: string | null;
   created_at: string;
   session: { table: { label: string } | null } | null;
   items: KitchenItem[];
@@ -23,25 +24,29 @@ type KitchenOrder = {
 
 const ITEM_NEXT: Record<KitchenItem["status"], KitchenItem["status"]> = {
   queued: "preparing",
-  preparing: "served",
+  preparing: "ready",
+  ready: "queued",
   served: "queued",
 };
 
 const ITEM_BADGE: Record<KitchenItem["status"], string> = {
   queued: "⏳",
   preparing: "👨‍🍳",
+  ready: "🔔",
   served: "✅",
 };
 
 const COLUMNS: { status: KitchenOrder["status"]; title: string; accent: string }[] = [
   { status: "placed", title: "New", accent: "border-rose-500" },
   { status: "preparing", title: "Preparing", accent: "border-sky-500" },
+  { status: "ready", title: "Ready — pick up", accent: "border-amber-500" },
   { status: "served", title: "Served", accent: "border-green-500" },
 ];
 
-const NEXT: Record<string, { to: "preparing" | "served"; label: string } | null> = {
+const NEXT: Record<string, { to: "preparing" | "ready"; label: string } | null> = {
   placed: { to: "preparing", label: "Start preparing" },
-  preparing: { to: "served", label: "Mark served" },
+  preparing: { to: "ready", label: "Food ready 🔔" },
+  ready: null, // the waiter marks it served once it reaches the table
   served: null,
 };
 
@@ -122,11 +127,12 @@ export default function KitchenPage() {
           </p>
         </div>
         <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
-          {orders.filter((o) => o.status !== "served").length} open
+          {orders.filter((o) => o.status !== "served").length} open ·{" "}
+          {orders.filter((o) => o.status === "ready").length} awaiting pickup
         </span>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-3">
+      <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {
           const list = orders.filter((o) => o.status === col.status);
           return (
@@ -160,9 +166,11 @@ export default function KitchenPage() {
                             className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
                               it.status === "served"
                                 ? "bg-green-50 text-stone-400 line-through"
-                                : it.status === "preparing"
-                                  ? "bg-sky-50 text-stone-800"
-                                  : "text-stone-700 hover:bg-stone-50"
+                                : it.status === "ready"
+                                  ? "bg-amber-50 font-semibold text-stone-900"
+                                  : it.status === "preparing"
+                                    ? "bg-sky-50 text-stone-800"
+                                    : "text-stone-700 hover:bg-stone-50"
                             }`}
                           >
                             <span>

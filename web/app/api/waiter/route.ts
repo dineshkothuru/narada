@@ -9,7 +9,14 @@ type SessionRow = {
   created_at: string;
   discount_pct: number;
   attendant: string | null;
-  orders: { id: string; status: string; total_inr: number; created_at: string }[];
+  orders: {
+    id: string;
+    status: string;
+    total_inr: number;
+    created_at: string;
+    lang: string | null;
+    items: { name: string; qty: number }[];
+  }[];
   payments: { amount_inr: number; status: string }[];
 };
 type CallRow = { id: string; table_id: string; created_at: string };
@@ -19,7 +26,7 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,discount_pct,attendant,orders(id,status,total_inr,created_at),payments(amount_inr,status)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,discount_pct,attendant,orders(id,status,total_inr,created_at,lang,items:order_items(name,qty)),payments(amount_inr,status)&status=eq.active`,
       ),
       sbFetch<CallRow[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -60,6 +67,15 @@ export async function GET() {
               service: bills.get(session.id)?.service ?? 0,
               serviceWaived: bills.get(session.id)?.serviceWaived ?? false,
               attendant: session.attendant,
+              // languages this table has actually ordered in, so a waiter who
+              // speaks one can choose to pick the table up
+              langs: [
+                ...new Set(
+                  session.orders
+                    .map((o) => o.lang)
+                    .filter((l): l is string => Boolean(l)),
+                ),
+              ],
               // full bill: discount + GST + service charge, minus what's paid
               due: Math.max(0, (bills.get(session.id)?.net ?? ordered) - paid),
             }
@@ -76,7 +92,8 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      action: "ack_call" | "mark_paid";
+      action: "ack_call" | "mark_paid" | "mark_served";
+      orderId?: string;
       callId?: string;
       attendedBy?: string;
       sessionId?: string;
@@ -111,6 +128,19 @@ export async function PATCH(req: NextRequest) {
       }
       return NextResponse.json({ ok: true });
     }
+    // the waiter carries the food, so the waiter closes the loop
+    if (body.action === "mark_served" && body.orderId) {
+      await sbFetch(`orders?id=eq.${encodeURIComponent(body.orderId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "served" }),
+      });
+      await sbFetch(`order_items?order_id=eq.${encodeURIComponent(body.orderId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "served" }),
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     if (body.action === "mark_paid" && body.sessionId) {
       const sessions = await sbFetch<{ id: string; restaurant_id: string }[]>(
         `sessions?select=id,restaurant_id&id=eq.${encodeURIComponent(body.sessionId)}&limit=1`,

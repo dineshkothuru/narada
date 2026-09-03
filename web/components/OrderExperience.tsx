@@ -508,7 +508,13 @@ export default function OrderExperience({
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableCode, cart: lines, placedVia: via, guestName }),
+        body: JSON.stringify({
+          tableCode,
+          cart: lines,
+          placedVia: via,
+          guestName,
+          lang: langRef.current,
+        }),
       });
       const data = res.ok ? await res.json() : {};
       setOrderPlaced({
@@ -587,19 +593,23 @@ export default function OrderExperience({
   const statusLabelFor = (status: string) =>
     status === "served"
       ? t.statusServed
-      : status === "preparing"
-        ? t.statusPreparing
-        : status === "queued"
-          ? t.inQueue
-          : t.statusPlaced;
+      : status === "ready"
+        ? t.statusReady
+        : status === "preparing"
+          ? t.statusPreparing
+          : status === "queued"
+            ? t.inQueue
+            : t.statusPlaced;
   const statusDotFor = (status: string) =>
     status === "served"
       ? "bg-green-400"
-      : status === "preparing"
-        ? "bg-sky-400"
-        : status === "queued"
-          ? "bg-stone-400"
-          : "bg-rose-400";
+      : status === "ready"
+        ? "bg-amber-400"
+        : status === "preparing"
+          ? "bg-sky-400"
+          : status === "queued"
+            ? "bg-stone-400"
+            : "bg-rose-400";
   const allServed = rounds.length > 0 && rounds.every((r) => r.status === "served");
   // per-dish chips for the scrolling strip under the banner
   const dishChips = useMemo(() => {
@@ -621,7 +631,13 @@ export default function OrderExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rounds, lang]);
   const statusEmojiFor = (status: string) =>
-    status === "served" ? "✅" : status === "preparing" ? "👨‍🍳" : "⏳";
+    status === "served"
+      ? "✅"
+      : status === "ready"
+        ? "🔔"
+        : status === "preparing"
+          ? "👨‍🍳"
+          : "⏳";
   const heroDishes = useMemo<MenuItem[]>(() => {
     const avail = menuItems.filter((m) => m.isAvailable);
     const specials = avail.filter((m) => m.tags.includes("chef-special"));

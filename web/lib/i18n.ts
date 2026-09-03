@@ -52,6 +52,7 @@ type Strings = {
   nextLevel: string;
   statusPlaced: string;
   statusPreparing: string;
+  statusReady: string;
   statusServed: string;
   listening: string;
   thinking: string;
@@ -131,6 +132,7 @@ export const STRINGS: Record<Lang, Strings> = {
     nextLevel: "Next level →",
     statusPlaced: "Order received",
     statusPreparing: "Being prepared 👨‍🍳",
+    statusReady: "On its way to your table 🍽️",
     statusServed: "Served — enjoy! 🍽️",
     listening: "Listening… tap to stop",
     thinking: "Narada is thinking…",
@@ -208,6 +210,7 @@ export const STRINGS: Record<Lang, Strings> = {
     nextLevel: "अगला लेवल →",
     statusPlaced: "ऑर्डर मिल गया",
     statusPreparing: "बन रहा है 👨‍🍳",
+    statusReady: "आपकी टेबल पर आ रहा है 🍽️",
     statusServed: "परोस दिया गया 🍽️",
     listening: "सुन रहा हूँ… रोकने के लिए टैप करें",
     thinking: "नारद सोच रहे हैं…",
@@ -285,6 +288,7 @@ export const STRINGS: Record<Lang, Strings> = {
     nextLevel: "తదుపరి లెవెల్ →",
     statusPlaced: "ఆర్డర్ అందింది",
     statusPreparing: "తయారవుతోంది 👨‍🍳",
+    statusReady: "మీ టేబుల్‌కు వస్తోంది 🍽️",
     statusServed: "వడ్డించబడింది 🍽️",
     listening: "వింటున్నాను… ఆపడానికి నొక్కండి",
     thinking: "నారదుడు ఆలోచిస్తున్నాడు…",

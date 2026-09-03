@@ -5,6 +5,12 @@ import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
+const LANG_BADGE: Record<string, { label: string; cls: string }> = {
+  en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
+  hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
+  te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
+};
+
 
 type FloorTable = {
   id: string;
@@ -23,6 +29,7 @@ type FloorTable = {
   pending: number;
   due: number;
   attendant: string | null;
+  langs: string[];
   calling: boolean;
   callId: string | null;
   callSince: string | null;
@@ -188,8 +195,17 @@ export default function FloorPage() {
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-sm font-bold text-stone-900">
+                  <h2 className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
                     {t.label}
+                    {t.langs.map((l) => (
+                      <span
+                        key={l}
+                        title="language this table ordered in"
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                      >
+                        {LANG_BADGE[l]?.label ?? l.toUpperCase()}
+                      </span>
+                    ))}
                     {t.isMerged && (
                       <span className="ml-1.5 text-[10px] font-bold text-stone-400">
                         merged →

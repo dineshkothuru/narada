@@ -17,7 +17,7 @@ type SessionRow = {
   guests: number | null;
   merged_into: string | null;
   attendant: string | null;
-  orders: { id: string; status: string; total_inr: number }[];
+  orders: { id: string; status: string; total_inr: number; lang: string | null }[];
 };
 
 // Reception / host view: who is free, who is seated, how long, what they owe.
@@ -26,7 +26,7 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,zone&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,guests,merged_into,attendant,orders(id,status,total_inr)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,guests,merged_into,attendant,orders(id,status,total_inr,lang)&status=eq.active`,
       ),
       sbFetch<{ id: string; table_id: string; created_at: string }[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -52,6 +52,7 @@ export async function GET() {
         let served = 0;
         let pending = 0;
         let rounds = 0;
+        let readyCount = 0;
         if (session) {
           const primary = session.merged_into ?? session.id;
           if (primary === session.id) {
@@ -62,6 +63,7 @@ export async function GET() {
           }
           const live = session.orders.filter((o) => o.status !== "cancelled");
           served = live.filter((o) => o.status === "served").length;
+          readyCount = live.filter((o) => o.status === "ready").length;
           pending = live.length - served;
           rounds = live.length;
         }
@@ -97,6 +99,14 @@ export async function GET() {
           rounds,
           served,
           pending,
+          ready: readyCount,
+          langs: session
+            ? [
+                ...new Set(
+                  session.orders.map((o) => o.lang).filter((l): l is string => Boolean(l)),
+                ),
+              ]
+            : [],
           due,
           attendant: session?.attendant ?? null,
           calling: callByTable.has(t.id),
