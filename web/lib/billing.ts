@@ -13,7 +13,7 @@ export type BillLine = {
 export type Bill = {
   billNo: string | null;
   tableLabel: string;
-  restaurantName: string;
+  outletName: string;
   gstin: string | null;
   lines: BillLine[];
   gross: number; // sum of item totals before discount
@@ -42,7 +42,7 @@ export type SessionRow = {
   bill_no: string | null;
   bill_tip: number | null;
   settled_at: string | null;
-  restaurant_id: string;
+  outlet_id: string;
   table: { label: string } | null;
   orders: {
     status: string;
@@ -51,14 +51,14 @@ export type SessionRow = {
   payments: { amount_inr: number; status: string }[];
 };
 
-export type RestaurantRow = { name: string; service_charge_pct: number; gstin: string | null };
+export type OutletRow = { name: string; service_charge_pct: number; gstin: string | null };
 
 // Single source of truth for what a table owes. GST is charged per item on the
 // post-discount value (Indian practice); service charge is optional and always
 // waivable on request; tip is added after tax, never taxed.
 export function computeBillTotals(
   s: SessionRow,
-  rest: RestaurantRow | undefined,
+  rest: OutletRow | undefined,
   tipOverride?: number,
 ): Bill {
   const lines: BillLine[] = [];
@@ -112,7 +112,7 @@ export function computeBillTotals(
   return {
     billNo: s.bill_no,
     tableLabel: s.table?.label ?? "—",
-    restaurantName: rest?.name ?? "Narada",
+    outletName: rest?.name ?? "Narada",
     gstin: rest?.gstin ?? null,
     lines,
     gross,
@@ -133,28 +133,28 @@ export function computeBillTotals(
 }
 
 export async function computeBill(sessionId: string, tipOverride?: number): Promise<Bill> {
-  const [sessions, restaurants] = await Promise.all([
+  const [sessions, outlets] = await Promise.all([
     sbFetch<SessionRow[]>(
-      `sessions?select=id,status,discount_pct,service_waived,bill_no,bill_tip,settled_at,restaurant_id,` +
+      `sessions?select=id,status,discount_pct,service_waived,bill_no,bill_tip,settled_at,outlet_id,` +
         `table:tables(label),orders(status,items:order_items(name,qty,unit_price,gst_pct)),` +
         `payments(amount_inr,status)&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
     ),
-    sbFetch<RestaurantRow[]>(`restaurants?select=name,service_charge_pct,gstin&limit=1`),
+    sbFetch<OutletRow[]>(`outlets?select=name,service_charge_pct,gstin&limit=1`),
   ]);
   if (sessions.length === 0) throw new Error("unknown session");
   const s = sessions[0];
-  const rest = restaurants[0];
+  const rest = outlets[0];
   return computeBillTotals(s, rest, tipOverride);
 }
 
 // Mint an immutable bill number and freeze the totals at payment time.
-export async function finalizeBill(sessionId: string, tip: number, restaurantId: string) {
+export async function finalizeBill(sessionId: string, tip: number, outletId: string) {
   const bill = await computeBill(sessionId, tip);
   const rests = await sbFetch<{ bill_seq: number }[]>(
-    `restaurants?select=bill_seq&id=eq.${encodeURIComponent(restaurantId)}&limit=1`,
+    `outlets?select=bill_seq&id=eq.${encodeURIComponent(outletId)}&limit=1`,
   );
   const seq = (rests[0]?.bill_seq ?? 0) + 1;
-  await sbFetch(`restaurants?id=eq.${encodeURIComponent(restaurantId)}`, {
+  await sbFetch(`outlets?id=eq.${encodeURIComponent(outletId)}`, {
     method: "PATCH",
     body: JSON.stringify({ bill_seq: seq }),
   });

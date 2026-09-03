@@ -31,17 +31,17 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const restaurants = await sbFetch<{ id: string; admin_pin: string }[]>(
-      `restaurants?select=id,admin_pin&limit=1`,
+    const outlets = await sbFetch<{ id: string; admin_pin: string }[]>(
+      `outlets?select=id,admin_pin&limit=1`,
     );
-    if (restaurants[0].admin_pin === pin) {
+    if (outlets[0].admin_pin === pin) {
       return NextResponse.json({ error: "PIN already used by the owner" }, { status: 409 });
     }
     try {
       await sbFetch(`staff`, {
         method: "POST",
         body: JSON.stringify({
-          restaurant_id: restaurants[0].id,
+          outlet_id: outlets[0].id,
           name: name.trim().slice(0, 60),
           role,
           pin: pin.slice(0, 20),

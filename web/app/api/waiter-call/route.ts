@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         method: "POST",
         body: JSON.stringify({
           table_id: table.id,
-          restaurant_id: table.restaurant_id,
+          outlet_id: table.outlet_id,
         }),
       });
     }

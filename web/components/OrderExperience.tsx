@@ -69,7 +69,7 @@ export default function OrderExperience({
   tableCode: string;
   menu: MenuPayload;
 }) {
-  const { restaurant, categories, items: menuItems } = menu;
+  const { outlet, categories, items: menuItems } = menu;
   const [cart, setCart] = useState<CartLine[]>([]);
   const [lang, setLang] = useState<Lang>("en");
   const [hydrated, setHydrated] = useState(false);
@@ -574,8 +574,8 @@ export default function OrderExperience({
       : 0;
 
   const upiLink = orderPlaced
-    ? `upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(
-        restaurant.name,
+    ? `upi://pay?pa=${encodeURIComponent(outlet.upiVpa)}&pn=${encodeURIComponent(
+        outlet.name,
       )}&am=${payable}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`
     : "";
 
@@ -646,9 +646,9 @@ export default function OrderExperience({
                 {tableLabel} · {t.dineIn}
               </p>
               <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-white">
-                {restaurant.name}
+                {outlet.name}
               </h1>
-              <p className="mt-0.5 text-xs text-stone-400">{restaurant.tagline}</p>
+              <p className="mt-0.5 text-xs text-stone-400">{outlet.tagline}</p>
             </div>
             <div className="flex flex-col items-end gap-2">
               <div className="flex rounded-full bg-white/10 p-0.5">
@@ -1306,9 +1306,9 @@ export default function OrderExperience({
                       maxLength={40}
                       className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm outline-none placeholder:text-stone-400 focus:ring-2 focus:ring-rose-400"
                     />
-                    {restaurant.paymentTiming === "pre" ? (
+                    {outlet.paymentTiming === "pre" ? (
                       <a
-                        href={`upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(restaurant.name)}&am=${Math.round(total * (1 - discountPct / 100))}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
+                        href={`upi://pay?pa=${encodeURIComponent(outlet.upiVpa)}&pn=${encodeURIComponent(outlet.name)}&am=${Math.round(total * (1 - discountPct / 100))}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
                         onClick={() => placeOrder("ui")}
                         className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
                       >

@@ -1,5 +1,5 @@
 // Staff auth: PIN → role (admin/kitchen/waiter) from the staff table (the
-// restaurant owner's admin_pin acts as the built-in admin). The cookie carries
+// outlet owner's admin_pin acts as the built-in admin). The cookie carries
 // "role.hmac" — middleware recomputes the HMAC and gates paths by role.
 // Replace with Supabase Auth when multi-tenant hosting arrives.
 import { env } from "./env";

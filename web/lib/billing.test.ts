@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeBillTotals, type RestaurantRow, type SessionRow } from "./billing";
+import { computeBillTotals, type OutletRow, type SessionRow } from "./billing";
 
 function baseSession(overrides: Partial<SessionRow> = {}): SessionRow {
   return {
@@ -10,7 +10,7 @@ function baseSession(overrides: Partial<SessionRow> = {}): SessionRow {
     bill_no: null,
     bill_tip: 20,
     settled_at: null,
-    restaurant_id: "r1",
+    outlet_id: "r1",
     table: { label: "T1" },
     orders: [
       {
@@ -33,7 +33,7 @@ function baseSession(overrides: Partial<SessionRow> = {}): SessionRow {
   };
 }
 
-const rest: RestaurantRow = { name: "Narada", service_charge_pct: 10, gstin: "GSTIN123" };
+const rest: OutletRow = { name: "Narada", service_charge_pct: 10, gstin: "GSTIN123" };
 
 describe("computeBillTotals", () => {
   it("computes gross, discount, taxable, per-line gst, gstBreakup, and net with tip override", () => {

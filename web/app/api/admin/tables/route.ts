@@ -18,13 +18,13 @@ const slug = (s: string) =>
 
 export async function GET() {
   try {
-    const [tables, restaurants] = await Promise.all([
+    const [tables, outlets] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code,ui_variant,capacity&order=label`),
-      sbFetch<{ id: string; name: string }[]>(`restaurants?select=id,name&limit=1`),
+      sbFetch<{ id: string; name: string }[]>(`outlets?select=id,name&limit=1`),
     ]);
     return NextResponse.json({
       tables,
-      restaurantName: restaurants[0]?.name ?? "Narada",
+      outletName: outlets[0]?.name ?? "Narada",
     });
   } catch (e) {
     console.error("admin tables:", e);
@@ -42,11 +42,11 @@ export async function POST(req: NextRequest) {
       ui_variant?: string;
       capacity?: number;
     };
-    const restaurants = await sbFetch<{ id: string }[]>(`restaurants?select=id&limit=1`);
-    if (restaurants.length === 0) {
-      return NextResponse.json({ error: "no restaurant" }, { status: 404 });
+    const outlets = await sbFetch<{ id: string }[]>(`outlets?select=id&limit=1`);
+    if (outlets.length === 0) {
+      return NextResponse.json({ error: "no outlet" }, { status: 404 });
     }
-    const restaurantId = restaurants[0].id;
+    const outletId = outlets[0].id;
     const variant = ui_variant === "stories" ? "stories" : "classic";
     const existing = await sbFetch<{ label: string; code: string }[]>(`tables?select=label,code`);
     const takenCodes = new Set(existing.map((t) => t.code));
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < Math.min(count, 100); i++, next++) {
         const lbl = `${name} ${next}`;
         rows.push({
-          restaurant_id: restaurantId,
+          outlet_id: outletId,
           label: lbl,
           code: uniqueCode(slug(lbl)),
           ui_variant: variant,
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     } else if (label?.trim()) {
       const lbl = label.trim().slice(0, 40);
       rows.push({
-        restaurant_id: restaurantId,
+        outlet_id: outletId,
         label: lbl,
         code: uniqueCode(slug(lbl)),
         ui_variant: variant,

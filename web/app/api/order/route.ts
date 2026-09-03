@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       returning: true,
       body: JSON.stringify({
         session_id: session.id,
-        restaurant_id: table.restaurant_id,
+        outlet_id: table.outlet_id,
         total_inr: total,
         placed_via: placedVia === "anna" ? "anna" : "ui",
         placed_by:

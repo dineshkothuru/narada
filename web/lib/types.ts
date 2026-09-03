@@ -21,7 +21,7 @@ export type MenuItem = {
   isAvailable: boolean;
 };
 
-export type RestaurantInfo = {
+export type OutletInfo = {
   name: string;
   tagline: string;
   upiVpa: string;
@@ -29,7 +29,7 @@ export type RestaurantInfo = {
 };
 
 export type MenuPayload = {
-  restaurant: RestaurantInfo;
+  outlet: OutletInfo;
   tableLabel: string;
   uiVariant: "classic" | "stories";
   categories: MenuCategory[];

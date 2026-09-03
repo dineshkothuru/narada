@@ -4,7 +4,7 @@ import { sbFetch } from "@/lib/supabase-server";
 export async function PATCH(req: NextRequest) {
   try {
     const {
-      restaurantId,
+      outletId,
       payment_timing,
       upi_vpa,
       admin_pin,
@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest) {
       service_charge_pct,
       gstin,
     } = (await req.json()) as {
-      restaurantId: string;
+      outletId: string;
       payment_timing?: "pre" | "post";
       upi_vpa?: string;
       admin_pin?: string;
@@ -24,8 +24,8 @@ export async function PATCH(req: NextRequest) {
       service_charge_pct?: number;
       gstin?: string;
     };
-    if (!restaurantId) {
-      return NextResponse.json({ error: "restaurantId required" }, { status: 400 });
+    if (!outletId) {
+      return NextResponse.json({ error: "outletId required" }, { status: 400 });
     }
     const patch: Record<string, unknown> = {};
     if (payment_timing === "pre" || payment_timing === "post") {
@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest) {
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "nothing to update" }, { status: 400 });
     }
-    await sbFetch(`restaurants?id=eq.${encodeURIComponent(restaurantId)}`, {
+    await sbFetch(`outlets?id=eq.${encodeURIComponent(outletId)}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     });

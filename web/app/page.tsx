@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RESTAURANT } from "@/lib/menu-data";
+import { OUTLET } from "@/lib/menu-data";
 
 const DEMO_TABLES = [
   { code: "table-1", label: "Table 1", variant: "Classic" },
@@ -31,7 +31,7 @@ export default function Home() {
 
       <div className="w-full max-w-xs rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
         <p className="text-xs font-medium tracking-widest text-stone-400 uppercase">
-          Customer — {RESTAURANT.name}
+          Customer — {OUTLET.name}
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {DEMO_TABLES.map((t) => (
@@ -46,7 +46,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-3 text-center text-[11px] text-stone-400">
-          In a restaurant, each table&apos;s QR opens its own link.
+          In an outlet, each table&apos;s QR opens its own link.
         </p>
       </div>
 

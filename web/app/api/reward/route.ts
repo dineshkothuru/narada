@@ -79,18 +79,16 @@ export async function POST(req: NextRequest) {
     }
 
     // prize dish: admin-configured, falling back to the classic
-    const restaurants = await sbFetch<{ comp_item_id: string | null }[]>(
-      `restaurants?select=comp_item_id&id=eq.${table.restaurant_id}&limit=1`,
+    const outlets = await sbFetch<{ comp_item_id: string | null }[]>(
+      `outlets?select=comp_item_id&id=eq.${table.outlet_id}&limit=1`,
     );
     let items: { id: string; name: string }[] = [];
-    if (restaurants[0]?.comp_item_id) {
-      items = await sbFetch(
-        `menu_items?select=id,name&id=eq.${restaurants[0].comp_item_id}&limit=1`,
-      );
+    if (outlets[0]?.comp_item_id) {
+      items = await sbFetch(`menu_items?select=id,name&id=eq.${outlets[0].comp_item_id}&limit=1`);
     }
     if (items.length === 0) {
       items = await sbFetch(
-        `menu_items?select=id,name&restaurant_id=eq.${table.restaurant_id}&name=eq.${encodeURIComponent(FALLBACK_COMP_NAME)}&limit=1`,
+        `menu_items?select=id,name&outlet_id=eq.${table.outlet_id}&name=eq.${encodeURIComponent(FALLBACK_COMP_NAME)}&limit=1`,
       );
     }
     if (items.length === 0) {
@@ -101,7 +99,7 @@ export async function POST(req: NextRequest) {
       returning: true,
       body: JSON.stringify({
         session_id: session.id,
-        restaurant_id: table.restaurant_id,
+        outlet_id: table.outlet_id,
         total_inr: 0,
         placed_via: "ui",
       }),

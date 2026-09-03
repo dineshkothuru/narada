@@ -162,8 +162,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (action === "seat" && tableId) {
-      const tables = await sbFetch<{ restaurant_id: string }[]>(
-        `tables?select=restaurant_id&id=eq.${encodeURIComponent(tableId)}&limit=1`,
+      const tables = await sbFetch<{ outlet_id: string }[]>(
+        `tables?select=outlet_id&id=eq.${encodeURIComponent(tableId)}&limit=1`,
       );
       if (tables.length === 0) {
         return NextResponse.json({ error: "unknown table" }, { status: 404 });
@@ -185,7 +185,7 @@ export async function PATCH(req: NextRequest) {
         returning: true,
         body: JSON.stringify({
           table_id: tableId,
-          restaurant_id: tables[0].restaurant_id,
+          outlet_id: tables[0].outlet_id,
           guests: n,
         }),
       });

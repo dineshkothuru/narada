@@ -1,7 +1,7 @@
 import "server-only";
 import { sbFetch } from "./supabase-server";
 
-export type TableRow = { id: string; restaurant_id: string; label: string };
+export type TableRow = { id: string; outlet_id: string; label: string };
 export type SessionRow = {
   id: string;
   discount_pct: number;
@@ -10,7 +10,7 @@ export type SessionRow = {
 
 export async function lookupTable(tableCode: string): Promise<TableRow | null> {
   const rows = await sbFetch<TableRow[]>(
-    `tables?select=id,restaurant_id,label&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
+    `tables?select=id,outlet_id,label&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
   );
   return rows[0] ?? null;
 }
@@ -28,7 +28,7 @@ export async function getOrCreateSession(table: TableRow): Promise<SessionRow> {
     const created = await sbFetch<SessionRow[]>(`sessions`, {
       method: "POST",
       returning: true,
-      body: JSON.stringify({ table_id: table.id, restaurant_id: table.restaurant_id }),
+      body: JSON.stringify({ table_id: table.id, outlet_id: table.outlet_id }),
     });
     return created[0];
   } catch {

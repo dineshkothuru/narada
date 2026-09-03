@@ -24,17 +24,17 @@ export async function POST(req: NextRequest) {
     let name = "Owner";
 
     // compare in-process (constant time) instead of filtering by pin in the query
-    const [staff, restaurants] = await Promise.all([
+    const [staff, outlets] = await Promise.all([
       sbFetch<{ role: StaffRole; name: string; pin: string }[]>(
         `staff?select=role,name,pin&active=eq.true`,
       ),
-      sbFetch<{ admin_pin: string }[]>(`restaurants?select=admin_pin&limit=1`),
+      sbFetch<{ admin_pin: string }[]>(`outlets?select=admin_pin&limit=1`),
     ]);
     const match = staff.find((s) => pinsMatch(s.pin, pin));
     if (match) {
       role = match.role;
       name = match.name;
-    } else if (restaurants.length > 0 && pinsMatch(restaurants[0].admin_pin, pin)) {
+    } else if (outlets.length > 0 && pinsMatch(outlets[0].admin_pin, pin)) {
       role = "admin";
     }
     if (!role) return NextResponse.json({ error: "wrong pin" }, { status: 401 });

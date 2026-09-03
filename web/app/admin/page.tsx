@@ -27,7 +27,7 @@ type StaffRow = {
   pin: string;
   active: boolean;
 };
-type AdminRestaurant = {
+type AdminOutlet = {
   id: string;
   name: string;
   upi_vpa: string | null;
@@ -44,7 +44,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [items, setItems] = useState<AdminItem[]>([]);
-  const [restaurant, setRestaurant] = useState<AdminRestaurant | null>(null);
+  const [outlet, setOutlet] = useState<AdminOutlet | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export default function AdminPage() {
       const d = await res.json();
       setCategories(d.categories ?? []);
       setItems(d.items ?? []);
-      setRestaurant(d.restaurant ?? null);
+      setOutlet(d.outlet ?? null);
     }
     if (sres.ok) {
       const s = await sres.json();
@@ -179,11 +179,11 @@ export default function AdminPage() {
   };
 
   const patchSettings = async (patch: Record<string, string>) => {
-    if (!restaurant) return;
+    if (!outlet) return;
     await fetch("/api/admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ restaurantId: restaurant.id, ...patch }),
+      body: JSON.stringify({ outletId: outlet.id, ...patch }),
     });
     flash("Saved");
     load();
@@ -204,10 +204,10 @@ export default function AdminPage() {
           <header className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h1 className="font-display text-2xl font-semibold text-stone-900">
-                {restaurant?.name ?? "Narada"} · Admin
+                {outlet?.name ?? "Narada"} · Admin
               </h1>
               <p className="text-xs text-stone-500">
-                Sections, dishes, availability, prices &amp; restaurant settings
+                Sections, dishes, availability, prices &amp; outlet settings
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -250,13 +250,13 @@ export default function AdminPage() {
             </div>
           )}
 
-          {restaurant && (
+          {outlet && (
             <Collapsible title="Settings" hint="payment, UPI, GST, PIN, API keys">
               <div className="grid gap-4 sm:grid-cols-3">
                 <label className="text-xs font-semibold text-stone-600">
                   Payment timing
                   <select
-                    value={restaurant.payment_timing}
+                    value={outlet.payment_timing}
                     onChange={(e) => patchSettings({ payment_timing: e.target.value })}
                     className={inputCls}
                   >
@@ -267,22 +267,22 @@ export default function AdminPage() {
                 <label className="text-xs font-semibold text-stone-600">
                   UPI ID (VPA)
                   <input
-                    defaultValue={restaurant.upi_vpa ?? ""}
+                    defaultValue={outlet.upi_vpa ?? ""}
                     onBlur={(e) => {
-                      if (e.target.value !== restaurant.upi_vpa) {
+                      if (e.target.value !== outlet.upi_vpa) {
                         patchSettings({ upi_vpa: e.target.value });
                       }
                     }}
-                    placeholder="restaurant@upi"
+                    placeholder="outlet@upi"
                     className={inputCls}
                   />
                 </label>
                 <label className="text-xs font-semibold text-stone-600">
                   Staff PIN
                   <input
-                    defaultValue={restaurant.admin_pin}
+                    defaultValue={outlet.admin_pin}
                     onBlur={(e) => {
-                      if (e.target.value !== restaurant.admin_pin && e.target.value.length >= 4) {
+                      if (e.target.value !== outlet.admin_pin && e.target.value.length >= 4) {
                         patchSettings({ admin_pin: e.target.value });
                       }
                     }}
@@ -296,10 +296,10 @@ export default function AdminPage() {
                     min="0"
                     max="20"
                     step="0.5"
-                    defaultValue={restaurant.service_charge_pct}
+                    defaultValue={outlet.service_charge_pct}
                     onBlur={(e) => {
                       const v = Number(e.target.value);
-                      if (v !== restaurant.service_charge_pct && v >= 0 && v <= 20) {
+                      if (v !== outlet.service_charge_pct && v >= 0 && v <= 20) {
                         patchSettings({ service_charge_pct: String(v) });
                       }
                     }}
@@ -312,9 +312,9 @@ export default function AdminPage() {
                 <label className="text-xs font-semibold text-stone-600">
                   GSTIN
                   <input
-                    defaultValue={restaurant.gstin ?? ""}
+                    defaultValue={outlet.gstin ?? ""}
                     onBlur={(e) => {
-                      if (e.target.value !== (restaurant.gstin ?? "")) {
+                      if (e.target.value !== (outlet.gstin ?? "")) {
                         patchSettings({ gstin: e.target.value });
                       }
                     }}
@@ -325,7 +325,7 @@ export default function AdminPage() {
                 <label className="text-xs font-semibold text-stone-600">
                   Game prize (free dish) 🎁
                   <select
-                    value={restaurant.comp_item_id ?? ""}
+                    value={outlet.comp_item_id ?? ""}
                     onChange={(e) => patchSettings({ comp_item_id: e.target.value })}
                     className={inputCls}
                   >
@@ -342,9 +342,9 @@ export default function AdminPage() {
                   <span className="font-normal text-stone-400">(Narada&apos;s brain)</span>
                   <input
                     type="password"
-                    defaultValue={restaurant.gemini_api_key ?? ""}
+                    defaultValue={outlet.gemini_api_key ?? ""}
                     onBlur={(e) => {
-                      if (e.target.value !== (restaurant.gemini_api_key ?? "")) {
+                      if (e.target.value !== (outlet.gemini_api_key ?? "")) {
                         patchSettings({ gemini_api_key: e.target.value });
                       }
                     }}
@@ -356,9 +356,9 @@ export default function AdminPage() {
                   Sarvam API key <span className="font-normal text-stone-400">(voice)</span>
                   <input
                     type="password"
-                    defaultValue={restaurant.sarvam_api_key ?? ""}
+                    defaultValue={outlet.sarvam_api_key ?? ""}
                     onBlur={(e) => {
-                      if (e.target.value !== (restaurant.sarvam_api_key ?? "")) {
+                      if (e.target.value !== (outlet.sarvam_api_key ?? "")) {
                         patchSettings({ sarvam_api_key: e.target.value });
                       }
                     }}
@@ -878,7 +878,7 @@ export default function AdminPage() {
                                 className={inputCls}
                               >
                                 <option value="0">0% (exempt)</option>
-                                <option value="5">5% (restaurant standard)</option>
+                                <option value="5">5% (outlet standard)</option>
                                 <option value="12">12%</option>
                                 <option value="18">18% (packaged / AC premium)</option>
                                 <option value="28">28%</option>

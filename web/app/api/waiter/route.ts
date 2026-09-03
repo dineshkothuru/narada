@@ -137,8 +137,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (body.action === "mark_paid" && body.sessionId) {
-      const sessions = await sbFetch<{ id: string; restaurant_id: string }[]>(
-        `sessions?select=id,restaurant_id&id=eq.${encodeURIComponent(body.sessionId)}&limit=1`,
+      const sessions = await sbFetch<{ id: string; outlet_id: string }[]>(
+        `sessions?select=id,outlet_id&id=eq.${encodeURIComponent(body.sessionId)}&limit=1`,
       );
       if (sessions.length === 0) {
         return NextResponse.json({ error: "unknown session" }, { status: 404 });
@@ -147,7 +147,7 @@ export async function PATCH(req: NextRequest) {
       const bill = await finalizeBill(
         body.sessionId,
         typeof body.tip === "number" ? body.tip : 0,
-        sessions[0].restaurant_id,
+        sessions[0].outlet_id,
       );
       const amount = typeof body.amount === "number" ? body.amount : bill.net;
       await sbFetch(`payments`, {

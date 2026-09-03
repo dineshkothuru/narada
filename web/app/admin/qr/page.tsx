@@ -8,7 +8,7 @@ type TableRow = { id: string; label: string; code: string };
 
 export default function QrSheetPage() {
   const [tables, setTables] = useState<TableRow[]>([]);
-  const [restaurantName, setRestaurantName] = useState("Narada");
+  const [outletName, setOutletName] = useState("Narada");
   const [qrs, setQrs] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -17,7 +17,7 @@ export default function QrSheetPage() {
       if (!res.ok) return;
       const d = await res.json();
       setTables(d.tables ?? []);
-      setRestaurantName(d.restaurantName ?? "Narada");
+      setOutletName(d.outletName ?? "Narada");
       const origin = window.location.origin;
       const entries = await Promise.all(
         (d.tables ?? []).map(async (t: TableRow) => {
@@ -62,7 +62,7 @@ export default function QrSheetPage() {
             key={t.id}
             className="flex flex-col items-center rounded-3xl bg-white p-5 text-center shadow-sm ring-1 ring-stone-200/60 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
           >
-            <p className="font-display text-lg font-semibold text-stone-900">{restaurantName}</p>
+            <p className="font-display text-lg font-semibold text-stone-900">{outletName}</p>
             <p className="mt-0.5 text-[11px] font-bold tracking-widest text-rose-600 uppercase">
               {t.label}
             </p>

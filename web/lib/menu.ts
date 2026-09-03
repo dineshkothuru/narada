@@ -1,5 +1,5 @@
 import "server-only";
-import { CATEGORIES, MENU, RESTAURANT } from "./menu-data";
+import { CATEGORIES, MENU, OUTLET } from "./menu-data";
 import type { Localized, MenuPayload } from "./types";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -22,11 +22,11 @@ async function rest<T>(path: string): Promise<T> {
 
 function fallback(tableCode: string): MenuPayload {
   return {
-    restaurant: {
-      name: RESTAURANT.name,
-      tagline: RESTAURANT.tagline,
-      upiVpa: RESTAURANT.upiVpa,
-      paymentTiming: RESTAURANT.paymentTiming,
+    outlet: {
+      name: OUTLET.name,
+      tagline: OUTLET.tagline,
+      upiVpa: OUTLET.upiVpa,
+      paymentTiming: OUTLET.paymentTiming,
     },
     tableLabel: tableCode.replace(/^t(\d+).*$/i, "Table $1"),
     uiVariant: "classic",
@@ -51,17 +51,15 @@ function fallback(tableCode: string): MenuPayload {
 export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
   if (!SUPABASE_URL || !ANON_KEY) return fallback(tableCode);
   try {
-    const tables = await rest<
-      { label: string; restaurant_id: string; ui_variant: string | null }[]
-    >(
-      `tables?select=label,restaurant_id,ui_variant&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
+    const tables = await rest<{ label: string; outlet_id: string; ui_variant: string | null }[]>(
+      `tables?select=label,outlet_id,ui_variant&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
     );
     if (tables.length === 0) return fallback(tableCode);
-    const { label, restaurant_id, ui_variant } = tables[0];
+    const { label, outlet_id, ui_variant } = tables[0];
 
-    const [restaurants, cats, items] = await Promise.all([
+    const [outlets, cats, items] = await Promise.all([
       rest<{ name: string; upi_vpa: string | null; payment_timing: "pre" | "post" }[]>(
-        `restaurants?select=name,upi_vpa,payment_timing&id=eq.${restaurant_id}&limit=1`,
+        `outlets?select=name,upi_vpa,payment_timing&id=eq.${outlet_id}&limit=1`,
       ),
       rest<
         {
@@ -72,7 +70,7 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
           emoji: string | null;
         }[]
       >(
-        `menu_categories?select=id,name,name_hi,name_te,emoji&restaurant_id=eq.${restaurant_id}&order=sort_order`,
+        `menu_categories?select=id,name,name_hi,name_te,emoji&outlet_id=eq.${outlet_id}&order=sort_order`,
       ),
       rest<
         {
@@ -93,18 +91,18 @@ export async function fetchMenu(tableCode: string): Promise<MenuPayload> {
           image_url: string | null;
           is_available: boolean;
         }[]
-      >(`menu_items?select=*&restaurant_id=eq.${restaurant_id}&order=sort_order`),
+      >(`menu_items?select=*&outlet_id=eq.${outlet_id}&order=sort_order`),
     ]);
-    if (restaurants.length === 0 || cats.length === 0 || items.length === 0) {
+    if (outlets.length === 0 || cats.length === 0 || items.length === 0) {
       return fallback(tableCode);
     }
 
     return {
-      restaurant: {
-        name: restaurants[0].name,
-        tagline: RESTAURANT.tagline,
-        upiVpa: restaurants[0].upi_vpa || RESTAURANT.upiVpa,
-        paymentTiming: restaurants[0].payment_timing,
+      outlet: {
+        name: outlets[0].name,
+        tagline: OUTLET.tagline,
+        upiVpa: outlets[0].upi_vpa || OUTLET.upiVpa,
+        paymentTiming: outlets[0].payment_timing,
       },
       tableLabel: label,
       uiVariant: ui_variant === "stories" ? "stories" : "classic",

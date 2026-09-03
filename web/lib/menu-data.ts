@@ -13,7 +13,7 @@ type MenuItem = {
   tags: string[];
 };
 
-export const RESTAURANT = {
+export const OUTLET = {
   name: "Spice Garden",
   slug: "demo-spice-garden",
   upiVpa: "demo@upi",

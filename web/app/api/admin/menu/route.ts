@@ -3,16 +3,16 @@ import { sbFetch } from "@/lib/supabase-server";
 
 export async function GET() {
   try {
-    const [cats, items, restaurants] = await Promise.all([
+    const [cats, items, outlets] = await Promise.all([
       sbFetch<unknown[]>(`menu_categories?select=id,name,emoji&order=sort_order`),
       sbFetch<unknown[]>(
         `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens,gst_pct&order=sort_order`,
       ),
       sbFetch<unknown[]>(
-        `restaurants?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key,comp_item_id,service_charge_pct,gstin&limit=1`,
+        `outlets?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key,comp_item_id,service_charge_pct,gstin&limit=1`,
       ),
     ]);
-    return NextResponse.json({ categories: cats, items, restaurant: restaurants[0] });
+    return NextResponse.json({ categories: cats, items, outlet: outlets[0] });
   } catch (e) {
     console.error("admin menu:", e);
     return NextResponse.json({ error: "failed" }, { status: 500 });
@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const cats = await sbFetch<{ restaurant_id: string }[]>(
-      `menu_categories?select=restaurant_id&id=eq.${encodeURIComponent(category_id)}&limit=1`,
+    const cats = await sbFetch<{ outlet_id: string }[]>(
+      `menu_categories?select=outlet_id&id=eq.${encodeURIComponent(category_id)}&limit=1`,
     );
     if (cats.length === 0) {
       return NextResponse.json({ error: "unknown category" }, { status: 404 });
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       returning: true,
       body: JSON.stringify({
-        restaurant_id: cats[0].restaurant_id,
+        outlet_id: cats[0].outlet_id,
         category_id,
         name: name.trim().slice(0, 80),
         description: (description || "").slice(0, 400) || null,

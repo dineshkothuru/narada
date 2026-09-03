@@ -1,10 +1,10 @@
--- Restaurant QR Ordering — Supabase schema
+-- Outlet QR Ordering — Supabase schema
 -- Applied via Supabase Management API / SQL editor.
 
 create extension if not exists "pgcrypto";
 
--- One row per restaurant (multi-tenant ready, single tenant to start)
-create table if not exists restaurants (
+-- One row per outlet (multi-tenant ready, single tenant to start)
+create table if not exists outlets (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   slug        text not null unique,
@@ -16,10 +16,10 @@ create table if not exists restaurants (
   created_at  timestamptz not null default now()
 );
 
--- Physical tables in the restaurant; QR encodes /t/<table.code>
+-- Physical tables in the outlet; QR encodes /t/<table.code>
 create table if not exists tables (
   id            uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   label         text not null,            -- "Table 12"
   code          text not null unique,     -- short random slug in the QR URL
   created_at    timestamptz not null default now()
@@ -27,7 +27,7 @@ create table if not exists tables (
 
 create table if not exists menu_categories (
   id            uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   name          text not null,
   emoji         text,
   sort_order    int not null default 0
@@ -35,7 +35,7 @@ create table if not exists menu_categories (
 
 create table if not exists menu_items (
   id            uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   category_id   uuid not null references menu_categories(id) on delete cascade,
   name          text not null,
   description   text,
@@ -53,7 +53,7 @@ create table if not exists menu_items (
 create table if not exists sessions (
   id            uuid primary key default gen_random_uuid(),
   table_id      uuid not null references tables(id) on delete cascade,
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   status        text not null default 'active'   -- active | billed | closed
                 check (status in ('active','billed','closed')),
   created_at    timestamptz not null default now(),
@@ -64,7 +64,7 @@ create table if not exists sessions (
 create table if not exists orders (
   id            uuid primary key default gen_random_uuid(),
   session_id    uuid not null references sessions(id) on delete cascade,
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   status        text not null default 'placed'   -- placed | preparing | served | cancelled
                 check (status in ('placed','preparing','served','cancelled')),
   total_inr     numeric(10,2) not null default 0,
@@ -94,13 +94,13 @@ create table if not exists payments (
   created_at  timestamptz not null default now()
 );
 
-create index if not exists idx_menu_items_restaurant on menu_items(restaurant_id, category_id, sort_order);
+create index if not exists idx_menu_items_outlet on menu_items(outlet_id, category_id, sort_order);
 create index if not exists idx_orders_session on orders(session_id);
 create index if not exists idx_sessions_table on sessions(table_id) where status = 'active';
 
 -- Row Level Security: customer browser (anon key) may read the menu; everything
 -- else goes through the server with the service-role key.
-alter table restaurants     enable row level security;
+alter table outlets          enable row level security;
 alter table tables          enable row level security;
 alter table menu_categories enable row level security;
 alter table menu_items      enable row level security;
@@ -109,7 +109,7 @@ alter table orders          enable row level security;
 alter table order_items     enable row level security;
 alter table payments        enable row level security;
 
-create policy "public can read restaurants"     on restaurants     for select using (true);
+create policy "public can read outlets"     on outlets     for select using (true);
 create policy "public can read tables"          on tables          for select using (true);
 create policy "public can read menu categories" on menu_categories for select using (true);
 create policy "public can read menu items"      on menu_items      for select using (true);
@@ -122,7 +122,7 @@ alter publication supabase_realtime add table orders;
 -- v2 additions (applied to the live project; needed for fresh installs)
 -- ============================================================
 
-alter table restaurants
+alter table outlets
   add column if not exists payment_timing text not null default 'post'
     check (payment_timing in ('pre','post')),
   add column if not exists admin_pin text not null default '0000', -- change on first login
@@ -154,7 +154,7 @@ alter table order_items add column if not exists status text not null default 'q
 create table if not exists waiter_calls (
   id            uuid primary key default gen_random_uuid(),
   table_id      uuid not null references tables(id) on delete cascade,
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   status        text not null default 'open' check (status in ('open','done')),
   created_at    timestamptz not null default now()
 );
@@ -163,7 +163,7 @@ create index if not exists idx_waiter_calls_open on waiter_calls(table_id) where
 
 create table if not exists staff (
   id            uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  outlet_id     uuid not null references outlets(id) on delete cascade,
   name          text not null,
   role          text not null check (role in ('admin','kitchen','waiter')),
   pin           text not null,
@@ -171,16 +171,16 @@ create table if not exists staff (
   created_at    timestamptz not null default now()
 );
 alter table staff enable row level security;
-create unique index if not exists idx_staff_pin on staff(restaurant_id, pin);
+create unique index if not exists idx_staff_pin on staff(outlet_id, pin);
 
 -- one active session per table (order/reward races resolve on this)
 create unique index if not exists uniq_active_session_per_table
   on sessions(table_id) where status = 'active';
 
 -- customer role must not read credentials or keys
-revoke select on table restaurants from anon;
+revoke select on table outlets from anon;
 grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
-  on table restaurants to anon;
-revoke select on table restaurants from authenticated;
+  on table outlets to anon;
+revoke select on table outlets from authenticated;
 grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
-  on table restaurants to authenticated;
+  on table outlets to authenticated;

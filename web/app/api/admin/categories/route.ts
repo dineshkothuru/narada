@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) {
       return NextResponse.json({ error: "name required" }, { status: 400 });
     }
-    const restaurants = await sbFetch<{ id: string }[]>(`restaurants?select=id&limit=1`);
+    const outlets = await sbFetch<{ id: string }[]>(`outlets?select=id&limit=1`);
     const existing = await sbFetch<{ sort_order: number }[]>(
       `menu_categories?select=sort_order&order=sort_order.desc&limit=1`,
     );
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       returning: true,
       body: JSON.stringify({
-        restaurant_id: restaurants[0].id,
+        outlet_id: outlets[0].id,
         name: name.trim().slice(0, 60),
         emoji: (emoji || "🍽️").slice(0, 8),
         sort_order: (existing[0]?.sort_order ?? 0) + 1,

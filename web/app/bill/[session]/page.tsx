@@ -33,9 +33,7 @@ export default async function BillPage({ params }: { params: Promise<{ session: 
 
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-200 print:rounded-none print:shadow-none print:ring-0">
           <div className="border-b border-dashed border-stone-300 pb-3 text-center">
-            <h1 className="font-display text-xl font-semibold text-stone-900">
-              {bill.restaurantName}
-            </h1>
+            <h1 className="font-display text-xl font-semibold text-stone-900">{bill.outletName}</h1>
             {bill.gstin && <p className="text-[10px] text-stone-500">GSTIN: {bill.gstin}</p>}
             <p className="mt-1 text-[11px] font-bold text-stone-700">
               {bill.tableLabel} · {settled ? "TAX INVOICE" : "BILL PREVIEW"}

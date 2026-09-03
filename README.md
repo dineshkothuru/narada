@@ -14,7 +14,7 @@ waiting for a waiter. That shapes a few decisions:
 
 - **Table session, not one-shot order.** Scanning opens a session tied to the table.
   The customer can order in rounds (starters now, dessert later) on one running tab.
-- **Pay-per-order or pay-at-end** — configurable per restaurant. Indian dine-in
+- **Pay-per-order or pay-at-end** — configurable per outlet. Indian dine-in
   usually settles at the end, so the default is: orders fire to the kitchen
   immediately, UPI payment happens once when the customer asks for the bill.
 - **Waiter is still one tap away.** A "call waiter" button (and the agent understanding
@@ -45,7 +45,10 @@ npm install
    ```
 2. **Create the database** — in the Supabase SQL editor run, in order:
    [`docs/schema.sql`](docs/schema.sql), [`docs/seed.sql`](docs/seed.sql),
-   [`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql).
+   [`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql). On a DB created
+   before 2026-09-03, also run
+   [`docs/migrate-outlet-rename.sql`](docs/migrate-outlet-rename.sql) (fresh installs
+   don't need it — the files above already produce the renamed schema).
 3. **Run** — `npm run dev`, then open http://localhost:3000 and pick a table.
 
 Where to click:
@@ -120,7 +123,7 @@ GPay/PhonePe/any UPI app directly. Zero fees, zero gateway onboarding. Trade-off
 no server-side payment confirmation, so staff verify payment on their own UPI app
 (normal practice in Indian restaurants). No Razorpay/gateway integration.
 
-**Payment timing is an admin setting** per restaurant (`restaurants.payment_timing`):
+**Payment timing is an admin setting** per outlet (`outlets.payment_timing`):
 
 - `post` (default): order fires to the kitchen first, customer pays at the end —
   leaves the waiting window free for engagement (see below).
@@ -133,7 +136,7 @@ no server-side payment confirmation, so staff verify payment on their own UPI ap
   discount auto-applies to the UPI amount.
 - **While waiting — Memory Match 🃏**: 3 escalating levels (~5–8 min, matches the
   kitchen wait). Beating all levels wins a complimentary item (free dessert) —
-  comps cost the restaurant less than discounts.
+  comps cost the outlet less than discounts.
 
 ## Identity & order updates
 
@@ -160,8 +163,8 @@ Gemini's reply and Sarvam TTS so Narada speaks back in the same language.
 - **Domain + hosting** — Vercel (PWA) + any Node host (Railway/Render/Fly) for the
   WebSocket server; Supabase for Postgres. All have free tiers for the prototype.
 - **Payment**: for the prototype nothing (option B); for production a Razorpay/Cashfree
-  merchant account (restaurant's KYC: PAN, bank account, GST if applicable).
-- **Menu data** for one pilot restaurant (names, descriptions, prices, veg/non-veg,
+  merchant account (outlet owner's KYC: PAN, bank account, GST if applicable).
+- **Menu data** for one pilot outlet (names, descriptions, prices, veg/non-veg,
   spice level, allergens — the richer the data, the better the agent's answers).
 
 ## Build phases
