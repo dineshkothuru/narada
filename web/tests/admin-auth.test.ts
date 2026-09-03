@@ -20,6 +20,7 @@ describe("rolesForPath", () => {
       "kitchen",
       "waiter",
       "reception",
+      "cashier",
     ]);
   });
 
@@ -53,6 +54,18 @@ describe("canAccess", () => {
     ["/floor", "admin", true],
     ["/api/waiter/tips", "waiter", true],
     ["/api/waiter/tips", "kitchen", false],
+    // raising a bill belongs to the counter, not to whoever carries the food
+    ["/counter", "cashier", true],
+    ["/counter", "admin", true],
+    ["/counter", "waiter", false],
+    ["/counter", "reception", false],
+    ["/counter", "kitchen", false],
+    ["/api/counter", "cashier", true],
+    ["/api/counter", "waiter", false],
+    // the counter still needs to see the room
+    ["/floor", "cashier", true],
+    ["/kitchen", "cashier", false],
+    ["/admin", "cashier", false],
   ];
 
   it.each(cases)("%s is %s for %s", (path, role, allowed) => {
@@ -75,7 +88,13 @@ describe("staff tokens", () => {
   });
 
   it("round-trips the role it was minted for", async () => {
-    for (const role of ["admin", "kitchen", "waiter", "reception"] as StaffRole[]) {
+    for (const role of [
+      "admin",
+      "kitchen",
+      "waiter",
+      "reception",
+      "cashier",
+    ] as StaffRole[]) {
       expect(await verifyToken(await roleToken(role))).toBe(role);
     }
   });

@@ -4,19 +4,33 @@
 // Replace with Supabase Auth when multi-tenant hosting arrives.
 export const ADMIN_COOKIE = "narada_admin";
 
-export type StaffRole = "admin" | "kitchen" | "waiter" | "reception";
+// one list, so adding a role can't leave verifyToken silently rejecting it
+export const STAFF_ROLES = [
+  "admin",
+  "kitchen",
+  "waiter",
+  "reception",
+  "cashier",
+] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export const isStaffRole = (v: unknown): v is StaffRole =>
+  typeof v === "string" && (STAFF_ROLES as readonly string[]).includes(v);
 
 // api/admin/me is the "who am I" probe — any signed-in role may call it
 export const ROLE_ACCESS: Record<string, StaffRole[]> = {
-  "/api/admin/me": ["admin", "kitchen", "waiter", "reception"],
+  "/api/admin/me": ["admin", "kitchen", "waiter", "reception", "cashier"],
   "/admin": ["admin"],
   "/api/admin": ["admin"],
   "/kitchen": ["admin", "kitchen"],
   "/api/kitchen": ["admin", "kitchen"],
   "/waiter": ["admin", "waiter"],
   "/api/waiter": ["admin", "waiter"],
-  "/floor": ["admin", "waiter", "reception"],
-  "/api/floor": ["admin", "waiter", "reception"],
+  "/floor": ["admin", "waiter", "reception", "cashier"],
+  "/api/floor": ["admin", "waiter", "reception", "cashier"],
+  // taking money is the counter's job, not the waiter's
+  "/counter": ["admin", "cashier"],
+  "/api/counter": ["admin", "cashier"],
 };
 
 // Longest match wins, and matching is segment-aware so "/admin" never claims
@@ -61,9 +75,7 @@ export async function roleToken(role: StaffRole): Promise<string> {
 export async function verifyToken(token: string | undefined): Promise<StaffRole | null> {
   if (!token) return null;
   const [role, expStr, hash] = token.split(".");
-  if (role !== "admin" && role !== "kitchen" && role !== "waiter" && role !== "reception") {
-    return null;
-  }
+  if (!isStaffRole(role)) return null;
   const exp = Number(expStr);
   if (!Number.isFinite(exp) || exp < Date.now()) return null;
   return hash === (await hmac(`${role}:${exp}`)) ? role : null;

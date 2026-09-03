@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
 import { ask } from "@/components/Dialogs";
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
@@ -18,7 +19,15 @@ type FloorTable = {
   code: string;
   capacity: number;
   zone: string | null;
-  status: "free" | "cleaning" | "seated" | "dining" | "settling" | "paid";
+  status:
+    | "free"
+    | "cleaning"
+    | "seated"
+    | "dining"
+    | "settling"
+    | "billed"
+    | "paid";
+  billNo: string | null;
   sessionId: string | null;
   isMerged: boolean;
   mergedWith: string[];
@@ -39,6 +48,7 @@ type Stats = {
   total: number;
   free: number;
   cleaning: number;
+  billed: number;
   seated: number;
   dining: number;
   settling: number;
@@ -65,7 +75,13 @@ const STATUS = {
   settling: {
     ring: "ring-amber-400",
     chip: "bg-amber-100 text-amber-800",
-    label: "Ready to settle",
+    label: "Needs a bill",
+  },
+  // the counter has raised the bill; the guest has not paid it yet
+  billed: {
+    ring: "ring-sky-400",
+    chip: "bg-sky-100 text-sky-800",
+    label: "Billed · awaiting payment",
   },
   paid: {
     ring: "ring-stone-300",
@@ -77,6 +93,7 @@ const STATUS = {
 export default function FloorPage() {
   const [tables, setTables] = useState<FloorTable[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
   const [mergeFrom, setMergeFrom] = useState<FloorTable | null>(null);
 
   const load = useCallback(async () => {
@@ -139,10 +156,11 @@ export default function FloorPage() {
         </div>      </header>
 
       {stats && (
-        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-5">
+        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-green-600" />
           <Stat label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} tone="text-sky-600" />
-          <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
+          <Stat label="Needs a bill" value={String(stats.settling)} tone="text-amber-600" />
+          <Stat label="Awaiting payment" value={String(stats.billed)} tone="text-sky-600" />
           <Stat label="Awaiting cleaning" value={String(stats.cleaning)} tone="text-stone-500" />
           <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
         </section>
@@ -279,9 +297,12 @@ export default function FloorPage() {
                     >
                       {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
                     </button>
-                    <span>
-                      {t.served}/{t.rounds} served
-                    </span>
+                    <button
+                      onClick={() => setOpenTable({ id: t.sessionId!, label: t.label })}
+                      className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-extrabold text-stone-600"
+                    >
+                      {t.served}/{t.rounds} served · details
+                    </button>
                     {t.due > 0 && (
                       <span className="font-bold text-rose-600">due {inr(t.due)}</span>
                     )}
@@ -330,6 +351,20 @@ export default function FloorPage() {
         <p className="mt-5 max-w-5xl text-center text-[11px] text-stone-400">
           Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
         </p>
+      )}
+      {openTable && (
+        <TableSheet
+          sessionId={openTable.id}
+          label={openTable.label}
+          onClose={() => setOpenTable(null)}
+          onShare={(net) =>
+            shareBillOnWhatsApp({
+              sessionId: openTable.id,
+              label: openTable.label,
+              net,
+            })
+          }
+        />
       )}
     </main>
     </AdminShell>

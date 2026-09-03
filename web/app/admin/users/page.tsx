@@ -62,6 +62,7 @@ export default function Page() {
             <select name="role" className={inputCls}>
               <option value="waiter">Waiter</option>
               <option value="reception">Reception / host</option>
+              <option value="cashier">Counter / cashier</option>
               <option value="kitchen">Kitchen</option>
               <option value="admin">Admin</option>
             </select>

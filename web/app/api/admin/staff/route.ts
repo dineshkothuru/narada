@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
+import { isStaffRole } from "@/lib/admin-auth";
 
 export async function GET() {
   try {
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     };
     if (
       !name?.trim() ||
-      !["admin", "kitchen", "waiter", "reception"].includes(role ?? "") ||
+      !isStaffRole(role) ||
       !pin ||
       pin.length < 4
     ) {
