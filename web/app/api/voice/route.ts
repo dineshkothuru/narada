@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchMenu } from "@/lib/menu";
 import { askAnna } from "@/lib/anna";
 import { getApiKeys } from "@/lib/keys";
+import { mockAsk } from "@/lib/mock-anna";
 import { rateLimit } from "@/lib/ratelimit";
-import type { CartLine, ChatMessage } from "@/lib/types";
+import type { AnnaResponse, CartLine, ChatMessage } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -11,7 +12,7 @@ const SARVAM = "https://api.sarvam.ai";
 
 // spoken fallback when Gemini is unavailable — Sarvam TTS still voices it,
 // so the mic keeps "working" even while the brain is rate-limited
-function fallbackReply(langName: string, greet: boolean) {
+function fallbackReply(langName: string, greet: boolean): AnnaResponse {
   const texts: Record<string, { greet: string; busy: string; chips: string[] }> = {
     Hindi: {
       greet:
@@ -47,7 +48,8 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(req, "voice", 20)) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
-  const { sarvam: sarvamKey } = await getApiKeys();
+  const MOCK = process.env.MOCK_AI === "1";
+  const { sarvam: sarvamKey } = MOCK ? { sarvam: "mock" } : await getApiKeys();
   if (!sarvamKey) {
     return NextResponse.json(
       { error: "Sarvam API key not configured (admin settings or env)" },
@@ -81,7 +83,9 @@ export async function POST(req: NextRequest) {
     // menu fetch is independent of STT — overlap them
     const menuPromise = fetchMenu(tableCode || "");
 
-    if (audio) {
+    if (audio && MOCK) {
+      transcript = "(demo mode — voice recognition off; use the chips or type)";
+    } else if (audio) {
       const wavBytes = Buffer.from(audio, "base64");
       const form = new FormData();
       form.append(
@@ -127,19 +131,32 @@ export async function POST(req: NextRequest) {
       { role: "user", text: transcript },
     ];
     let anna;
-    try {
-      anna = await askAnna(menu, allMessages, cart ?? [], langName, { voice: true });
-    } catch {
-      // brain throttled/down: stay conversational instead of erroring the dock
-      anna = fallbackReply(langName, Boolean(greet));
+    if (MOCK) {
+      anna = mockAsk(menu, transcript, cart ?? [], langName, Boolean(greet));
+    } else {
+      try {
+        anna = await askAnna(menu, allMessages, cart ?? [], langName, { voice: true });
+      } catch {
+        // brain throttled/down: stay conversational instead of erroring the dock
+        anna = fallbackReply(langName, Boolean(greet));
+      }
     }
 
-    // speak the reply in the same language the customer spoke
-    const ttsLang = ["en-IN", "hi-IN", "te-IN", "ta-IN", "kn-IN", "ml-IN", "mr-IN", "bn-IN", "gu-IN", "pa-IN", "od-IN"].includes(detected)
-      ? detected
-      : "en-IN";
+    // the brain's judgement wins for code-mixed speech (Hinglish → hi, Tenglish → te)
+    const uiLanguage =
+      anna.uiLanguage === "hi" || anna.uiLanguage === "te" || anna.uiLanguage === "en"
+        ? anna.uiLanguage
+        : detected.startsWith("hi")
+          ? "hi"
+          : detected.startsWith("te")
+            ? "te"
+            : "en";
+
+    // speak the reply in the language the customer is actually using
+    const ttsLang =
+      uiLanguage === "hi" ? "hi-IN" : uiLanguage === "te" ? "te-IN" : "en-IN";
     let audioOut: string | null = null;
-    const ttsRes = await fetch(`${SARVAM}/text-to-speech`, {
+    const ttsRes = MOCK ? null : await fetch(`${SARVAM}/text-to-speech`, {
       method: "POST",
       headers: { "api-subscription-key": sarvamKey, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -148,16 +165,17 @@ export async function POST(req: NextRequest) {
         model: "bulbul:v3",
       }),
     });
-    if (ttsRes.ok) {
+    if (ttsRes?.ok) {
       const tts = (await ttsRes.json()) as { audios?: string[] };
       audioOut = tts.audios?.[0] ?? null;
-    } else {
+    } else if (ttsRes) {
       console.error("sarvam tts", ttsRes.status, (await ttsRes.text()).slice(0, 300));
     }
 
     return NextResponse.json({
       transcript: greet ? "" : transcript,
       detectedLanguage: detected,
+      uiLanguage,
       reply: anna.reply,
       actions: anna.actions,
       suggestCheckout: anna.suggestCheckout,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMenu } from "@/lib/menu";
 import { askAnna } from "@/lib/anna";
+import { mockAsk } from "@/lib/mock-anna";
 import { rateLimit } from "@/lib/ratelimit";
 import type { CartLine, ChatMessage } from "@/lib/types";
 
@@ -22,6 +23,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const menu = await fetchMenu(tableCode || "");
+    if (process.env.MOCK_AI === "1") {
+      const last = messages[messages.length - 1]?.text ?? "";
+      return NextResponse.json(
+        mockAsk(menu, last, cart ?? [], language || "English", false),
+      );
+    }
     const parsed = await askAnna(menu, messages, cart ?? [], language || "English");
     return NextResponse.json(parsed);
   } catch (e) {

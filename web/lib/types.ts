@@ -57,6 +57,7 @@ export type AnnaResponse = {
   suggestCheckout?: boolean;
   showItems?: string[];
   quickReplies?: string[];
+  uiLanguage?: "en" | "hi" | "te";
 };
 
 export type ChatMessage = {

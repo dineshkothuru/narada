@@ -417,17 +417,16 @@ export default function OrderExperience({
         transcript: string;
         audio: string | null;
         detectedLanguage?: string;
+        uiLanguage?: string;
         showItems: string[];
         quickReplies: string[];
       };
-      // the customer spoke — render the whole UI in that language
-      const spoken = data.detectedLanguage?.startsWith("hi")
-        ? "hi"
-        : data.detectedLanguage?.startsWith("te")
-          ? "te"
-          : data.detectedLanguage?.startsWith("en")
-            ? "en"
-            : null;
+      // render the UI in the language the customer is actually using
+      // (brain-judged: Hinglish → hi, Tenglish → te, even in Latin script)
+      const spoken =
+        data.uiLanguage === "hi" || data.uiLanguage === "te" || data.uiLanguage === "en"
+          ? data.uiLanguage
+          : null;
       if (spoken && spoken !== langRef.current) setLang(spoken);
       setMessages((m) => [
         ...m,
