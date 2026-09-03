@@ -3,15 +3,23 @@ import { sbFetch } from "@/lib/supabase-server";
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { restaurantId, payment_timing, upi_vpa, admin_pin, gemini_api_key, sarvam_api_key } =
-      (await req.json()) as {
-        restaurantId: string;
-        payment_timing?: "pre" | "post";
-        upi_vpa?: string;
-        admin_pin?: string;
-        gemini_api_key?: string;
-        sarvam_api_key?: string;
-      };
+    const {
+      restaurantId,
+      payment_timing,
+      upi_vpa,
+      admin_pin,
+      gemini_api_key,
+      sarvam_api_key,
+      comp_item_id,
+    } = (await req.json()) as {
+      restaurantId: string;
+      payment_timing?: "pre" | "post";
+      upi_vpa?: string;
+      admin_pin?: string;
+      gemini_api_key?: string;
+      sarvam_api_key?: string;
+      comp_item_id?: string | null;
+    };
     if (!restaurantId) {
       return NextResponse.json({ error: "restaurantId required" }, { status: 400 });
     }
@@ -21,6 +29,9 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof upi_vpa === "string" && upi_vpa.includes("@")) patch.upi_vpa = upi_vpa;
     if (typeof admin_pin === "string" && admin_pin.length >= 4) patch.admin_pin = admin_pin;
+    if (comp_item_id === null || typeof comp_item_id === "string") {
+      patch.comp_item_id = comp_item_id || null;
+    }
     if (typeof gemini_api_key === "string") patch.gemini_api_key = gemini_api_key || null;
     if (typeof sarvam_api_key === "string") patch.sarvam_api_key = sarvam_api_key || null;
     if (Object.keys(patch).length === 0) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchMenu } from "@/lib/menu";
 import { askAnna } from "@/lib/anna";
 import { getApiKeys } from "@/lib/keys";
+import { rateLimit } from "@/lib/ratelimit";
 import type { CartLine, ChatMessage } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -10,6 +11,9 @@ const SARVAM = "https://api.sarvam.ai";
 
 // Sarvam STT auto-detects the spoken language; we answer (text + speech) in it.
 export async function POST(req: NextRequest) {
+  if (!rateLimit(req, "voice", 20)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
   const { sarvam: sarvamKey } = await getApiKeys();
   if (!sarvamKey) {
     return NextResponse.json(
@@ -40,6 +44,9 @@ export async function POST(req: NextRequest) {
       language === "Hindi" ? "hi-IN" : language === "Telugu" ? "te-IN" : "en-IN";
     let transcript = "";
     let detected = appLangCode;
+
+    // menu fetch is independent of STT — overlap them
+    const menuPromise = fetchMenu(tableCode || "");
 
     if (audio) {
       const wavBytes = Buffer.from(audio, "base64");
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
       : detected.startsWith("en") && audio ? "English"
       : language || "English";
 
-    const menu = await fetchMenu(tableCode || "");
+    const menu = await menuPromise;
     const allMessages: ChatMessage[] = [
       ...(messages ?? []),
       { role: "user", text: transcript },

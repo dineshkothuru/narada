@@ -44,12 +44,7 @@ const NEXT: Record<string, { to: "preparing" | "served"; label: string } | null>
   served: null,
 };
 
-import { inr } from "@/lib/format";
-
-function since(iso: string) {
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  return mins === 0 ? "just now" : `${mins} min ago`;
-}
+import { inr, minutesAgo } from "@/lib/format";
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
@@ -70,9 +65,17 @@ export default function KitchenPage() {
   }, []);
 
   useEffect(() => {
-    load();
-    const iv = setInterval(load, 5000);
-    return () => clearInterval(iv);
+    const tick = () => {
+      if (!document.hidden) load();
+    };
+    const t = setTimeout(tick, 0);
+    const iv = setInterval(tick, 5000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearTimeout(t);
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [load]);
 
   const advance = async (orderId: string, to: string) => {
@@ -144,7 +147,7 @@ export default function KitchenPage() {
                       <span className="text-sm font-bold text-stone-900">
                         {o.session?.table?.label ?? "Unknown table"}
                       </span>
-                      <span className="text-[11px] text-stone-400">{since(o.created_at)}</span>
+                      <span className="text-[11px] text-stone-400">{minutesAgo(o.created_at)}</span>
                     </div>
                     <ul className="mt-2 space-y-1">
                       {o.items.map((it) => (

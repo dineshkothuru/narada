@@ -117,3 +117,70 @@ create policy "public can read menu items"      on menu_items      for select us
 
 -- Kitchen dashboard live updates
 alter publication supabase_realtime add table orders;
+
+-- ============================================================
+-- v2 additions (applied to the live project; needed for fresh installs)
+-- ============================================================
+
+alter table restaurants
+  add column if not exists payment_timing text not null default 'post'
+    check (payment_timing in ('pre','post')),
+  add column if not exists admin_pin text not null default '1234',
+  add column if not exists gemini_api_key text,
+  add column if not exists sarvam_api_key text,
+  add column if not exists comp_item_id uuid references menu_items(id);
+
+alter table menu_categories
+  add column if not exists name_hi text,
+  add column if not exists name_te text;
+
+alter table menu_items
+  add column if not exists name_hi text,
+  add column if not exists name_te text,
+  add column if not exists description_hi text,
+  add column if not exists description_te text,
+  add column if not exists emoji text;
+
+alter table sessions
+  add column if not exists discount_pct int not null default 0
+    check (discount_pct between 0 and 50),
+  add column if not exists comp_awarded boolean not null default false;
+
+alter table orders add column if not exists placed_by text;
+
+alter table order_items add column if not exists status text not null default 'queued'
+  check (status in ('queued','preparing','served'));
+
+create table if not exists waiter_calls (
+  id            uuid primary key default gen_random_uuid(),
+  table_id      uuid not null references tables(id) on delete cascade,
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  status        text not null default 'open' check (status in ('open','done')),
+  created_at    timestamptz not null default now()
+);
+alter table waiter_calls enable row level security;
+create index if not exists idx_waiter_calls_open on waiter_calls(table_id) where status = 'open';
+
+create table if not exists staff (
+  id            uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  name          text not null,
+  role          text not null check (role in ('admin','kitchen','waiter')),
+  pin           text not null,
+  active        boolean not null default true,
+  created_at    timestamptz not null default now()
+);
+alter table staff enable row level security;
+create unique index if not exists idx_staff_pin on staff(restaurant_id, pin);
+
+-- one active session per table (order/reward races resolve on this)
+create unique index if not exists uniq_active_session_per_table
+  on sessions(table_id) where status = 'active';
+
+-- customer role must not read credentials or keys
+revoke select on table restaurants from anon;
+grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
+  on table restaurants to anon;
+revoke select on table restaurants from authenticated;
+grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
+  on table restaurants to authenticated;

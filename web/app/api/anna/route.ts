@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchMenu } from "@/lib/menu";
 import { askAnna } from "@/lib/anna";
+import { rateLimit } from "@/lib/ratelimit";
 import type { CartLine, ChatMessage } from "@/lib/types";
 
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(req, "anna", 30)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
   const { messages, cart, language, tableCode } = (await req.json()) as {
     messages: ChatMessage[];
     cart: CartLine[];

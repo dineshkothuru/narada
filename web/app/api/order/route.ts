@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
+import { lookupTable, getOrCreateSession } from "@/lib/table-session";
+import { rateLimit } from "@/lib/ratelimit";
 import type { CartLine } from "@/lib/types";
 
-type TableRow = { id: string; restaurant_id: string; label: string };
-type SessionRow = { id: string; discount_pct?: number };
 type ItemRow = { id: string; name: string; price_inr: number };
 type OrderRow = { id: string; status: string; created_at: string };
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(req, "order", 15)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
   try {
     const { tableCode, cart, placedVia, guestName } = (await req.json()) as {
       tableCode: string;
@@ -19,38 +22,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "tableCode and cart required" }, { status: 400 });
     }
 
-    const tables = await sbFetch<TableRow[]>(
-      `tables?select=id,restaurant_id,label&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
-    );
-    if (tables.length === 0) {
-      return NextResponse.json({ error: "unknown table" }, { status: 404 });
-    }
-    const table = tables[0];
-
-    let sessions = await sbFetch<SessionRow[]>(
-      `sessions?select=id,discount_pct&table_id=eq.${table.id}&status=eq.active&limit=1`,
-    );
-    if (sessions.length === 0) {
-      sessions = await sbFetch<SessionRow[]>(`sessions`, {
-        method: "POST",
-        returning: true,
-        body: JSON.stringify({
-          table_id: table.id,
-          restaurant_id: table.restaurant_id,
-        }),
-      });
-    }
-    const session = sessions[0];
-
     // itemIds are client input — only well-formed uuids may enter the filter
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const ids = [...new Set(cart.map((l) => l.itemId))].filter((id) => UUID.test(id));
     if (ids.length === 0) {
       return NextResponse.json({ error: "no valid items" }, { status: 400 });
     }
-    const items = await sbFetch<ItemRow[]>(
-      `menu_items?select=id,name,price_inr&id=in.(${ids.join(",")})`,
-    );
+
+    // table+session and item prices are independent — fetch in parallel
+    const table = await lookupTable(tableCode);
+    if (!table) {
+      return NextResponse.json({ error: "unknown table" }, { status: 404 });
+    }
+    const [session, items] = await Promise.all([
+      getOrCreateSession(table),
+      sbFetch<ItemRow[]>(`menu_items?select=id,name,price_inr&id=in.(${ids.join(",")})`),
+    ]);
     const byId = new Map(items.map((i) => [i.id, i]));
     const lines = cart
       .map((l) => ({ ...l, qty: Math.floor(Number(l.qty)) }))
@@ -124,7 +111,7 @@ export async function GET(req: NextRequest) {
             items: { name: string; qty: number; status: string }[];
           }[]
         >(
-          `orders?select=id,status,total_inr,created_at,placed_by,items:order_items(name,qty,status)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
+          `orders?select=id,status,total_inr,created_at,placed_by,items:order_items(name,qty,status)&session_id=eq.${encodeURIComponent(session)}&status=neq.cancelled&order=created_at`,
         ),
         sbFetch<{ discount_pct: number; status: string }[]>(
           `sessions?select=discount_pct,status&id=eq.${encodeURIComponent(session)}&limit=1`,

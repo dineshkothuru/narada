@@ -1,73 +1,98 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
+import { lookupTable, getOrCreateSession } from "@/lib/table-session";
+import { rateLimit } from "@/lib/ratelimit";
+import { WHEEL, spinWheel } from "@/lib/games";
 
-const VALID_DISCOUNTS = [5, 10, 15];
-const COMP_ITEM_NAME = "Gulab Jamun (2 pcs)";
+const FALLBACK_COMP_NAME = "Gulab Jamun (2 pcs)";
 
-type SessionRow = { id: string; discount_pct: number; comp_awarded: boolean };
-
-async function getOrCreateSession(tableCode: string) {
-  const tables = await sbFetch<{ id: string; restaurant_id: string }[]>(
-    `tables?select=id,restaurant_id&code=eq.${encodeURIComponent(tableCode)}&limit=1`,
-  );
-  if (tables.length === 0) return null;
-  const table = tables[0];
-  let sessions = await sbFetch<SessionRow[]>(
-    `sessions?select=id,discount_pct,comp_awarded&table_id=eq.${table.id}&status=eq.active&limit=1`,
-  );
-  if (sessions.length === 0) {
-    sessions = await sbFetch<SessionRow[]>(`sessions`, {
-      method: "POST",
-      returning: true,
-      body: JSON.stringify({ table_id: table.id, restaurant_id: table.restaurant_id }),
-    });
-  }
-  return { table, session: sessions[0] };
-}
-
-// Rewards are server-tracked per table session: one spin discount, one comp.
+// Rewards are server-authoritative per table session: the server draws the
+// wheel prize (the client only animates it) and claims are atomic conditional
+// updates, so races and forged results can't double-award.
 export async function POST(req: NextRequest) {
+  if (!rateLimit(req, "reward", 10)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
   try {
-    const { tableCode, type, pct } = (await req.json()) as {
+    const { tableCode, type } = (await req.json()) as {
       tableCode?: string;
       type?: "spin" | "comp";
-      pct?: number;
     };
     if (!tableCode || !type) {
       return NextResponse.json({ error: "tableCode and type required" }, { status: 400 });
     }
-    const ctx = await getOrCreateSession(tableCode);
-    if (!ctx) return NextResponse.json({ error: "unknown table" }, { status: 404 });
-    const { table, session } = ctx;
+    const table = await lookupTable(tableCode);
+    if (!table) return NextResponse.json({ error: "unknown table" }, { status: 404 });
+    const session = await getOrCreateSession(table);
 
     if (type === "spin") {
       if (session.discount_pct > 0) {
-        // already spun (maybe on another phone at this table) — server wins
-        return NextResponse.json({ ok: false, discountPct: session.discount_pct });
-      }
-      const value = VALID_DISCOUNTS.includes(Number(pct)) ? Number(pct) : 0;
-      if (value > 0) {
-        await sbFetch(`sessions?id=eq.${session.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ discount_pct: value }),
+        const idx = WHEEL.findIndex(
+          (s) => s.reward.type === "discount" && s.reward.pct === session.discount_pct,
+        );
+        return NextResponse.json({
+          ok: false,
+          discountPct: session.discount_pct,
+          sliceIndex: idx >= 0 ? idx : 0,
         });
       }
-      return NextResponse.json({ ok: true, discountPct: value });
+      const sliceIndex = spinWheel();
+      const reward = WHEEL[sliceIndex].reward;
+      const pct = reward.type === "discount" ? reward.pct : 0;
+      if (pct > 0) {
+        // atomic claim: only wins if nobody else set a discount meanwhile
+        const claimed = await sbFetch<{ discount_pct: number }[]>(
+          `sessions?id=eq.${session.id}&discount_pct=eq.0`,
+          {
+            method: "PATCH",
+            returning: true,
+            body: JSON.stringify({ discount_pct: pct }),
+          },
+        );
+        if (claimed.length === 0) {
+          const current = await sbFetch<{ discount_pct: number }[]>(
+            `sessions?select=discount_pct&id=eq.${session.id}&limit=1`,
+          );
+          return NextResponse.json({
+            ok: false,
+            discountPct: current[0]?.discount_pct ?? 0,
+            sliceIndex,
+          });
+        }
+      }
+      return NextResponse.json({ ok: true, discountPct: pct, sliceIndex });
     }
 
-    // comp: requires at least one real order, once per session
-    if (session.comp_awarded) {
-      return NextResponse.json({ ok: false, reason: "already awarded" });
-    }
+    // comp: claim the flag atomically BEFORE creating the ticket
     const orders = await sbFetch<{ id: string }[]>(
       `orders?select=id&session_id=eq.${session.id}&limit=1`,
     );
     if (orders.length === 0) {
       return NextResponse.json({ ok: false, reason: "no orders yet" }, { status: 400 });
     }
-    const items = await sbFetch<{ id: string; name: string }[]>(
-      `menu_items?select=id,name&name=eq.${encodeURIComponent(COMP_ITEM_NAME)}&limit=1`,
+    const claimed = await sbFetch<{ id: string }[]>(
+      `sessions?id=eq.${session.id}&comp_awarded=eq.false`,
+      { method: "PATCH", returning: true, body: JSON.stringify({ comp_awarded: true }) },
     );
+    if (claimed.length === 0) {
+      return NextResponse.json({ ok: false, reason: "already awarded" });
+    }
+
+    // prize dish: admin-configured, falling back to the classic
+    const restaurants = await sbFetch<{ comp_item_id: string | null }[]>(
+      `restaurants?select=comp_item_id&id=eq.${table.restaurant_id}&limit=1`,
+    );
+    let items: { id: string; name: string }[] = [];
+    if (restaurants[0]?.comp_item_id) {
+      items = await sbFetch(
+        `menu_items?select=id,name&id=eq.${restaurants[0].comp_item_id}&limit=1`,
+      );
+    }
+    if (items.length === 0) {
+      items = await sbFetch(
+        `menu_items?select=id,name&restaurant_id=eq.${table.restaurant_id}&name=eq.${encodeURIComponent(FALLBACK_COMP_NAME)}&limit=1`,
+      );
+    }
     if (items.length === 0) {
       return NextResponse.json({ ok: false, reason: "comp item missing" }, { status: 500 });
     }
@@ -94,11 +119,7 @@ export async function POST(req: NextRequest) {
         },
       ]),
     });
-    await sbFetch(`sessions?id=eq.${session.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ comp_awarded: true }),
-    });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, item: items[0].name });
   } catch (e) {
     console.error("reward:", e);
     return NextResponse.json({ error: "failed" }, { status: 500 });

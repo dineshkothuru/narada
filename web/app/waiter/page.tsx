@@ -14,16 +14,12 @@ type WaiterTable = {
     orders: { id: string; status: string; total_inr: number; created_at: string }[];
     ordered: number;
     paid: number;
+    discountPct: number;
     due: number;
   } | null;
 };
 
-import { inr } from "@/lib/format";
-
-function since(iso: string) {
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  return mins === 0 ? "now" : `${mins}m`;
-}
+import { inr, minutesAgo } from "@/lib/format";
 
 export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
@@ -42,9 +38,17 @@ export default function WaiterPage() {
   }, []);
 
   useEffect(() => {
-    load();
-    const iv = setInterval(load, 5000);
-    return () => clearInterval(iv);
+    const tick = () => {
+      if (!document.hidden) load();
+    };
+    const t = setTimeout(tick, 0);
+    const iv = setInterval(tick, 5000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearTimeout(t);
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, [load]);
 
   const act = async (body: Record<string, unknown>) => {
@@ -101,7 +105,7 @@ export default function WaiterPage() {
                 <span className="text-sm font-bold text-stone-900">
                   {t.label}
                   <span className="ml-2 text-xs font-medium text-stone-400">
-                    {since(t.call!.created_at)} ago
+                    {minutesAgo(t.call!.created_at, true)} ago
                   </span>
                 </span>
                 <button
@@ -133,7 +137,7 @@ export default function WaiterPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-stone-900">{t.label}</span>
                   <span className="text-[11px] text-stone-400">
-                    open {since(s.since)}
+                    open {minutesAgo(s.since, true)}
                   </span>
                 </div>
                 <div className="mt-2 flex gap-4 text-xs text-stone-600">
@@ -141,6 +145,9 @@ export default function WaiterPage() {
                     {s.orders.length} order{s.orders.length !== 1 ? "s" : ""}
                   </span>
                   <span>billed {inr(s.ordered)}</span>
+                  {s.discountPct > 0 && (
+                    <span className="font-bold text-rose-600">-{s.discountPct}% 🎡</span>
+                  )}
                   <span>paid {inr(s.paid)}</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between">

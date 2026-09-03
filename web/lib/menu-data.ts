@@ -258,4 +258,3 @@ export const MENU: MenuItem[] = [
   },
 ];
 
-export const MENU_BY_ID = new Map(MENU.map((m) => [m.id, m]));

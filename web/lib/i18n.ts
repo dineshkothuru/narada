@@ -16,7 +16,6 @@ type Strings = {
   dineIn: string;
   veg: string;
   talkToAnna: string;
-  annaHint: string;
   annaRole: string;
   annaGreeting: string;
   askAnna: string;
@@ -77,7 +76,6 @@ export const STRINGS: Record<Lang, Strings> = {
     dineIn: "Dine-in",
     veg: "Veg",
     talkToAnna: "Talk to Narada",
-    annaHint: "“Narada, what’s good today?” — ask anything, order anything",
     annaRole: "Your waiter · knows every dish on the menu",
     annaGreeting:
       "Namaste! I’m Narada. Ask me about any dish, or just tell me what you feel like eating.",
@@ -142,7 +140,6 @@ export const STRINGS: Record<Lang, Strings> = {
     dineIn: "डाइन-इन",
     veg: "वेज",
     talkToAnna: "नारद से बात करें",
-    annaHint: "“नारद, आज क्या अच्छा है?” — कुछ भी पूछें, कुछ भी ऑर्डर करें",
     annaRole: "आपका वेटर · मेन्यू की हर डिश जानता है",
     annaGreeting:
       "नमस्ते! मैं नारद हूँ। किसी भी डिश के बारे में पूछिए, या बताइए आज क्या खाने का मन है।",
@@ -207,7 +204,6 @@ export const STRINGS: Record<Lang, Strings> = {
     dineIn: "డైన్-ఇన్",
     veg: "వెజ్",
     talkToAnna: "నారదతో మాట్లాడండి",
-    annaHint: "“నారద, ఈరోజు ఏది బాగుంది?” — ఏదైనా అడగండి, ఏదైనా ఆర్డర్ చేయండి",
     annaRole: "మీ వెయిటర్ · మెనూలోని ప్రతి వంటకం తెలుసు",
     annaGreeting:
       "నమస్తే! నేను నారద. ఏ వంటకం గురించైనా అడగండి, లేదా ఈరోజు ఏమి తినాలనిపిస్తుందో చెప్పండి.",

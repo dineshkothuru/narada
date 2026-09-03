@@ -9,7 +9,7 @@ export async function GET() {
         `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens&order=sort_order`,
       ),
       sbFetch<unknown[]>(
-        `restaurants?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key&limit=1`,
+        `restaurants?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key,comp_item_id&limit=1`,
       ),
     ]);
     return NextResponse.json({ categories: cats, items, restaurant: restaurants[0] });

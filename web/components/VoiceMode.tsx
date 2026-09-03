@@ -3,21 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { blobToWavBase64 } from "@/lib/audio";
 
-export type VoiceCard = {
-  id: string;
-  name: string;
-  priceInr: number;
-  imageUrl: string | null;
-  emoji: string;
-  isVeg: boolean;
-};
-
 export type VoiceTurnResult = {
   transcript: string;
   reply: string;
   audio: string | null;
   endConversation?: boolean;
-  cards: VoiceCard[];
   quickReplies: string[];
 } | null;
 
@@ -46,7 +36,6 @@ export default function VoiceMode({
     endVoice: string;
     voiceHint: string;
     annaRole: string;
-    add: string;
   };
 }) {
   const [status, setStatus] = useState<Status>("idle");
@@ -61,6 +50,8 @@ export default function VoiceMode({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const playerRef = useRef<HTMLAudioElement | null>(null);
   const vadIvRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startListeningRef = useRef<() => void>(() => {});
 
   const cleanupListening = useCallback(() => {
     if (vadIvRef.current) clearInterval(vadIvRef.current);
@@ -171,9 +162,9 @@ export default function VoiceMode({
         try {
           const blob = new Blob(chunks, { type: recorder.mimeType });
           const wav = await blobToWavBase64(blob);
-          handleResult(await onTurn(wav), startListening);
+          handleResult(await onTurn(wav), () => startListeningRef.current());
         } catch {
-          if (!closedRef.current) startListening();
+          if (!closedRef.current) startListeningRef.current();
         }
       };
       recorder.start();
@@ -184,6 +175,9 @@ export default function VoiceMode({
       setStatus("idle");
     }
   }, [cleanupListening, handleResult, onClose, onTurn]);
+  useEffect(() => {
+    startListeningRef.current = startListening;
+  }, [startListening]);
 
   const stopListeningSilently = useCallback(() => {
     discardRef.current = true;

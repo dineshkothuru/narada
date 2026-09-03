@@ -1,25 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { sbFetch } from "@/lib/supabase-server";
+import { rateLimit } from "@/lib/ratelimit";
 import { ADMIN_COOKIE, roleToken, type StaffRole } from "@/lib/admin-auth";
 
+function pinsMatch(a: string, b: string): boolean {
+  const ba = Buffer.from(a.padEnd(64, "\0"));
+  const bb = Buffer.from(b.padEnd(64, "\0"));
+  return a.length === b.length && timingSafeEqual(ba, bb);
+}
+
 export async function POST(req: NextRequest) {
-  const { pin } = (await req.json()) as { pin?: string };
-  if (!pin) return NextResponse.json({ error: "pin required" }, { status: 400 });
+  if (!rateLimit(req, "login", 10)) {
+    return NextResponse.json({ error: "too many attempts — wait a minute" }, { status: 429 });
+  }
   try {
+    const { pin } = (await req.json()) as { pin?: string };
+    if (!pin || typeof pin !== "string") {
+      return NextResponse.json({ error: "pin required" }, { status: 400 });
+    }
+
     let role: StaffRole | null = null;
     let name = "Owner";
 
-    const staff = await sbFetch<{ role: StaffRole; name: string }[]>(
-      `staff?select=role,name&pin=eq.${encodeURIComponent(pin)}&active=eq.true&limit=1`,
-    );
-    if (staff.length > 0) {
-      role = staff[0].role;
-      name = staff[0].name;
-    } else {
-      const rows = await sbFetch<{ admin_pin: string }[]>(
-        `restaurants?select=admin_pin&limit=1`,
-      );
-      if (rows.length > 0 && rows[0].admin_pin === pin) role = "admin";
+    // compare in-process (constant time) instead of filtering by pin in the query
+    const [staff, restaurants] = await Promise.all([
+      sbFetch<{ role: StaffRole; name: string; pin: string }[]>(
+        `staff?select=role,name,pin&active=eq.true`,
+      ),
+      sbFetch<{ admin_pin: string }[]>(`restaurants?select=admin_pin&limit=1`),
+    ]);
+    const match = staff.find((s) => pinsMatch(s.pin, pin));
+    if (match) {
+      role = match.role;
+      name = match.name;
+    } else if (restaurants.length > 0 && pinsMatch(restaurants[0].admin_pin, pin)) {
+      role = "admin";
     }
     if (!role) return NextResponse.json({ error: "wrong pin" }, { status: 401 });
 
@@ -27,6 +43,7 @@ export async function POST(req: NextRequest) {
     res.cookies.set(ADMIN_COOKIE, await roleToken(role), {
       httpOnly: true,
       sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 12,
     });

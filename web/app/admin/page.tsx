@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { inr } from "@/lib/format";
+import { useRouter } from "next/navigation";
 
 type AdminItem = {
   id: string;
@@ -32,9 +32,11 @@ type AdminRestaurant = {
   admin_pin: string;
   gemini_api_key: string | null;
   sarvam_api_key: string | null;
+  comp_item_id: string | null;
 };
 
 export default function AdminPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [items, setItems] = useState<AdminItem[]>([]);
   const [restaurant, setRestaurant] = useState<AdminRestaurant | null>(null);
@@ -63,7 +65,8 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(load, 0);
+    return () => clearTimeout(t);
   }, [load]);
 
   useEffect(() => {
@@ -159,7 +162,7 @@ export default function AdminPage() {
 
   const logout = async () => {
     await fetch("/api/admin/login", { method: "DELETE" });
-    window.location.href = "/admin/login";
+    router.replace("/admin/login");
   };
 
   const inputCls =
@@ -251,6 +254,21 @@ export default function AdminPage() {
                 }}
                 className={inputCls}
               />
+            </label>
+            <label className="text-xs font-semibold text-stone-600">
+              Game prize (free dish) 🎁
+              <select
+                value={restaurant.comp_item_id ?? ""}
+                onChange={(e) => patchSettings({ comp_item_id: e.target.value })}
+                className={inputCls}
+              >
+                <option value="">— default (Gulab Jamun) —</option>
+                {items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="text-xs font-semibold text-stone-600 sm:col-span-2">
               Gemini API key <span className="font-normal text-stone-400">(Narada&apos;s brain)</span>

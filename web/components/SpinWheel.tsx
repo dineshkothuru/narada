@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { WHEEL, spinWheel } from "@/lib/games";
+import { useEffect, useRef, useState } from "react";
+import { WHEEL } from "@/lib/games";
 
 const SLICE_DEG = 360 / WHEEL.length;
 
@@ -15,25 +15,43 @@ function sliceArc(index: number, r: number, cx: number, cy: number): string {
   return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`;
 }
 
+// The prize is drawn SERVER-side (resolveSpin returns the slice index);
+// this component only animates the wheel landing on it.
 export default function SpinWheel({
   strings,
+  resolveSpin,
   onResult,
 }: {
   strings: { spin: string };
+  resolveSpin: () => Promise<number>;
   onResult: (index: number) => void;
 }) {
   const [deg, setDeg] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [done, setDone] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const spin = () => {
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  const spin = async () => {
     if (spinning || done) return;
-    const idx = spinWheel();
+    setSpinning(true);
+    let idx: number;
+    try {
+      idx = await resolveSpin();
+    } catch {
+      setSpinning(false);
+      return;
+    }
     // land the middle of slice idx under the top pointer, plus 5 full turns
     const target = 360 * 5 + (360 - (idx * SLICE_DEG + SLICE_DEG / 2));
-    setSpinning(true);
     setDeg(target);
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       setSpinning(false);
       setDone(true);
       onResult(idx);

@@ -25,10 +25,10 @@ export default function MemoryGame({
   const [deck, setDeck] = useState<Card[]>(() => buildDeck(MEMORY_LEVELS[0].pairs));
   const [flipped, setFlipped] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
-  const [levelClear, setLevelClear] = useState(false);
   const lockRef = useRef(false);
   const doneRef = useRef(false);
   const flippedRef = useRef<number[]>([]);
+  const levelClear = deck.length > 0 && deck.every((c) => c.matched);
 
   const setFlippedSafe = (next: number[]) => {
     flippedRef.current = next;
@@ -42,33 +42,20 @@ export default function MemoryGame({
     setDeck(buildDeck(MEMORY_LEVELS[n].pairs));
     setFlippedSafe([]);
     setMoves(0);
-    setLevelClear(false);
     lockRef.current = false;
   };
 
+  // completion + auto-advance react to the derived levelClear flag
   useEffect(() => {
-    if (deck.length > 0 && deck.every((c) => c.matched) && !levelClear) {
-      setLevelClear(true);
-      if (level === MEMORY_LEVELS.length - 1 && !doneRef.current) {
+    if (!levelClear) return;
+    if (level === MEMORY_LEVELS.length - 1) {
+      if (!doneRef.current) {
         doneRef.current = true;
         onAllLevelsComplete();
       }
+      return;
     }
-  }, [deck, level, levelClear, onAllLevelsComplete]);
-
-  // auto-advance in its own effect: the timer must survive the levelClear
-  // re-render (a combined effect's cleanup was cancelling it instantly)
-  useEffect(() => {
-    if (!levelClear || level >= MEMORY_LEVELS.length - 1) return;
-    const timer = setTimeout(() => {
-      const n = level + 1;
-      setLevel(n);
-      setDeck(buildDeck(MEMORY_LEVELS[n].pairs));
-      setFlippedSafe([]);
-      setMoves(0);
-      setLevelClear(false);
-      lockRef.current = false;
-    }, 1500);
+    const timer = setTimeout(nextLevel, 1500);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [levelClear, level]);

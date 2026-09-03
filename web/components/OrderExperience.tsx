@@ -6,7 +6,7 @@ import { WHEEL } from "@/lib/games";
 import HeroCarousel from "./HeroCarousel";
 import MemoryGame from "./MemoryGame";
 import SpinWheel from "./SpinWheel";
-import VoiceMode, { type VoiceCard, type VoiceTurnResult } from "./VoiceMode";
+import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
 import type {
   AnnaResponse,
   CartLine,
@@ -88,6 +88,7 @@ export default function OrderExperience({
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [chatChips, setChatChips] = useState<string[]>([]);
   const [thinking, setThinking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [orderPlaced, setOrderPlaced] = useState<{
@@ -126,6 +127,9 @@ export default function OrderExperience({
   // stable refs so async voice turns and deferred confirms never see stale state
   const cartRef = useRef<CartLine[]>(cart);
   const messagesRef = useRef<ChatMessage[]>(messages);
+  const langRef = useRef<Lang>(lang);
+  const roundsRef = useRef<typeof rounds>([]);
+  const myOrderIdsRef = useRef<string[]>([]);
   const placeOrderRef = useRef<(via?: "ui" | "anna") => void>(() => {});
   useEffect(() => {
     cartRef.current = cart;
@@ -133,6 +137,15 @@ export default function OrderExperience({
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
+  useEffect(() => {
+    roundsRef.current = rounds;
+  }, [rounds]);
+  useEffect(() => {
+    myOrderIdsRef.current = myOrderIds;
+  }, [myOrderIds]);
 
   const MENU_BY_ID = useMemo(
     () => new Map(menuItems.map((m) => [m.id, m])),
@@ -140,22 +153,24 @@ export default function OrderExperience({
   );
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const s = JSON.parse(saved);
-        if (Array.isArray(s.cart)) setCart(s.cart);
-        if (Array.isArray(s.messages)) setMessages(s.messages);
-        if (s.lang === "en" || s.lang === "hi" || s.lang === "te") setLang(s.lang);
-        if (s.spinDone) setSpinDone(true);
-        if (typeof s.discountPct === "number") setDiscountPct(s.discountPct);
-        if (s.orderPlaced?.total) setOrderPlaced(s.orderPlaced);
-        if (typeof s.guestName === "string") setGuestName(s.guestName);
-        if (Array.isArray(s.myOrderIds)) setMyOrderIds(s.myOrderIds);
-      }
-    } catch {}
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const t = setTimeout(() => {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          const s = JSON.parse(saved);
+          if (Array.isArray(s.cart)) setCart(s.cart);
+          if (Array.isArray(s.messages)) setMessages(s.messages);
+          if (s.lang === "en" || s.lang === "hi" || s.lang === "te") setLang(s.lang);
+          if (s.spinDone) setSpinDone(true);
+          if (typeof s.discountPct === "number") setDiscountPct(s.discountPct);
+          if (s.orderPlaced) setOrderPlaced(s.orderPlaced);
+          if (typeof s.guestName === "string") setGuestName(s.guestName);
+          if (Array.isArray(s.myOrderIds)) setMyOrderIds(s.myOrderIds);
+        }
+      } catch {}
+      setHydrated(true);
+    }, 0);
+    return () => clearTimeout(t);
   }, [storageKey]);
 
   // a fresh phone at an already-active table joins the group's live order view
@@ -209,6 +224,7 @@ export default function OrderExperience({
     const orderId = orderPlaced?.orderId;
     if (!sessionId && !orderId) return;
     const tick = async () => {
+      if (document.hidden) return; // no point polling a locked phone
       try {
         const res = await fetch(
           sessionId ? `/api/order?session=${sessionId}` : `/api/order?id=${orderId}`,
@@ -216,6 +232,17 @@ export default function OrderExperience({
         if (!res.ok) return;
         const d = await res.json();
         if (sessionId) {
+          if (d.sessionStatus && d.sessionStatus !== "active") {
+            // table was settled — reset so the next guest starts clean
+            setOrderPlaced(null);
+            setRounds([]);
+            setDiscountPct(0);
+            setMyOrderIds([]);
+            setSpinDone(false);
+            setSpinResult(null);
+            setCompItem(null);
+            return;
+          }
           if (Array.isArray(d.rounds)) {
             setRounds(d.rounds);
             const latest = d.rounds[d.rounds.length - 1];
@@ -227,9 +254,17 @@ export default function OrderExperience({
         }
       } catch {}
     };
-    tick();
+    const t = setTimeout(tick, 0);
     const iv = setInterval(tick, 8000);
-    return () => clearInterval(iv);
+    const onVisible = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(t);
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [orderPlaced?.sessionId, orderPlaced?.orderId]);
 
 
@@ -258,6 +293,10 @@ export default function OrderExperience({
   };
 
   const applyAnnaActions = (res: AnnaResponse) => {
+    // fold cart actions synchronously so a confirm in the SAME response
+    // places exactly the cart Narada just built — no timing games
+    let nextCart = [...cartRef.current];
+    const curLang = langRef.current;
     for (const a of res.actions) {
       if (a.type === "confirm_order") continue;
       if (a.type === "set_name") {
@@ -265,8 +304,8 @@ export default function OrderExperience({
         const base = a.name.trim().slice(0, 30);
         if (base) {
           const taken = new Set(
-            rounds
-              .filter((r) => !myOrderIds.includes(r.id))
+            roundsRef.current
+              .filter((r) => !myOrderIdsRef.current.includes(r.id))
               .map((r) => r.placed_by?.toLowerCase())
               .filter(Boolean),
           );
@@ -282,30 +321,36 @@ export default function OrderExperience({
       const item = MENU_BY_ID.get(a.itemId);
       if (!item) continue;
       if (a.type === "add") {
-        changeQty(a.itemId, Math.max(1, a.qty || 1), a.notes);
-        setToast(`+ ${item.name[lang]} ×${Math.max(1, a.qty || 1)}`);
+        const qty = Math.max(1, a.qty || 1);
+        const line = nextCart.find((l) => l.itemId === a.itemId);
+        nextCart = line
+          ? nextCart.map((l) =>
+              l.itemId === a.itemId
+                ? { ...l, qty: l.qty + qty, notes: a.notes ?? l.notes }
+                : l,
+            )
+          : [...nextCart, { itemId: a.itemId, qty, notes: a.notes }];
+        setToast(`+ ${item.name[curLang]} ×${qty}`);
       } else if (a.type === "remove") {
-        setCart((prev) => prev.filter((l) => l.itemId !== a.itemId));
-        setToast(`− ${item.name[lang]}`);
+        nextCart = nextCart.filter((l) => l.itemId !== a.itemId);
+        setToast(`− ${item.name[curLang]}`);
       } else if (a.type === "set_qty") {
-        setCart((prev) =>
+        nextCart =
           a.qty <= 0
-            ? prev.filter((l) => l.itemId !== a.itemId)
-            : prev.some((l) => l.itemId === a.itemId)
-              ? prev.map((l) => (l.itemId === a.itemId ? { ...l, qty: a.qty } : l))
-              : [...prev, { itemId: a.itemId, qty: a.qty }],
-        );
+            ? nextCart.filter((l) => l.itemId !== a.itemId)
+            : nextCart.some((l) => l.itemId === a.itemId)
+              ? nextCart.map((l) => (l.itemId === a.itemId ? { ...l, qty: a.qty } : l))
+              : [...nextCart, { itemId: a.itemId, qty: a.qty }];
       }
     }
+    cartRef.current = nextCart;
+    setCart(nextCart);
     const confirmed = res.actions.some((a) => a.type === "confirm_order");
     if (confirmed) {
-      // let the cart state from this same response settle first
-      setTimeout(() => {
-        if (cartRef.current.length > 0) {
-          placeOrderRef.current("anna");
-          setCartOpen(true);
-        }
-      }, 150);
+      if (nextCart.length > 0) {
+        placeOrderRef.current("anna");
+        setCartOpen(true);
+      }
     } else if (res.suggestCheckout) {
       setCartOpen(true);
     }
@@ -326,7 +371,7 @@ export default function OrderExperience({
         body: JSON.stringify({
           messages: nextMessages,
           cart,
-          language: LANG_NAME[lang],
+          language: LANG_NAME[langRef.current],
           tableCode,
         }),
       });
@@ -334,6 +379,8 @@ export default function OrderExperience({
       const data: AnnaResponse = await res.json();
       setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
       applyAnnaActions(data);
+      highlightMentioned(data.showItems);
+      setChatChips(data.quickReplies ?? []);
     } catch {
       setMessages((m) => [
         ...m,
@@ -358,7 +405,7 @@ export default function OrderExperience({
           ...body,
           cart: cartRef.current,
           messages: messagesRef.current,
-          language: LANG_NAME[lang],
+          language: LANG_NAME[langRef.current],
           tableCode,
         }),
       });
@@ -377,36 +424,26 @@ export default function OrderExperience({
         { role: "assistant" as const, text: data.reply },
       ]);
       const confirmed = applyAnnaActions(data);
-      // Narada mentioned dishes: scroll the real menu there and highlight them
-      if (data.showItems?.length) {
-        setHighlightIds(data.showItems);
-        const first = itemRefs.current[data.showItems[0]];
-        first?.scrollIntoView({ behavior: "smooth", block: "center" });
-        if (highlightTimer.current) clearTimeout(highlightTimer.current);
-        highlightTimer.current = setTimeout(() => setHighlightIds([]), 12000);
-      }
-      const cards: VoiceCard[] = (data.showItems ?? [])
-        .map((id) => MENU_BY_ID.get(id))
-        .filter((m): m is NonNullable<typeof m> => Boolean(m))
-        .map((m) => ({
-          id: m.id,
-          name: m.name[lang],
-          priceInr: m.priceInr,
-          imageUrl: m.imageUrl,
-          emoji: m.emoji,
-          isVeg: m.isVeg,
-        }));
+      highlightMentioned(data.showItems);
       return {
         transcript: data.transcript,
         reply: data.reply,
         audio: data.audio,
         endConversation: confirmed,
-        cards,
         quickReplies: data.quickReplies ?? [],
       };
     } catch {
       return null;
     }
+  };
+
+  // Narada mentioned dishes: scroll the real menu there and highlight them
+  const highlightMentioned = (ids?: string[]) => {
+    if (!ids?.length) return;
+    setHighlightIds(ids);
+    itemRefs.current[ids[0]]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setHighlightIds([]), 12000);
   };
 
   const placeOrder = async (via: "ui" | "anna" = "ui") => {
@@ -441,7 +478,9 @@ export default function OrderExperience({
       setPlacing(false);
     }
   };
-  placeOrderRef.current = placeOrder;
+  useEffect(() => {
+    placeOrderRef.current = placeOrder;
+  });
 
   const callWaiter = async () => {
     setToast(t.waiterComing);
@@ -454,24 +493,22 @@ export default function OrderExperience({
     } catch {}
   };
 
-  const onWheelResult = async (idx: number) => {
-    const reward = WHEEL[idx].reward;
+  // the SERVER draws the prize (client only animates it) — unforgeable
+  const resolveSpin = async (): Promise<number> => {
+    const res = await fetch("/api/reward", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tableCode, type: "spin" }),
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    const d = await res.json();
+    if (typeof d.discountPct === "number") setDiscountPct(d.discountPct);
+    return typeof d.sliceIndex === "number" ? d.sliceIndex : 0;
+  };
+
+  const onWheelResult = (idx: number) => {
     setSpinResult(idx);
     setSpinDone(true);
-    const pct = reward.type === "discount" ? reward.pct : 0;
-    if (pct > 0) setDiscountPct(pct);
-    try {
-      // server tracks one spin per table session — its answer is authoritative
-      const res = await fetch("/api/reward", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableCode, type: "spin", pct }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        if (typeof d.discountPct === "number") setDiscountPct(d.discountPct);
-      }
-    } catch {}
   };
 
   const payable = orderPlaced
@@ -541,12 +578,7 @@ export default function OrderExperience({
     );
     return [...specials.slice(0, 2), ...best.slice(0, 2)];
   }, [menuItems]);
-  const statusLabel =
-    orderStatus === "served"
-      ? t.statusServed
-      : orderStatus === "preparing"
-        ? t.statusPreparing
-        : t.statusPlaced;
+  const statusLabel = statusLabelFor(orderStatus);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-36">
@@ -891,7 +923,7 @@ export default function OrderExperience({
               {t.spinBanner}
             </h2>
             <p className="mb-5 text-xs text-stone-400">{t.spinSub}</p>
-            <SpinWheel strings={{ spin: t.spin }} onResult={onWheelResult} />
+            <SpinWheel strings={{ spin: t.spin }} resolveSpin={resolveSpin} onResult={onWheelResult} />
             {spinResult !== null && (
               <>
                 <div
@@ -1126,11 +1158,11 @@ export default function OrderExperience({
                     />
                     {restaurant.paymentTiming === "pre" ? (
                       <a
-                        href={`upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(restaurant.name)}&am=${total}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
+                        href={`upi://pay?pa=${encodeURIComponent(restaurant.upiVpa)}&pn=${encodeURIComponent(restaurant.name)}&am=${Math.round(total * (1 - discountPct / 100))}&cu=INR&tn=${encodeURIComponent(`Narada ${tableCode}`)}`}
                         onClick={() => placeOrder("ui")}
                         className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
                       >
-                        {t.payToOrder} · {inr(total)}
+                        {t.payToOrder} · {inr(Math.round(total * (1 - discountPct / 100)))}
                       </a>
                     ) : (
                       <button
@@ -1231,6 +1263,20 @@ export default function OrderExperience({
               </button>
             )}
 
+            {chatChips.length > 0 && (
+              <div className="no-scrollbar mx-4 mb-1 flex gap-2 overflow-x-auto">
+                {chatChips.map((chip) => (
+                  <button
+                    key={chip}
+                    onClick={() => sendToAnna(chip)}
+                    disabled={thinking}
+                    className="animate-pop shrink-0 rounded-full bg-rose-50 px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap text-rose-700 ring-1 ring-rose-100 transition active:scale-95 disabled:opacity-40"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1348,7 +1394,6 @@ export default function OrderExperience({
             endVoice: t.endVoice,
             voiceHint: t.voiceHint,
             annaRole: t.annaRole,
-            add: t.add,
           }}
         />
       )}
