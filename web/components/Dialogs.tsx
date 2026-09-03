@@ -155,17 +155,17 @@ export function DialogHost() {
           role="dialog"
           aria-modal="true"
           aria-label={spec.title}
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-stone-900/40 p-4 backdrop-blur-[2px] sm:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-4 backdrop-blur-[2px] sm:items-center"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) cancel();
           }}
         >
-          <div className="animate-[dialogIn_.14s_ease-out] w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl ring-1 ring-stone-200">
-            <h2 className="font-display text-lg font-semibold text-stone-900">
+          <div className="animate-[dialogIn_.14s_ease-out] w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl ring-1 ring-slate-200">
+            <h2 className="font-display text-lg font-semibold text-slate-900">
               {spec.title}
             </h2>
             {spec.message && (
-              <p className="mt-1 text-xs leading-relaxed text-stone-500">{spec.message}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">{spec.message}</p>
             )}
 
             {spec.kind === "form" ? (
@@ -188,7 +188,7 @@ export function DialogHost() {
                     {f.label && (
                       <label
                         htmlFor={`narada-dialog-${f.name}`}
-                        className="block text-[10px] font-bold tracking-widest text-stone-400 uppercase"
+                        className="block text-[10px] font-bold tracking-widest text-slate-400 uppercase"
                       >
                         {f.label}
                       </label>
@@ -200,22 +200,22 @@ export function DialogHost() {
                       defaultValue={f.defaultValue ?? ""}
                       placeholder={f.placeholder}
                       inputMode={f.inputMode ?? "text"}
-                      className="mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400"
+                      className="mt-1 w-full rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400"
                     />
-                    {f.hint && <p className="mt-1 text-[11px] text-stone-400">{f.hint}</p>}
+                    {f.hint && <p className="mt-1 text-[11px] text-slate-400">{f.hint}</p>}
                   </div>
                 ))}
                 <div className="mt-5 flex gap-2">
                   <button
                     type="button"
                     onClick={cancel}
-                    className="flex-1 rounded-xl bg-stone-100 py-2.5 text-xs font-bold text-stone-600 transition active:scale-[0.98]"
+                    className="flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 transition active:scale-[0.98]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 rounded-xl bg-stone-900 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                    className="flex-1 rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
                   >
                     {spec.confirmLabel ?? "Save"}
                   </button>
@@ -225,7 +225,7 @@ export function DialogHost() {
               <div className="mt-5 flex gap-2">
                 <button
                   onClick={cancel}
-                  className="flex-1 rounded-xl bg-stone-100 py-2.5 text-xs font-bold text-stone-600 transition active:scale-[0.98]"
+                  className="flex-1 rounded-xl bg-slate-100 py-2.5 text-xs font-bold text-slate-600 transition active:scale-[0.98]"
                 >
                   {spec.cancelLabel ?? "Cancel"}
                 </button>
@@ -233,7 +233,7 @@ export function DialogHost() {
                   autoFocus
                   onClick={() => close(true)}
                   className={`flex-1 rounded-xl py-2.5 text-xs font-bold text-white transition active:scale-[0.98] ${
-                    spec.danger ? "bg-rose-600" : "bg-stone-900"
+                    spec.danger ? "bg-rose-600" : "bg-slate-900"
                   }`}
                 >
                   {spec.confirmLabel ?? "Confirm"}
@@ -246,7 +246,7 @@ export function DialogHost() {
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[110] flex justify-center px-4 print:hidden">
-          <div className="animate-[dialogIn_.14s_ease-out] rounded-full bg-stone-900 px-5 py-2.5 text-xs font-bold text-white shadow-xl">
+          <div className="animate-[dialogIn_.14s_ease-out] rounded-full bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-xl">
             {toast}
           </div>
         </div>

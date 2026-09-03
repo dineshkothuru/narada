@@ -35,13 +35,13 @@ export default function QrSheetPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6 print:bg-white print:p-0">
+      <main className="console min-h-dvh p-4 sm:p-6 print:bg-white print:p-0">
       <header className="mx-auto mb-5 flex max-w-3xl items-center justify-between print:hidden">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
+          <h1 className="font-display text-2xl font-semibold text-slate-900">
             Table QR codes
           </h1>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-slate-500">
             Print, cut, and place one on each table.
           </p>
         </div>
@@ -59,9 +59,9 @@ export default function QrSheetPage() {
         {tables.map((t) => (
           <div
             key={t.id}
-            className="flex flex-col items-center rounded-3xl card-float bg-white p-5 text-center ring-1 ring-stone-200/80 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
+            className="flex flex-col items-center rounded-3xl panel panel-lift p-5 text-center print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
           >
-            <p className="font-display text-lg font-semibold text-stone-900">
+            <p className="font-display text-lg font-semibold text-slate-900">
               {restaurantName}
             </p>
             <p className="mt-0.5 text-[11px] font-bold tracking-widest text-rose-600 uppercase">
@@ -71,14 +71,14 @@ export default function QrSheetPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qrs[t.id]} alt={`QR for ${t.label}`} className="mt-3 w-full max-w-44" />
             ) : (
-              <div className="mt-3 grid aspect-square w-full max-w-44 place-items-center bg-stone-100 text-xs text-stone-400">
+              <div className="mt-3 grid aspect-square w-full max-w-44 place-items-center bg-slate-100 text-xs text-slate-400">
                 …
               </div>
             )}
-            <p className="mt-3 text-xs font-semibold text-stone-700">
+            <p className="mt-3 text-xs font-semibold text-slate-700">
               Scan to see the menu &amp; order
             </p>
-            <p className="text-[10px] text-stone-400">
+            <p className="text-[10px] text-slate-400">
               Talk to Narada · no app needed
             </p>
           </div>

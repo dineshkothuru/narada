@@ -117,32 +117,32 @@ export default function KitchenPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+    <main className="console min-h-dvh p-4 sm:p-6">
       <header className="mb-5 flex max-w-6xl items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
+          <h1 className="font-display text-2xl font-semibold text-slate-900">
             Narada · Kitchen
           </h1>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-slate-500">
             Auto-refreshes every 5s
             {updatedAt && ` · updated ${updatedAt.toLocaleTimeString()}`}
             {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
           </p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200">
+        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
           {orders.filter((o) => o.status !== "served").length} open ·{" "}
           {orders.filter((o) => o.status === "ready").length} awaiting pickup
         </span>
         <button
           onClick={() => setShowMenu((v) => !v)}
-          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+          className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
         >
           {showMenu ? "Hide" : "🚫 Sold out"}
         </button>
       </header>
 
       {showMenu && (
-        <section className="card-float mb-5 max-w-6xl rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
+        <section className="panel panel-lift mb-5 max-w-6xl p-4">
           <SoldOutPanel />
         </section>
       )}
@@ -152,31 +152,31 @@ export default function KitchenPage() {
           const list = orders.filter((o) => o.status === col.status);
           return (
             <section key={col.status}>
-              <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
+              <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
                 {col.title} ({list.length})
               </h2>
               <div className="flex flex-col gap-3">
                 {list.length === 0 && (
-                  <p className="rounded-xl bg-white/60 py-6 text-center text-xs text-stone-400">
+                  <p className="rounded-xl bg-white/60 py-6 text-center text-xs text-slate-400">
                     No orders
                   </p>
                 )}
                 {list.map((o) => (
                   <article
                     key={o.id}
-                    className={`card-float rounded-2xl border-l-4 bg-white p-4 ${col.accent}`}
+                    className={`panel panel-lift rounded-2xl border-l-4 p-4 ${col.accent}`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-stone-900">
+                      <span className="text-sm font-bold text-slate-900">
                         {o.session?.table?.label ?? "Unknown table"}
                       </span>
-                      <span className="flex items-center gap-2 text-[11px] text-stone-400">
+                      <span className="flex items-center gap-2 text-[11px] text-slate-400">
                         {minutesAgo(o.created_at)}
                         <a
                           href={`/kitchen/kot/${o.id}`}
                           target="_blank"
                           title="Reprint this ticket"
-                          className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-500"
+                          className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500"
                         >
                           🖨️
                         </a>
@@ -190,12 +190,12 @@ export default function KitchenPage() {
                             title="Tap to advance: queued → preparing → ready. Tap a ready dish to step it back."
                             className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
                               it.status === "served"
-                                ? "bg-green-50 text-stone-400 line-through"
+                                ? "bg-green-50 text-slate-400 line-through"
                                 : it.status === "ready"
-                                  ? "bg-amber-50 font-semibold text-stone-900"
+                                  ? "bg-amber-50 font-semibold text-slate-900"
                                   : it.status === "preparing"
-                                    ? "bg-sky-50 text-stone-800"
-                                    : "text-stone-700 hover:bg-stone-50"
+                                    ? "bg-sky-50 text-slate-800"
+                                    : "text-slate-700 hover:bg-slate-50"
                             }`}
                           >
                             <span>
@@ -210,10 +210,10 @@ export default function KitchenPage() {
                       ))}
                     </ul>
                     <div className="mt-3 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-stone-500">
+                      <span className="text-xs font-semibold text-slate-500">
                         {inr(o.total_inr)}
                         {o.placed_via === "anna" && (
-                          <span className="ml-1.5 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
+                          <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                             🎙️ Narada
                           </span>
                         )}
@@ -221,7 +221,7 @@ export default function KitchenPage() {
                       {NEXT[o.status] && (
                         <button
                           onClick={() => advance(o.id, NEXT[o.status]!.to)}
-                          className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                          className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
                         >
                           {NEXT[o.status]!.label}
                         </button>

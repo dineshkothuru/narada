@@ -11,13 +11,13 @@ export default function Page() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <div className="flex max-w-5xl flex-col gap-3">
           <header className="mb-1">
-            <h1 className="font-display text-2xl font-semibold text-stone-900">
+            <h1 className="font-display text-2xl font-semibold text-slate-900">
               Tables
             </h1>
-            <p className="text-xs text-stone-500">Add, rename, capacity, per-table experience and QR codes</p>
+            <p className="text-xs text-slate-500">Add, rename, capacity, per-table experience and QR codes</p>
           </header>
       {/* Tables: add/rename/remove, per-table UI experience, QR links */}
       <Collapsible
@@ -28,7 +28,7 @@ export default function Page() {
           <div className="flex items-center gap-2">
             <Link
               href="/admin/qr"
-              className="rounded-full bg-white px-3 py-1 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+              className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
             >
               QR codes
             </Link>
@@ -41,13 +41,13 @@ export default function Page() {
           </div>
         }
       >
-        <p className="text-[11px] text-stone-400">
+        <p className="text-[11px] text-slate-400">
           Each table gets its own QR link and can run a different experience —
           Classic list or Feast Stories.
         </p>
 
         {addingTable && (
-          <div className="mt-3 grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-2">
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -66,9 +66,9 @@ export default function Page() {
                 setAddingTable(false);
                 load();
               }}
-              className="rounded-xl bg-white p-3 ring-1 ring-stone-200"
+              className="rounded-xl bg-white p-3 ring-1 ring-slate-200"
             >
-              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+              <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
                 Add several
               </p>
               <div className="mt-2 flex gap-2">
@@ -113,9 +113,9 @@ export default function Page() {
                 setAddingTable(false);
                 load();
               }}
-              className="rounded-xl bg-white p-3 ring-1 ring-stone-200"
+              className="rounded-xl bg-white p-3 ring-1 ring-slate-200"
             >
-              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+              <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
                 Add one (custom name)
               </p>
               <input
@@ -128,16 +128,16 @@ export default function Page() {
                 <option value="classic">Classic list</option>
                 <option value="stories">Feast Stories</option>
               </select>
-              <button className="mt-2 w-full rounded-xl bg-stone-900 py-2 text-xs font-bold text-white">
+              <button className="mt-2 w-full rounded-xl bg-slate-900 py-2 text-xs font-bold text-white">
                 Add
               </button>
             </form>
           </div>
         )}
 
-        <div className="mt-2 divide-y divide-stone-100">
+        <div className="mt-2 divide-y divide-slate-100">
           {tables.length === 0 && (
-            <p className="py-4 text-center text-xs text-stone-400">
+            <p className="py-4 text-center text-xs text-slate-400">
               No tables yet — add some to generate QR codes.
             </p>
           )}
@@ -156,12 +156,12 @@ export default function Page() {
                     load();
                   }
                 }}
-                className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 font-medium text-stone-800 outline-none hover:bg-stone-50 focus:bg-stone-50 focus:ring-2 focus:ring-rose-400"
+                className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 font-medium text-slate-800 outline-none hover:bg-slate-50 focus:bg-slate-50 focus:ring-2 focus:ring-rose-400"
               />
               <a
                 href={`/t/${tb.code}`}
                 target="_blank"
-                className="hidden font-mono text-[10px] text-stone-400 underline sm:block"
+                className="hidden font-mono text-[10px] text-slate-400 underline sm:block"
               >
                 /t/{tb.code}
               </a>
@@ -183,7 +183,7 @@ export default function Page() {
                     load();
                   }
                 }}
-                className="w-14 shrink-0 rounded-lg bg-stone-100 px-2 py-1.5 text-center text-xs font-bold outline-none focus:ring-2 focus:ring-rose-400"
+                className="w-14 shrink-0 rounded-lg bg-slate-100 px-2 py-1.5 text-center text-xs font-bold outline-none focus:ring-2 focus:ring-rose-400"
               />
               <select
                 value={tb.ui_variant}
@@ -196,7 +196,7 @@ export default function Page() {
                   flash("Saved");
                   load();
                 }}
-                className="rounded-xl bg-stone-100 px-3 py-2 text-xs font-bold outline-none"
+                className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold outline-none"
               >
                 <option value="classic">Classic</option>
                 <option value="stories">Stories</option>
@@ -217,7 +217,7 @@ export default function Page() {
                   flash(d.ok ? "Table removed" : (d.reason ?? "Failed"));
                   load();
                 }}
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-600"
               >
                 Remove
               </button>

@@ -117,32 +117,123 @@ body {
   }
 }
 
-/* Section boxes read as panels lifted off the canvas rather than shapes
-   painted onto it: a tight contact shadow plus a wide soft one, and a small
-   rise when a pointer is over them. */
-.card-float {
-  box-shadow:
-    0 1px 2px rgba(28, 25, 23, 0.05),
-    0 10px 30px -12px rgba(28, 25, 23, 0.18);
-  transition:
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+/* ---------------------------------------------------------------------------
+   Staff console.
+
+   A back-office screen is scanned, not read. Every panel therefore carries the
+   colour of the job it belongs to — the floor is indigo, money is emerald, the
+   kitchen is amber, a calling table is rose — so a glance at the shape of the
+   page tells you where you are before you have read a word. The colour is
+   information, not decoration: a panel never picks a hue for looks.
+
+   The guest's phone stays white and rose. That is a different product for a
+   different person and the two should not look alike.
+--------------------------------------------------------------------------- */
+
+/* the page itself: a cool, barely-there wash rather than flat grey */
+.console {
+  background:
+    radial-gradient(1200px 520px at 12% -8%, #eef2ff 0%, transparent 62%),
+    radial-gradient(1000px 480px at 92% 0%, #ecfeff 0%, transparent 58%),
+    #f7f8fb;
 }
 
+/* every tone declares the same four roles, so a panel only names its job */
+.tone-indigo  { --tone: #6366f1; --tone-ink: #4338ca; --tone-tint: #eef2ff; --tone-soft: #e0e7ff; }
+.tone-emerald { --tone: #10b981; --tone-ink: #047857; --tone-tint: #ecfdf5; --tone-soft: #d1fae5; }
+.tone-amber   { --tone: #f59e0b; --tone-ink: #b45309; --tone-tint: #fffbeb; --tone-soft: #fef3c7; }
+.tone-rose    { --tone: #f43f5e; --tone-ink: #be123c; --tone-tint: #fff1f2; --tone-soft: #ffe4e6; }
+.tone-sky     { --tone: #0ea5e9; --tone-ink: #0369a1; --tone-tint: #f0f9ff; --tone-soft: #e0f2fe; }
+.tone-violet  { --tone: #8b5cf6; --tone-ink: #6d28d9; --tone-tint: #f5f3ff; --tone-soft: #ede9fe; }
+.tone-slate   { --tone: #64748b; --tone-ink: #475569; --tone-tint: #f8fafc; --tone-soft: #e2e8f0; }
+
+.panel {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 28px -16px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+/* the header band: a wash of the panel's own tone, fading out to the right */
+.panel-head {
+  background: linear-gradient(100deg, var(--tone-tint) 0%, #fff 72%);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* the little upright pill that starts every section title */
+.panel-pill {
+  width: 4px;
+  height: 18px;
+  border-radius: 99px;
+  background: var(--tone);
+  flex-shrink: 0;
+}
+
+.panel-title { color: var(--tone-ink); }
+
+/* a metric card wears its tone as a rule across the top */
+.metric {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  padding-top: 4px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 24px -14px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.metric::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--tone);
+}
+.metric-badge {
+  background: var(--tone-tint);
+  color: var(--tone-ink);
+}
+
+@media (hover: hover) {
+  .metric:hover,
+  .panel-lift:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 5px rgba(15, 23, 42, 0.06),
+      0 20px 40px -18px rgba(15, 23, 42, 0.28);
+  }
+}
+
+.panel-lift {
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric,
+  .panel-lift { transition: none; }
+  .metric:hover,
+  .panel-lift:hover { transform: none; }
+}
+
+/* kept so older markup keeps its lift while screens are migrated */
+.card-float {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 28px -16px rgba(15, 23, 42, 0.18);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
 @media (hover: hover) {
   .card-float:hover {
     transform: translateY(-2px);
     box-shadow:
-      0 2px 4px rgba(28, 25, 23, 0.06),
-      0 18px 40px -14px rgba(28, 25, 23, 0.26);
+      0 2px 5px rgba(15, 23, 42, 0.06),
+      0 20px 40px -18px rgba(15, 23, 42, 0.28);
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .card-float {
-    transition: none;
-  }
-  .card-float:hover {
-    transform: none;
-  }
+  .card-float { transition: none; }
+  .card-float:hover { transform: none; }
 }

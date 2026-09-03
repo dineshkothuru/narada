@@ -30,8 +30,8 @@ export default function CallTimer({
     level === "late"
       ? "animate-pulse bg-rose-600 text-white"
       : level === "warn"
-        ? "bg-amber-400 text-stone-900"
-        : "bg-stone-900 text-white";
+        ? "bg-amber-400 text-slate-900"
+        : "bg-slate-900 text-white";
 
   return (
     <span

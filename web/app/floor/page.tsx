@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
 import { ask } from "@/components/Dialogs";
+import { Metric, type Tone } from "@/components/Panel";
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
-  en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
+  en: { label: "EN", cls: "bg-slate-200 text-slate-700" },
   hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
   te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
 };
@@ -57,37 +58,24 @@ type Stats = {
   seatsBusy: number;
 };
 
-const STATUS = {
-  free: { ring: "ring-green-300", chip: "bg-green-100 text-green-700", label: "Free" },
+const STATUS: Record<
+  FloorTable["status"],
+  { tone: Tone; chip: string; label: string }
+> = {
+  free: { tone: "emerald", chip: "bg-emerald-100 text-emerald-700", label: "Free" },
   // paid but still occupied: the party is gathering up and nobody has wiped
   // the table down yet, so it must not be offered to the next guests
-  cleaning: {
-    ring: "ring-stone-300",
-    chip: "bg-stone-200 text-stone-600",
-    label: "Cleaning",
-  },
+  cleaning: { tone: "slate", chip: "bg-slate-200 text-slate-600", label: "Cleaning" },
   seated: {
-    ring: "ring-violet-300",
+    tone: "violet",
     chip: "bg-violet-100 text-violet-700",
     label: "Seated · yet to order",
   },
-  dining: { ring: "ring-sky-300", chip: "bg-sky-100 text-sky-700", label: "Dining" },
-  settling: {
-    ring: "ring-amber-400",
-    chip: "bg-amber-100 text-amber-800",
-    label: "Needs a bill",
-  },
+  dining: { tone: "indigo", chip: "bg-indigo-100 text-indigo-700", label: "Dining" },
+  settling: { tone: "amber", chip: "bg-amber-100 text-amber-800", label: "Needs a bill" },
   // the counter has raised the bill; the guest has not paid it yet
-  billed: {
-    ring: "ring-sky-400",
-    chip: "bg-sky-100 text-sky-800",
-    label: "Billed · awaiting payment",
-  },
-  paid: {
-    ring: "ring-stone-300",
-    chip: "bg-stone-200 text-stone-600",
-    label: "Paid · clearing",
-  },
+  billed: { tone: "sky", chip: "bg-sky-100 text-sky-800", label: "Billed · awaiting payment" },
+  paid: { tone: "emerald", chip: "bg-emerald-100 text-emerald-700", label: "Paid" },
 };
 
 export default function FloorPage() {
@@ -144,30 +132,30 @@ export default function FloorPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+    <main className="console min-h-dvh p-4 sm:p-6">
       <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
+          <h1 className="font-display text-2xl font-semibold text-slate-900">
             Narada · Floor
           </h1>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-slate-500">
             Live table status, capacity and merges · refreshes every 5s
           </p>
         </div>      </header>
 
       {stats && (
         <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-green-600" />
-          <Stat label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} tone="text-sky-600" />
-          <Stat label="Needs a bill" value={String(stats.settling)} tone="text-amber-600" />
-          <Stat label="Awaiting payment" value={String(stats.billed)} tone="text-sky-600" />
-          <Stat label="Awaiting cleaning" value={String(stats.cleaning)} tone="text-stone-500" />
-          <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
+          <Metric tone="emerald" label="Free tables" value={`${stats.free}/${stats.total}`} icon="🪑" />
+          <Metric tone="indigo" label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} icon="🍽️" />
+          <Metric tone="amber" label="Needs a bill" value={String(stats.settling)} icon="🧾" />
+          <Metric tone="sky" label="Awaiting payment" value={String(stats.billed)} icon="💳" />
+          <Metric tone="slate" label="Awaiting cleaning" value={String(stats.cleaning)} icon="🧹" />
+          <Metric tone="violet" label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} icon="👥" />
         </section>
       )}
 
       {mergeFrom && (
-        <div className="mb-4 max-w-5xl rounded-2xl bg-stone-900 p-4 text-white">
+        <div className="mb-4 max-w-5xl rounded-2xl bg-slate-900 p-4 text-white">
           <p className="text-sm font-bold">
             Merging {mergeFrom.label} — pick the table it should join:
           </p>
@@ -191,7 +179,7 @@ export default function FloorPage() {
                 </button>
               ))}
             {tables.filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged).length === 0 && (
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-slate-400">
                 No other open table to merge with — seat guests first.
               </span>
             )}
@@ -211,59 +199,65 @@ export default function FloorPage() {
           return (
             <article
               key={t.id}
-              className={`rounded-2xl card-float bg-white p-4 ring-2 ${
-                t.calling ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : st.ring
+              className={`tone-${t.calling ? "rose" : st.tone} panel panel-lift ${
+                t.calling ? "ring-2 ring-rose-400" : ""
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+              <div className="panel-head flex items-start justify-between gap-2 px-4 py-3">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <span className="panel-pill mt-1" />
+                  <div className="min-w-0">
+                  <h2 className="panel-title flex flex-wrap items-center gap-1.5 text-sm font-bold">
                     {t.label}
                     {t.langs.map((l) => (
                       <span
                         key={l}
                         title="language this table ordered in"
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-slate-200 text-slate-700"}`}
                       >
                         {LANG_BADGE[l]?.label ?? l.toUpperCase()}
                       </span>
                     ))}
                     {t.isMerged && (
-                      <span className="ml-1.5 text-[10px] font-bold text-stone-400">
+                      <span className="ml-1.5 text-[10px] font-bold text-slate-400">
                         merged →
                       </span>
                     )}
                   </h2>
-                  <p className="text-[11px] text-stone-400">
+                  <p className="text-[11px] whitespace-nowrap text-slate-400">
                     {t.capacity} seats
                     {t.zone ? ` · ${t.zone}` : ""}
                     {t.guests ? ` · ${t.guests} guests` : ""}
                   </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${st.chip}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-center text-[9px] leading-tight font-extrabold ${st.chip}`}
+                  >
                     {st.label.toUpperCase()}
                   </span>
                   {t.calling && t.callSince && <CallTimer since={t.callSince} compact />}
                 </div>
               </div>
 
+              <div className="p-4">
               {t.mergedWith.length > 0 && (
-                <p className="mt-1 text-[11px] font-semibold text-stone-500">
+                <p className="mb-1 text-[11px] font-semibold text-slate-500">
                   🔗 with {t.mergedWith.join(", ")}
                 </p>
               )}
 
               {t.status === "seated" && t.rounds === 0 ? (
                 <>
-                  <p className="mt-2 text-[11px] text-stone-500">
+                  <p className="mt-2 text-[11px] text-slate-500">
                     Seated {minutesAgo(t.since!, true)} · nothing ordered yet
                   </p>
                   <div className="mt-3 flex gap-1.5">
                     <a
                       href={`/t/${t.code}`}
                       target="_blank"
-                      className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
+                      className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
                     >
                       Menu
                     </a>
@@ -277,7 +271,7 @@ export default function FloorPage() {
                         if (!yes) return;
                         act({ action: "release", sessionId: t.sessionId });
                       }}
-                      className="flex-1 rounded-xl bg-stone-800 py-2 text-[11px] font-bold text-white transition active:scale-[0.98]"
+                      className="flex-1 rounded-xl bg-slate-800 py-2 text-[11px] font-bold text-white transition active:scale-[0.98]"
                     >
                       Release
                     </button>
@@ -285,12 +279,12 @@ export default function FloorPage() {
                 </>
               ) : t.status === "cleaning" ? (
                 <>
-                  <p className="mt-2 text-[11px] text-stone-500">
+                  <p className="mt-2 text-[11px] text-slate-500">
                     Bill settled · waiting for the table to be cleared and wiped
                   </p>
                   <button
                     onClick={() => act({ action: "clear_table", tableId: t.id })}
-                    className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                    className="mt-3 w-full rounded-xl bg-slate-800 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
                   >
                     ✓ Table ready
                   </button>
@@ -304,7 +298,7 @@ export default function FloorPage() {
                 </button>
               ) : (
                 <>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-600">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
                     <span>{minutesAgo(t.since!, true)}</span>
                     <button
                       onClick={async () => {
@@ -321,14 +315,14 @@ export default function FloorPage() {
                       className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
                         t.attendant
                           ? "bg-violet-100 text-violet-700"
-                          : "bg-stone-100 text-stone-400"
+                          : "bg-slate-100 text-slate-400"
                       }`}
                     >
                       {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
                     </button>
                     <button
                       onClick={() => setOpenTable({ id: t.sessionId!, label: t.label })}
-                      className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-extrabold text-stone-600"
+                      className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-600"
                     >
                       {t.served}/{t.rounds} served · details
                     </button>
@@ -340,7 +334,7 @@ export default function FloorPage() {
                     <a
                       href={`/t/${t.code}`}
                       target="_blank"
-                      className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
+                      className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
                     >
                       Menu
                     </a>
@@ -348,7 +342,7 @@ export default function FloorPage() {
                       <a
                         href={`/bill/${t.sessionId}`}
                         target="_blank"
-                        className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
+                        className="flex-1 rounded-xl bg-slate-100 py-2 text-center text-[11px] font-bold text-slate-600"
                       >
                         Bill
                       </a>
@@ -356,14 +350,14 @@ export default function FloorPage() {
                     {t.isMerged ? (
                       <button
                         onClick={() => act({ action: "unmerge", sessionId: t.sessionId })}
-                        className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
+                        className="flex-1 rounded-xl bg-slate-900 py-2 text-[11px] font-bold text-white"
                       >
                         Unmerge
                       </button>
                     ) : (
                       <button
                         onClick={() => setMergeFrom(t)}
-                        className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
+                        className="flex-1 rounded-xl bg-slate-900 py-2 text-[11px] font-bold text-white"
                       >
                         Merge
                       </button>
@@ -371,13 +365,14 @@ export default function FloorPage() {
                   </div>
                 </>
               )}
+              </div>
             </article>
           );
         })}
       </div>
 
       {freeTables.length > 0 && (
-        <p className="mt-5 max-w-5xl text-center text-[11px] text-stone-400">
+        <p className="mt-5 max-w-5xl text-center text-[11px] text-slate-400">
           Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
         </p>
       )}
@@ -400,13 +395,3 @@ export default function FloorPage() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
-      <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">{label}</p>
-      <p className={`font-display mt-1 text-2xl font-semibold ${tone ?? "text-stone-900"}`}>
-        {value}
-      </p>
-    </div>
-  );
-}

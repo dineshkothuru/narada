@@ -57,7 +57,7 @@ const STATUS_CHIP: Record<string, string> = {
 };
 
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
-  en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
+  en: { label: "EN", cls: "bg-slate-200 text-slate-700" },
   hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
   te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
 };
@@ -175,25 +175,25 @@ export default function WaiterPage() {
 
   return (
     <AdminShell>
-    <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+    <main className="console min-h-dvh p-4 sm:p-6">
       <header className="mb-5 flex max-w-5xl items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-stone-900">
+          <h1 className="font-display text-2xl font-semibold text-slate-900">
             Narada · Waiter
           </h1>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-slate-500">
             Calls, running tabs &amp; payments · refreshes every 5s
             {error && <span className="ml-2 font-semibold text-rose-600">{error}</span>}
           </p>
         </div>      </header>
 
       {myTips && (
-        <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
+        <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl panel panel-lift p-4">
           <div>
-            <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
               Your tips today
             </p>
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-slate-500">
               {lastAttendant} · {myTips.tables} table{myTips.tables === 1 ? "" : "s"} settled
             </p>
           </div>
@@ -212,9 +212,9 @@ export default function WaiterPage() {
             {calls.map((t) => (
               <div
                 key={t.call!.id}
-                className="flex animate-pulse items-center justify-between rounded-2xl card-float border-l-4 border-rose-500 bg-white p-4"
+                className="flex animate-pulse items-center justify-between rounded-2xl panel panel-lift border-l-4 border-rose-500 p-4"
               >
-                <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
+                <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
                   {t.label}
                   <CallTimer since={t.call!.created_at} />
                 </span>
@@ -236,7 +236,7 @@ export default function WaiterPage() {
                       attendedBy: who,
                     });
                   }}
-                  className="rounded-full bg-stone-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  className="rounded-full bg-slate-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
                 >
                   On it ✋
                 </button>
@@ -260,15 +260,15 @@ export default function WaiterPage() {
               return (
                 <div
                   key={item.id}
-                  className="card-float flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4"
+                  className="panel panel-lift flex items-center justify-between gap-3 border-l-4 border-amber-500 p-4"
                 >
                   <span className="min-w-0">
-                    <span className="text-sm font-bold text-stone-900">{table.label}</span>
-                    <span className="ml-2 text-xs font-semibold text-stone-700">
+                    <span className="text-sm font-bold text-slate-900">{table.label}</span>
+                    <span className="ml-2 text-xs font-semibold text-slate-700">
                       {item.qty}× {item.name}
                     </span>
                     {stillCooking > 0 && (
-                      <span className="ml-2 text-[11px] text-stone-400">
+                      <span className="ml-2 text-[11px] text-slate-400">
                         · {stillCooking} more still cooking
                       </span>
                     )}
@@ -288,24 +288,24 @@ export default function WaiterPage() {
 
       {toClean.length > 0 && (
         <section className="mb-5 max-w-5xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
             🧹 Awaiting cleaning ({toClean.length})
           </h2>
           <div className="flex flex-col gap-2">
             {toClean.map((t) => (
               <div
                 key={t.tableId}
-                className="flex items-center justify-between gap-3 rounded-2xl card-float border-l-4 border-stone-400 bg-white p-4"
+                className="flex items-center justify-between gap-3 rounded-2xl panel panel-lift border-l-4 border-stone-400 p-4"
               >
                 <span className="min-w-0">
-                  <span className="text-sm font-bold text-stone-900">{t.label}</span>
-                  <span className="ml-2 text-xs text-stone-500">
+                  <span className="text-sm font-bold text-slate-900">{t.label}</span>
+                  <span className="ml-2 text-xs text-slate-500">
                     Bill settled · clear and wipe before seating anyone
                   </span>
                 </span>
                 <button
                   onClick={() => act({ action: "clear_table", tableId: t.tableId })}
-                  className="shrink-0 rounded-full bg-stone-800 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                  className="shrink-0 rounded-full bg-slate-800 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
                 >
                   Table ready ✓
                 </button>
@@ -316,12 +316,12 @@ export default function WaiterPage() {
       )}
 
       <section className="max-w-5xl">
-        <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
+        <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
           Open tables ({active.length})
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {active.length === 0 && (
-            <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-stone-400 sm:col-span-2">
+            <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-slate-400 sm:col-span-2">
               No open tables
             </p>
           )}
@@ -330,29 +330,29 @@ export default function WaiterPage() {
             return (
               <article
                 key={t.tableId}
-                className={`card-float rounded-2xl bg-white p-4 ${
+                className={`panel panel-lift rounded-2xl p-4 ${
                   t.call
                     ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
-                    : "ring-1 ring-stone-200/80"
+                    : "ring-1 ring-slate-200/80"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+                  <span className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
                     {t.label}
                     {s.langs.map((l) => (
                       <span
                         key={l}
                         title="language this table ordered in"
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-slate-200 text-slate-700"}`}
                       >
                         {LANG_BADGE[l]?.label ?? l.toUpperCase()}
                       </span>
                     ))}
                   </span>
-                  <span className="flex items-center gap-1.5 text-[11px] text-stone-400">
+                  <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
                     <span
                       className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                        STATUS_CHIP[s.status] ?? "bg-stone-100 text-stone-500"
+                        STATUS_CHIP[s.status] ?? "bg-slate-100 text-slate-500"
                       }`}
                     >
                       {STATUS_LABEL[s.status] ?? s.status}
@@ -384,12 +384,12 @@ export default function WaiterPage() {
                   className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
                     s.attendant
                       ? "bg-violet-100 text-violet-700"
-                      : "bg-stone-100 text-stone-400"
+                      : "bg-slate-100 text-slate-400"
                   }`}
                 >
                   {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
                 </button>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                   {s.guests ? (
                     <span>
                       🪑 {s.guests}/{t.capacity} seated
@@ -406,7 +406,7 @@ export default function WaiterPage() {
                   )}
                   <span>+GST {inr(s.gst)}</span>
                   {s.service > 0 && <span>+svc {inr(s.service)}</span>}
-                  {s.serviceWaived && <span className="text-stone-400">svc waived</span>}
+                  {s.serviceWaived && <span className="text-slate-400">svc waived</span>}
                   <span>paid {inr(s.paid)}</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
@@ -429,14 +429,14 @@ export default function WaiterPage() {
                     <div className="flex flex-wrap justify-end gap-1.5">
                       <button
                         onClick={() => setOpenTable({ id: s.id, label: t.label })}
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
                       >
                         🧾 Details
                       </button>
                       {!s.billNo ? (
                         // the counter raises the bill; a waiter can only carry
                         // it and take the money against it
-                        <span className="rounded-full bg-stone-100 px-3 py-1.5 text-[11px] font-bold text-stone-400">
+                        <span className="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-400">
                           Awaiting bill from counter
                         </span>
                       ) : (
@@ -515,7 +515,7 @@ export default function WaiterPage() {
                                 collectedBy: lastAttendant,
                               });
                             }}
-                            className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                            className="rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
                           >
                             Paid cash
                           </button>
@@ -528,7 +528,7 @@ export default function WaiterPage() {
             );
           })}
         </div>
-        <p className="mt-4 text-center text-[11px] text-stone-400">
+        <p className="mt-4 text-center text-[11px] text-slate-400">
           Marking paid records the payment and closes the table&apos;s tab.
         </p>
       </section>

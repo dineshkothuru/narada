@@ -60,7 +60,7 @@ export function SoldOutPanel() {
 
   return (
     <div>
-      <p className="mb-2 text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+      <p className="mb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
         {out.length > 0
           ? `${out.length} off the menu — tap to put one back`
           : "Tap a dish to take it off the menu"}
@@ -72,7 +72,7 @@ export function SoldOutPanel() {
             onClick={() => toggle(m)}
             className={`rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 ${
               m.is_available
-                ? "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 : "bg-rose-100 text-rose-700 line-through"
             }`}
           >
@@ -116,7 +116,7 @@ export function SoldOutAlerts() {
   };
 
   return (
-    <div className="card-float mb-4 max-w-5xl rounded-2xl bg-white p-4 ring-1 ring-rose-200 print:hidden">
+    <div className="tone-rose panel panel-lift mb-4 max-w-5xl p-4 print:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-bold tracking-widest text-rose-600 uppercase">
@@ -124,10 +124,10 @@ export function SoldOutAlerts() {
           </p>
           <ul className="mt-1.5 flex flex-col gap-1">
             {fresh.slice(0, 5).map((e, i) => (
-              <li key={i} className="text-xs text-stone-700">
+              <li key={i} className="text-xs text-slate-700">
                 <span className="font-semibold">{e.detail?.name ?? "A dish"}</span>{" "}
                 {e.action === "dish_sold_out" ? "is sold out" : "is back on"}
-                <span className="text-stone-400">
+                <span className="text-slate-400">
                   {" "}
                   · {e.actor_role ?? "staff"} ·{" "}
                   {new Date(e.created_at).toLocaleTimeString("en-IN", {
@@ -141,7 +141,7 @@ export function SoldOutAlerts() {
         </div>
         <button
           onClick={dismiss}
-          className="shrink-0 rounded-full bg-stone-100 px-3 py-1.5 text-[11px] font-bold text-stone-600"
+          className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600"
         >
           Got it
         </button>

@@ -11,20 +11,21 @@ export default function Page() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <div className="flex max-w-5xl flex-col gap-3">
           <header className="mb-1">
-            <h1 className="font-display text-2xl font-semibold text-stone-900">
+            <h1 className="font-display text-2xl font-semibold text-slate-900">
               Users
             </h1>
-            <p className="text-xs text-stone-500">Staff logins — each role opens only its own screens</p>
+            <p className="text-xs text-slate-500">Staff logins — each role opens only its own screens</p>
           </header>
-      <Collapsible title="Tips today" hint="per waiter, from settled bills">
+      <Collapsible tone="emerald" title="Tips today" hint="per waiter, from settled bills">
         <TipsBoard />
       </Collapsible>
 
       {/* Staff: each person gets their own PIN; role decides which screens open */}
       <Collapsible
+        tone="indigo"
         title="Staff & logins"
         badge={String(staff.length)}
         hint="roles and PINs"
@@ -56,7 +57,7 @@ export default function Page() {
               setAddingStaff(false);
               load();
             }}
-            className="mt-3 grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-4"
+            className="mt-3 grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-4"
           >
             <input name="name" required placeholder="Name" className={inputCls} />
             <select name="role" className={inputCls}>
@@ -72,9 +73,9 @@ export default function Page() {
             </button>
           </form>
         )}
-        <div className="mt-2 divide-y divide-stone-100">
+        <div className="mt-2 divide-y divide-slate-100">
           {staff.length === 0 && !addingStaff && (
-            <p className="py-3 text-xs text-stone-400">
+            <p className="py-3 text-xs text-slate-400">
               No staff yet — everyone is using the owner PIN. Add waiters and cooks so
               each has their own PIN, and their PIN only opens their screen.
             </p>
@@ -83,7 +84,7 @@ export default function Page() {
             <div key={s.id} className="flex items-center gap-3 py-2.5 text-sm">
               <span
                 className={`min-w-0 flex-1 truncate font-medium ${
-                  s.active ? "text-stone-800" : "text-stone-400 line-through"
+                  s.active ? "text-slate-800" : "text-slate-400 line-through"
                 }`}
               >
                 {s.name}
@@ -121,7 +122,7 @@ export default function Page() {
                   const d = await res.json().catch(() => ({}));
                   flash(res.ok ? "PIN updated" : (d.error ?? "Failed"));
                 }}
-                className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold text-stone-600"
+                className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600"
               >
                 Reset PIN
               </button>
@@ -136,7 +137,7 @@ export default function Page() {
                   load();
                 }}
                 className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                  s.active ? "bg-green-500" : "bg-stone-300"
+                  s.active ? "bg-green-500" : "bg-slate-300"
                 }`}
                 aria-label={s.active ? "disable login" : "enable login"}
               >
@@ -159,7 +160,7 @@ export default function Page() {
                   flash("Staff removed");
                   load();
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-xs text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+                className="grid h-7 w-7 place-items-center rounded-full text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-600"
               >
                 🗑
               </button>

@@ -42,13 +42,13 @@ function LoginForm() {
   return (
     <form
       onSubmit={submit}
-      className="card-float w-full max-w-xs rounded-3xl bg-white p-6 ring-1 ring-stone-200"
+      className="panel panel-lift w-full max-w-xs p-6"
     >
       <p className="text-4xl">🪈</p>
-      <h1 className="font-display mt-2 text-2xl font-semibold text-stone-900">
+      <h1 className="font-display mt-2 text-2xl font-semibold text-slate-900">
         Narada Staff
       </h1>
-      <p className="mt-1 text-xs text-stone-500">
+      <p className="mt-1 text-xs text-slate-500">
         Enter the restaurant PIN to open the kitchen &amp; admin panel.
       </p>
       <input
@@ -58,7 +58,7 @@ function LoginForm() {
         onChange={(e) => setPin(e.target.value)}
         placeholder="PIN"
         autoFocus
-        className="mt-4 w-full rounded-xl bg-stone-100 px-4 py-3 text-center text-lg font-bold tracking-[0.4em] outline-none focus:ring-2 focus:ring-rose-400"
+        className="mt-4 w-full rounded-xl bg-slate-100 px-4 py-3 text-center text-lg font-bold tracking-[0.4em] outline-none focus:ring-2 focus:ring-rose-400"
       />
       {error && (
         <p className="mt-2 text-center text-xs font-semibold text-rose-600">
@@ -78,7 +78,7 @@ function LoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <main className="grid min-h-dvh place-items-center bg-stone-100 px-6">
+    <main className="grid min-h-dvh place-items-center bg-slate-100 px-6">
       <Suspense>
         <LoginForm />
       </Suspense>

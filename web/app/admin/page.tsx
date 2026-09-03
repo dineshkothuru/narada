@@ -9,18 +9,18 @@ export default function Page() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <div className="flex max-w-5xl flex-col gap-3">
           <header className="mb-1">
-            <h1 className="font-display text-2xl font-semibold text-stone-900">
+            <h1 className="font-display text-2xl font-semibold text-slate-900">
               Settings
             </h1>
-            <p className="text-xs text-stone-500">Payment, UPI, GST, service charge, staff PIN and AI keys</p>
+            <p className="text-xs text-slate-500">Payment, UPI, GST, service charge, staff PIN and AI keys</p>
           </header>
       {restaurant && (
-        <Collapsible title="Settings" hint="payment, UPI, GST, PIN, API keys">
+        <Collapsible tone="violet" title="Settings" hint="payment, UPI, GST, PIN, API keys">
           <div className="grid gap-4 sm:grid-cols-3">
-            <label className="text-xs font-semibold text-stone-600">
+            <label className="text-xs font-semibold text-slate-600">
               Payment timing
               <select
                 value={restaurant.payment_timing}
@@ -31,7 +31,7 @@ export default function Page() {
                 <option value="pre">Pay to place the order</option>
               </select>
             </label>
-            <label className="text-xs font-semibold text-stone-600">
+            <label className="text-xs font-semibold text-slate-600">
               UPI ID (VPA)
               <input
                 defaultValue={restaurant.upi_vpa ?? ""}
@@ -44,7 +44,7 @@ export default function Page() {
                 className={inputCls}
               />
             </label>
-            <label className="text-xs font-semibold text-stone-600">
+            <label className="text-xs font-semibold text-slate-600">
               Owner PIN
               {/* stored as a hash — it can be replaced but never read back */}
               <input
@@ -59,7 +59,7 @@ export default function Page() {
                 className={inputCls}
               />
             </label>
-            <label className="text-xs font-semibold text-stone-600">
+            <label className="text-xs font-semibold text-slate-600">
               Service charge %
               <input
                 type="number"
@@ -75,11 +75,11 @@ export default function Page() {
                 }}
                 className={inputCls}
               />
-              <span className="mt-1 block text-[10px] font-normal text-stone-400">
+              <span className="mt-1 block text-[10px] font-normal text-slate-400">
                 Applied on the bill · guests may ask to waive it
               </span>
             </label>
-            <label className="text-xs font-semibold text-stone-600">
+            <label className="text-xs font-semibold text-slate-600">
               GSTIN
               <input
                 defaultValue={restaurant.gstin ?? ""}
@@ -92,7 +92,7 @@ export default function Page() {
                 className={inputCls}
               />
             </label>
-            <label className="text-xs font-semibold text-stone-600">
+            <label className="text-xs font-semibold text-slate-600">
               Game prize (free dish) 🎁
               <select
                 value={restaurant.comp_item_id ?? ""}
@@ -107,8 +107,8 @@ export default function Page() {
                 ))}
               </select>
             </label>
-            <label className="text-xs font-semibold text-stone-600 sm:col-span-2">
-              Gemini API key <span className="font-normal text-stone-400">(Narada&apos;s brain)</span>
+            <label className="text-xs font-semibold text-slate-600 sm:col-span-2">
+              Gemini API key <span className="font-normal text-slate-400">(Narada&apos;s brain)</span>
               <input
                 type="password"
                 defaultValue={restaurant.gemini_api_key ?? ""}
@@ -121,8 +121,8 @@ export default function Page() {
                 className={inputCls}
               />
             </label>
-            <label className="text-xs font-semibold text-stone-600">
-              Sarvam API key <span className="font-normal text-stone-400">(voice)</span>
+            <label className="text-xs font-semibold text-slate-600">
+              Sarvam API key <span className="font-normal text-slate-400">(voice)</span>
               <input
                 type="password"
                 defaultValue={restaurant.sarvam_api_key ?? ""}
