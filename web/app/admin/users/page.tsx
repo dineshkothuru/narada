@@ -2,6 +2,7 @@
 
 import AdminShell from "@/components/AdminShell";
 import Collapsible from "@/components/Collapsible";
+import TipsBoard from "@/components/TipsBoard";
 import { useAdminData } from "../useAdminData";
 
 export default function Page() {
@@ -17,6 +18,10 @@ export default function Page() {
             </h1>
             <p className="text-xs text-stone-500">Staff logins — each role opens only its own screens</p>
           </header>
+      <Collapsible title="Tips today" hint="per waiter, from settled bills">
+        <TipsBoard />
+      </Collapsible>
+
       {/* Staff: each person gets their own PIN; role decides which screens open */}
       <Collapsible
         title="Staff & logins"

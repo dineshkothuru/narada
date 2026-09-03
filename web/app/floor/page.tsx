@@ -17,7 +17,7 @@ type FloorTable = {
   code: string;
   capacity: number;
   zone: string | null;
-  status: "free" | "seated" | "dining" | "settling" | "paid";
+  status: "free" | "cleaning" | "seated" | "dining" | "settling" | "paid";
   sessionId: string | null;
   isMerged: boolean;
   mergedWith: string[];
@@ -37,6 +37,7 @@ type FloorTable = {
 type Stats = {
   total: number;
   free: number;
+  cleaning: number;
   seated: number;
   dining: number;
   settling: number;
@@ -47,6 +48,13 @@ type Stats = {
 
 const STATUS = {
   free: { ring: "ring-green-300", chip: "bg-green-100 text-green-700", label: "Free" },
+  // paid but still occupied: the party is gathering up and nobody has wiped
+  // the table down yet, so it must not be offered to the next guests
+  cleaning: {
+    ring: "ring-stone-300",
+    chip: "bg-stone-200 text-stone-600",
+    label: "Cleaning",
+  },
   seated: {
     ring: "ring-violet-300",
     chip: "bg-violet-100 text-violet-700",
@@ -123,10 +131,11 @@ export default function FloorPage() {
         </div>      </header>
 
       {stats && (
-        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-5">
           <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-green-600" />
           <Stat label="Seated / dining" value={`${stats.seated} / ${stats.dining}`} tone="text-sky-600" />
           <Stat label="Ready to settle" value={String(stats.settling)} tone="text-amber-600" />
+          <Stat label="Awaiting cleaning" value={String(stats.cleaning)} tone="text-stone-500" />
           <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
         </section>
       )}
@@ -219,7 +228,19 @@ export default function FloorPage() {
                 </p>
               )}
 
-              {t.status === "free" ? (
+              {t.status === "cleaning" ? (
+                <>
+                  <p className="mt-2 text-[11px] text-stone-500">
+                    Bill settled · waiting for the table to be cleared and wiped
+                  </p>
+                  <button
+                    onClick={() => act({ action: "clear_table", tableId: t.id })}
+                    className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                  >
+                    ✓ Table ready
+                  </button>
+                </>
+              ) : t.status === "free" ? (
                 <button
                   onClick={() => seat(t)}
                   className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"

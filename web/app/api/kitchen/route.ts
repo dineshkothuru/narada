@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
+import { deriveOrderStatus } from "@/lib/status";
 
 // Demo: no auth on the kitchen endpoints. Before real deployment this needs a
 // staff login (Supabase Auth) — flagged in README roadmap.
@@ -45,13 +46,7 @@ export async function PATCH(req: NextRequest) {
       const siblings = await sbFetch<{ status: string }[]>(
         `order_items?select=status&order_id=eq.${rows[0].order_id}`,
       );
-      const derived = siblings.every((s) => s.status === "served")
-        ? "served"
-        : siblings.every((s) => s.status === "served" || s.status === "ready")
-          ? "ready"
-          : siblings.some((s) => s.status !== "queued")
-            ? "preparing"
-            : "placed";
+      const derived = deriveOrderStatus(siblings);
       await sbFetch(`orders?id=eq.${rows[0].order_id}`, {
         method: "PATCH",
         body: JSON.stringify({ status: derived }),

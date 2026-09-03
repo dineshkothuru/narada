@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE, ROLE_ACCESS, verifyToken } from "@/lib/admin-auth";
+import { ADMIN_COOKIE, canAccess, verifyToken } from "@/lib/admin-auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -7,9 +7,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   const role = await verifyToken(req.cookies.get(ADMIN_COOKIE)?.value);
-  const rule = Object.entries(ROLE_ACCESS).find(([prefix]) => pathname.startsWith(prefix));
-  const allowed = role !== null && (!rule || rule[1].includes(role));
-  if (allowed) return NextResponse.next();
+  if (canAccess(pathname, role)) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json(
