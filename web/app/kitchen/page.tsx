@@ -213,7 +213,7 @@ export default function KitchenPage() {
                             <span>
                               {it.qty} × {it.name}
                               {it.notes && (
-                                <span className="block text-[11px] text-rose-600">✎ {it.notes}</span>
+                                <span className="block text-[11px] text-amber-700">✎ {it.notes}</span>
                               )}
                             </span>
                             <span className="ml-2 text-base">{ITEM_BADGE[it.status]}</span>
