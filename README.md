@@ -1,186 +1,237 @@
 # Narada — QR dine-in ordering with a voice waiter
 
-**Narada** is both the product and the voice waiter customers talk to.
+**Narada** is both the product and the voice waiter guests talk to.
 
-Scan a QR code at the table → menu opens in the browser → talk to a voice agent
-(Sarvam AI for speech, Gemini for reasoning) that answers menu questions and takes
-the order → cart → UPI payment.
+Scan the QR at your table → the menu opens in the browser → talk to Narada in
+English, Hindi or Telugu → order → pay by UPI. No app install: the QR encodes
+`https://<domain>/t/<table-code>` and the whole thing is a mobile web app.
 
-No app install: the QR encodes a URL like `https://<domain>/t/<table-id>`, and the
-whole experience is a mobile web app (PWA).
+Behind it is a full back office — floor, kitchen, waiter, counter and owner
+screens, each gated to the person who does that job.
 
-This is a **dine-in** flow — the customer at the table orders directly instead of
-waiting for a waiter. That shapes a few decisions:
+---
 
-- **Table session, not one-shot order.** Scanning opens a session tied to the table.
-  The customer can order in rounds (starters now, dessert later) on one running tab.
-- **Pay-per-order or pay-at-end** — configurable per restaurant. Indian dine-in
-  usually settles at the end, so the default is: orders fire to the kitchen
-  immediately, UPI payment happens once when the customer asks for the bill.
-- **Waiter is still one tap away.** A "call waiter" button (and the agent understanding
-  "bhaiya ko bulao" / "call the waiter") is essential — the system augments staff,
-  it doesn't trap customers in a bot.
-- **Kitchen gets a KOT** (kitchen order ticket) per round, tagged with the table number,
-  exactly like a waiter would punch in.
+## What it does
 
-## Run it yourself (5 minutes)
+**For the guest**
 
-Prereqs: Node 20+, a free [Supabase](https://supabase.com) project, a
-[Gemini API key](https://aistudio.google.com) and a [Sarvam AI key](https://dashboard.sarvam.ai).
+- Scan, browse, and order in rounds on one running tab — starters now, dessert
+  later — the way dine-in actually works.
+- Talk to Narada instead of hunting the menu. Sarvam hears the speech, Gemini
+  answers from the menu, Sarvam speaks the reply back in the same language.
+  Romanised Hinglish and Tenglish are understood and answered in kind.
+- Remove something ordered by mistake, while the kitchen has not started it.
+- Two table experiences, switchable per table: a classic list, or **Feast
+  Stories** — full-screen swipeable dish stories that Narada can navigate by
+  voice.
+- Engagement while they wait: a spin wheel for a discount before ordering, and a
+  memory game that wins a complimentary dish. Rewards are claimed server-side, so
+  a forged discount is rejected.
+- Ask for the bill, waive the service charge, add a tip, pay by UPI.
+
+**For the restaurant**
+
+| Screen | Who | What it is for |
+|---|---|---|
+| `/floor` | reception, waiter, counter, owner | The room: who is free, seated, dining, billed, being cleaned. Seat, merge, release. |
+| `/waiter` | waiter, owner | Calls, tables waiting to order, running tabs, plated dishes to carry out. |
+| `/waiter/table/[code]` | waiter, owner | One table: every round, every dish's progress, the bill — and a Menu tab to add another round. |
+| `/kitchen` | kitchen, owner | Tickets across New / Preparing / Ready / Served, per dish or per round. Mark a dish sold out. Reprint a KOT. |
+| `/counter` | cashier, owner | Raise bills, take payment by UPI, card or cash. |
+| `/admin/report` | owner | Day close: takings, covers, GST collected, tips, and payments reconciled against bills. |
+| `/admin/*` | owner | Menu, dish photos, tables and QR sheets, staff logins, settings. |
+
+---
+
+## How the pieces fit
+
+```
+Guest's phone                    Narada (Next.js app)               Services
+─────────────                    ────────────────────               ────────
+scan QR  ──────────────────────► /t/[code]  session opens
+tap mic  ── audio ─────────────► /api/voice ──────────────────────► Sarvam STT
+                                      │                             (saarika)
+                                      ▼
+                                 lib/anna   full menu + cart ──────► Gemini
+                                      │                             (2.5 flash)
+                                      ▼
+  ◄───── reply audio ──────────  Sarvam TTS (bulbul) ◄──────────────┘
+                                      │
+  "yes, order that"  ────────────────►│
+                                      ▼
+                                 /api/order   round created
+                                      │
+                                      ├──────► /kitchen   ticket appears
+                                      └──────► /waiter    tab updates
+                                      ▼
+                                 counter raises the bill
+                                      ▼
+                                 payment taken anywhere ──────────► UPI deep link
+```
+
+Sarvam and Gemini never talk to each other — the app orchestrates both, so
+either can be swapped without touching the other.
+
+**The stack is deliberately small.** One Next.js app, five runtime dependencies
+(`next`, `react`, `react-dom`, `qrcode`, `server-only`), Tailwind for styling and
+Postgres through Supabase's REST interface. There is no separate API server, no
+Fastify or Express, and no WebSocket: every endpoint is a Next.js route handler,
+and voice is request/response — the browser records a clip, posts it to
+`/api/voice`, and gets audio back. Streaming would cut the pause between speaking
+and hearing a reply, and is the obvious next step; it is not needed to make the
+thing work.
+
+---
+
+## The rules the code enforces
+
+These are the decisions worth knowing before reading the source. Each is
+enforced server-side, not just hidden in the UI.
+
+**A raised bill is frozen.** The counter raises it, which mints the invoice
+number and fixes the totals. After that nothing can move them — a guest cannot
+waive the service charge, and a tip is added by *paying more*, not by editing an
+invoice.
+
+**Raising the bill and taking the money are different jobs.** Only the counter
+(or the owner) raises a bill. Anyone can record a payment against one, because
+the guest pays wherever they are — UPI at the table, cash to a waiter, card at
+the counter. Money is never taken against totals that can still move.
+
+**Overpayment is the tip.** Nobody knows the tip when the bill is raised, so
+bills are raised plain and whatever arrives above the total is credited as a tip
+to whoever was attending that table. It is frozen with the amount, so
+reassigning the table later cannot move money already handed over.
+
+**A dish can be taken back until the kitchen starts it.** While it is `queued`
+the guest can remove it themselves. After that it exists, and only staff can
+void it — recorded against their name, never once it has been served.
+
+**A visit ends everything attached to it.** Settling the bill, releasing a table
+that never ordered, or handing a cleaned table back all close any waiter call
+still open for that table, so a paid table cannot keep ringing.
+
+**Payment does not free a table.** It moves to `cleaning` until a waiter hands it
+back, because the party is still sitting there.
+
+**PINs are never stored.** Staff sign in with a PIN; only a PBKDF2 hash with a
+per-restaurant salt is kept. A PIN can be replaced, never read back.
+
+**Colour means something.** On the staff console, rose is an alert, amber wants
+attention, emerald is settled, and everything else is neutral. Buttons carry no
+colour at all — the label says what they do.
+
+---
+
+## Run it
+
+Node 20+, a [Supabase](https://supabase.com) project, a
+[Gemini key](https://aistudio.google.com), a [Sarvam key](https://dashboard.sarvam.ai).
 
 ```bash
-git clone https://github.com/<owner>/narada
+git clone https://github.com/dineshkothuru/narada
 cd narada/web
 npm install
 ```
 
-1. **Configure env** — create `web/.env.local`:
-   ```env
-   SUPABASE_URL=https://<your-project>.supabase.co
-   SUPABASE_ANON_KEY=<publishable/anon key>
-   SUPABASE_SERVICE_ROLE_KEY=<secret/service_role key>
-   GEMINI_API_KEY=<optional — can be set later in /admin>
-   SARVAM_API_KEY=<optional — can be set later in /admin>
-   ```
-2. **Create the database** — in the Supabase SQL editor run, in order:
-   [`docs/schema.sql`](docs/schema.sql), [`docs/seed.sql`](docs/seed.sql),
-   [`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql).
-3. **Run** — `npm run dev`, then open http://localhost:3000 and pick a table.
+**1. Environment** — `web/.env.local`:
 
-Where to click:
-- `/t/t1-demo` — the customer experience (each table's QR points at its own code).
-  Tap the 🎙️ button and *talk* to Narada — Telugu, Hindi, or English.
-- `/kitchen` — live kitchen dashboard (orders arrive here). Needs the staff PIN.
-- `/admin` — menu availability, prices, payment timing, UPI ID, staff PIN, and
-  the Gemini/Sarvam API keys. Same PIN.
-
-Feedback welcome — open a GitHub issue with screenshots.
-
-## End-to-end flow
-
-```
-Customer scans QR (table 12)
-        │
-        ▼
-Menu web app opens (PWA) ──────────── browse menu manually (always available)
-        │
-        ▼  taps mic
-Voice agent session (WebSocket)
-        │
-        ├─ Sarvam STT (Saarika)  : customer speech → text  (Hindi/Telugu/Tamil/English…)
-        ├─ Gemini (function calls): understands question, answers from menu,
-        │                           calls add_to_cart / remove_from_cart / confirm_order
-        └─ Sarvam TTS (Bulbul)   : reply text → natural speech back to customer
-        │
-        ▼  "yes, that's my order"
-Cart review screen (customer can still edit by hand)
-        │
-        ▼
-UPI payment (Razorpay/Cashfree checkout, or raw upi:// deep link)
-        │
-        ▼  payment webhook confirms
-Order fired to kitchen dashboard / printer
+```env
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_ANON_KEY=<anon key>
+SUPABASE_SERVICE_ROLE_KEY=<service_role key>
+GEMINI_API_KEY=<optional — the owner can set this in /admin instead>
+SARVAM_API_KEY=<optional — same>
 ```
 
-## Components
+Keys set in `/admin` win over the environment; the env vars are the fallback for
+local development. They are read server-side only and cached for a minute, so a
+change takes up to that long to take effect.
 
-| # | Component | Tech | Notes |
-|---|-----------|------|-------|
-| 1 | Customer PWA | Next.js + Tailwind | Menu, cart, mic button, payment screen. Mobile-first. |
-| 2 | Backend API | Node.js (Fastify/Express) | Menu CRUD, orders, sessions, payment webhooks. |
-| 3 | Voice pipeline | WebSocket server | Streams mic audio → Sarvam STT → Gemini → Sarvam TTS → audio back. |
-| 4 | Agent brain | Gemini (function calling) | System prompt = full menu JSON + rules. Tools: `answer from menu`, `add_to_cart`, `remove_from_cart`, `get_cart`, `confirm_order`. |
-| 5 | Speech | Sarvam AI | Saarika (STT, streaming) + Bulbul (TTS). Built for Indic languages — the reason to pick it over Google/OpenAI speech. |
-| 6 | Payments | Razorpay or Cashfree (recommended) or raw UPI intent | See payment options below. |
-| 7 | Kitchen view | Simple web dashboard | Live orders per table; mark preparing/served. |
-| 8 | Admin | Web dashboard | Menu editor, table/QR generator, order history. |
-| 9 | Database | Postgres (Supabase is a fast start) | menus, items, tables, orders, payments. |
+**2. Database** — run in the Supabase SQL editor, in order:
+[`docs/schema.sql`](docs/schema.sql) → [`docs/seed.sql`](docs/seed.sql) →
+[`docs/migrate-i18n-columns.sql`](docs/migrate-i18n-columns.sql).
 
-## Who talks to whom (your Sarvam→Gemini question)
+Dish photos need a public Storage bucket named `menu` — the command is at the
+bottom of `docs/schema.sql`.
 
-Sarvam and Gemini don't talk to each other directly — **your backend orchestrates both**:
+**3. Run** — `npm run dev`, then http://localhost:3000.
 
-1. Browser streams mic audio over WebSocket to your backend.
-2. Backend sends audio to **Sarvam STT** → gets text.
-3. Backend sends text + menu context + cart state to **Gemini** → gets a reply
-   and/or a tool call (e.g. `add_to_cart("Paneer Tikka", qty=2)`).
-4. Backend executes the tool (updates cart in DB, pushes cart update to the UI),
-   sends Gemini's reply text to **Sarvam TTS** → gets audio.
-5. Audio streams back to the browser and plays.
+```bash
+npm run dev      # development server
+npm test         # 95 tests
+npm run lint
+npm run build
+```
 
-This keeps you free to swap either vendor later (e.g. Sarvam-M instead of Gemini,
-or Gemini Live API for speech-to-speech).
+**Where to click first:** `/t/table-1` for the guest experience (tap the mic and
+talk), then `/admin/login` with the owner PIN for everything else.
 
-## Payment (UPI deep link — decided)
+---
 
-Plain `upi://pay?pa=<vpa>&pn=<name>&am=<amount>&tn=<order-id>` deep link opens
-GPay/PhonePe/any UPI app directly. Zero fees, zero gateway onboarding. Trade-off:
-no server-side payment confirmation, so staff verify payment on their own UPI app
-(normal practice in Indian restaurants). No Razorpay/gateway integration.
+## Testing
 
-**Payment timing is an admin setting** per restaurant (`restaurants.payment_timing`):
-- `post` (default): order fires to the kitchen first, customer pays at the end —
-  leaves the waiting window free for engagement (see below).
-- `pre`: customer pays to place the order.
+95 tests over the logic that decides money and state — deliberately pure, with
+no database behind them:
 
-## Engagement (implemented)
+| File | Covers |
+|---|---|
+| `billing-math` | GST per item on the discounted value, CGST/SGST split, waivable service charge, untaxed tip, rupee rounding |
+| `settle-math` | how a payment splits between the bill and a tip |
+| `status` | the order and table state machines |
+| `cancel` | who may take a dish back, and when |
+| `tips` | per-waiter tallies, and the restaurant's day rather than UTC's |
+| `admin-auth` | role gating, and staff tokens against tampering and expiry |
 
-- **Before ordering — Spin the Wheel 🎡**: one spin per table session, discount
-  slices only (5/10/15% or try-again; hidden weights control generosity). Won
-  discount auto-applies to the UPI amount.
-- **While waiting — Memory Match 🃏**: 3 escalating levels (~5–8 min, matches the
-  kitchen wait). Beating all levels wins a complimentary item (free dessert) —
-  comps cost the restaurant less than discounts.
+Two of these caught real bugs when first written: a tip tally that dragged the
+server-only database client in behind it, and an empty ticket deriving as
+`served` because `[].every()` is true.
 
-## Identity & order updates
+---
 
-No login, no location, no phone number to start ordering — scanning the table's QR
-*is* the identity (table session). Order status updates:
-- **In-app (live)**: Supabase Realtime on `orders` — status changes (preparing →
-  served) push to the customer's open page and the kitchen dashboard.
-- **WhatsApp (roadmap)**: optional phone number at checkout (admin setting), via
-  WhatsApp Business Cloud API, for updates after the customer closes the page.
+## Layout
+
+```
+web/
+  app/
+    t/[code]            the guest's table
+    floor waiter        staff screens
+    kitchen counter
+    admin/…             owner: menu, tables, users, orders, day close
+    api/…               every route above, gated by middleware
+  components/           OrderExperience, StoryViewer, OrderPad, TableSheet, …
+  lib/
+    anna.ts             Gemini prompt and conversation
+    dictate.ts          a waiter speaking an order into lines
+    billing-math.ts     the money rules, pure
+    settle.ts           raising a bill and recording payment
+    status.ts           order and table state machines
+    admin-auth.ts       roles, tokens, path gating
+    pin.ts audit.ts     hashed PINs, who did what
+  tests/                the pure logic above
+docs/schema.sql         the whole database
+```
+
+Roles are declared once in `lib/admin-auth.ts` and enforced by `middleware.ts`;
+the sidebar reads the same table, so a screen a role cannot open is a screen it
+never sees.
+
+---
+
+## Known limits
+
+- **Single restaurant.** Queries take the first row of `restaurants`. The schema
+  is multi-tenant; the queries are not yet.
+- **UPI is a deep link.** Zero fees and no gateway onboarding, but no automatic
+  confirmation — staff enter the UTR, which is normal practice here.
+- **WhatsApp updates are not built.** Bills can be shared to WhatsApp by a link.
+  Automated kitchen updates need a Meta WhatsApp Business account, a registered
+  number and an approved template.
+- **Idle tables never close by themselves.** A host releases them.
 
 ## Languages
 
-UI ships in **English, Hindi, Telugu** (header toggle, persisted per session).
-Narada replies in the customer's language — the app language by default, switching
-automatically to whatever language the customer actually types/speaks. For voice,
-Sarvam STT auto-detects the spoken language; the detected code drives both
-Gemini's reply and Sarvam TTS so Narada speaks back in the same language.
-
-## What you need before building
-
-- **Sarvam AI API key** — dashboard.sarvam.ai (STT + TTS; check streaming quota).
-- **Gemini API key** — aistudio.google.com (Flash tier is fast/cheap enough for this).
-- **Domain + hosting** — Vercel (PWA) + any Node host (Railway/Render/Fly) for the
-  WebSocket server; Supabase for Postgres. All have free tiers for the prototype.
-- **Payment**: for the prototype nothing (option B); for production a Razorpay/Cashfree
-  merchant account (restaurant's KYC: PAN, bank account, GST if applicable).
-- **Menu data** for one pilot restaurant (names, descriptions, prices, veg/non-veg,
-  spice level, allergens — the richer the data, the better the agent's answers).
-
-## Build phases
-
-1. **Phase 1 — Menu PWA + cart + QR** (no voice, no payment). Scan QR → browse →
-   add to cart → "order" hits the kitchen dashboard. Proves the core loop.
-2. **Phase 2 — Text agent.** Chat box wired to Gemini with menu context + cart tools.
-   Gets the whole agent logic right before audio enters the picture.
-3. **Phase 3 — Voice.** Add Sarvam STT/TTS streaming around the same agent.
-4. **Phase 4 — Payments.** UPI deep link first, then gateway + webhook → auto-confirm.
-5. **Phase 5 — Admin + polish.** Menu editor, QR generator per table, multi-language
-   TTS voice choice, analytics.
-
-## Repo layout (planned)
-
-```
-apps/
-  web/        # customer PWA (Next.js)
-  kitchen/    # kitchen + admin dashboard
-  server/     # API + WebSocket voice pipeline
-packages/
-  agent/      # Gemini prompts, tool definitions, menu-grounding logic
-  shared/     # types shared across apps (MenuItem, Cart, Order)
-docs/
-  ARCHITECTURE.md
-```
+English, Hindi and Telugu, toggled in the header and remembered per session.
+Narada answers in whatever language the guest actually used — Sarvam detects
+spoken language, and code-mixed romanised input is matched against Telugu and
+Hindi markers rather than being treated as English.
