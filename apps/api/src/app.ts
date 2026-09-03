@@ -5,18 +5,43 @@ import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { db } from "./db/index.js";
 import { env } from "./env.js";
+import { clientIp } from "./lib/ratelimit.js";
+import authPlugin from "./plugins/auth.js";
+import { makeRepos, type Repos } from "./repositories/index.js";
 
-export function buildApp(opts?: { logger?: boolean }): FastifyInstance {
+declare module "fastify" {
+  interface FastifyInstance {
+    repos: Repos;
+  }
+}
+
+export type BuildAppOptions = {
+  logger?: boolean;
+  // tests inject in-memory fakes instead of opening a Postgres pool
+  repos?: Repos;
+};
+
+export function buildApp(opts?: BuildAppOptions): FastifyInstance {
   const app = Fastify({ logger: opts?.logger ?? false });
 
   app.register(fastifyCookie);
   app.register(fastifyCors, { origin: true, credentials: true });
-  app.register(fastifyRateLimit, { global: false });
+  app.register(fastifyRateLimit, { global: false, keyGenerator: clientIp });
+  app.register(authPlugin);
+
+  // pg.Pool connects lazily, so tests that never touch a repo never open a
+  // socket; passing fakes replaces the real ones entirely
+  app.decorate("repos", opts?.repos ?? makeRepos(db));
 
   const health = async () => ({ ok: true });
   app.get("/health", health);
   app.get("/api/health", health);
+
+  // Who is logged in — drives which nav items and screens the UI offers.
+  // The auth plugin has already rejected an absent or expired cookie with 401.
+  app.get("/api/admin/me", async (request) => ({ role: request.staffRole }));
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error(error);

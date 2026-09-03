@@ -11,8 +11,8 @@
       }
     },
     "apps/api": {
-      "ignore": ["src/db/**"],
-      "ignoreDependencies": ["@narada/shared", "kysely", "pg", "zod", "@types/pg"]
+      "entry": ["src/lib/http.ts", "src/lib/ratelimit.ts", "src/services/*.ts"],
+      "ignoreDependencies": ["zod"]
     },
     "apps/web": {
       "vite": {},

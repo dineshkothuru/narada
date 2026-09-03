@@ -1,8 +1,18 @@
 import type { ColumnType, Generated } from "kysely";
 
-// Hand-written from docs/schema.sql + docs/migrate-i18n-columns.sql.
+// Hand-written from docs/schema.sql + docs/migrate-i18n-columns.sql +
+// docs/migrate-outlet-rename.sql (table `outlets`, column `outlet_id`), and
+// from the columns web/app/api/**/route.ts actually reads and writes against
+// the live database. Several of those columns post-date docs/schema.sql —
+// they are marked LIVE below and are created by tests/helpers/schema.ts so the
+// pglite repository tests run against the same shape as production.
+//
 // i18n jsonb columns were dropped by the migration; only the flat *_hi/*_te
 // columns it left behind are modeled here.
+
+// numeric(10,2) comes back from node-postgres as a string; every read site
+// wraps it in Number(), so the select type stays string on purpose.
+type Numeric = ColumnType<string, number | string, number | string>;
 
 export interface OutletsTable {
   id: Generated<string>;
@@ -16,6 +26,9 @@ export interface OutletsTable {
   gemini_api_key: string | null;
   sarvam_api_key: string | null;
   comp_item_id: string | null;
+  service_charge_pct: Generated<number>; // LIVE
+  gstin: string | null; // LIVE
+  bill_seq: Generated<number>; // LIVE — monotonic invoice counter
 }
 
 export interface TablesTable {
@@ -24,6 +37,10 @@ export interface TablesTable {
   label: string;
   code: string;
   created_at: Generated<string>;
+  ui_variant: Generated<string>; // LIVE — 'classic' | 'stories'
+  capacity: Generated<number>; // LIVE
+  zone: string | null; // LIVE
+  needs_cleaning: Generated<boolean>; // LIVE
 }
 
 export interface MenuCategoriesTable {
@@ -34,6 +51,7 @@ export interface MenuCategoriesTable {
   sort_order: Generated<number>;
   name_hi: string | null;
   name_te: string | null;
+  kind: Generated<string>; // LIVE — 'food' | 'drink'
 }
 
 export interface MenuItemsTable {
@@ -42,7 +60,7 @@ export interface MenuItemsTable {
   category_id: string;
   name: string;
   description: string | null;
-  price_inr: ColumnType<string, number | string, number | string>;
+  price_inr: Numeric;
   is_veg: Generated<boolean>;
   spice_level: Generated<number>;
   allergens: Generated<string[]>;
@@ -55,6 +73,7 @@ export interface MenuItemsTable {
   description_hi: string | null;
   description_te: string | null;
   emoji: string | null;
+  gst_pct: Generated<number>; // LIVE — per-item GST rate
 }
 
 export interface SessionsTable {
@@ -66,17 +85,31 @@ export interface SessionsTable {
   closed_at: string | null;
   discount_pct: Generated<number>;
   comp_awarded: Generated<boolean>;
+  guests: number | null; // LIVE
+  attendant: string | null; // LIVE — waiter who claimed the table
+  merged_into: string | null; // LIVE — primary session of a merged group
+  service_waived: Generated<boolean>; // LIVE
+  bill_no: string | null; // LIVE — minted once, at bill time
+  bill_gross: Numeric | null; // LIVE
+  bill_discount: Numeric | null; // LIVE
+  bill_gst: Numeric | null; // LIVE
+  bill_service: Numeric | null; // LIVE
+  bill_tip: Numeric | null; // LIVE
+  bill_net: Numeric | null; // LIVE
+  tip_to: string | null; // LIVE — attendant frozen at bill time
+  settled_at: string | null; // LIVE
 }
 
 export interface OrdersTable {
   id: Generated<string>;
   session_id: string;
   outlet_id: string;
-  status: Generated<string>; // placed | preparing | served | cancelled
-  total_inr: ColumnType<string, number | string, number | string>;
+  status: Generated<string>; // placed | preparing | ready | served | cancelled
+  total_inr: Numeric;
   placed_via: Generated<string>; // ui | anna
   created_at: Generated<string>;
   placed_by: string | null;
+  lang: string | null; // LIVE — en | hi | te
 }
 
 export interface OrderItemsTable {
@@ -84,17 +117,18 @@ export interface OrderItemsTable {
   order_id: string;
   menu_item_id: string;
   name: string;
-  unit_price: ColumnType<string, number | string, number | string>;
+  unit_price: Numeric;
   qty: number;
   notes: string | null;
-  status: Generated<string>; // queued | preparing | served
+  status: Generated<string>; // queued | preparing | ready | served
+  gst_pct: Generated<number>; // LIVE — frozen from the menu item
 }
 
 export interface PaymentsTable {
   id: Generated<string>;
   session_id: string;
-  amount_inr: ColumnType<string, number | string, number | string>;
-  method: Generated<string>; // upi_intent | razorpay | cash
+  amount_inr: Numeric;
+  method: Generated<string>; // upi_intent | card | cash
   status: Generated<string>; // pending | confirmed | failed
   reference: string | null;
   created_at: Generated<string>;
@@ -106,13 +140,15 @@ export interface WaiterCallsTable {
   outlet_id: string;
   status: Generated<string>; // open | done
   created_at: Generated<string>;
+  acked_at: string | null; // LIVE
+  acked_by: string | null; // LIVE
 }
 
 export interface StaffTable {
   id: Generated<string>;
   outlet_id: string;
   name: string;
-  role: string; // admin | kitchen | waiter | reception
+  role: string; // admin | kitchen | waiter | reception | cashier
   pin: string;
   active: Generated<boolean>;
   created_at: Generated<string>;
