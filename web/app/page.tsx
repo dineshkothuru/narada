@@ -12,6 +12,7 @@ const STAFF_SCREENS = [
   { href: "/kitchen", label: "Kitchen", emoji: "👨‍🍳", hint: "live order tickets" },
   { href: "/waiter", label: "Waiter", emoji: "🔔", hint: "calls, tabs & payments" },
   { href: "/admin", label: "Admin", emoji: "⚙️", hint: "menu, staff, settings" },
+  { href: "/admin/orders", label: "Orders", emoji: "🧾", hint: "sales & history" },
   { href: "/admin/qr", label: "QR codes", emoji: "🖨️", hint: "printable table cards" },
 ];
 

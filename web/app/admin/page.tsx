@@ -189,8 +189,14 @@ export default function AdminPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/admin/qr"
+            href="/admin/orders"
             className="rounded-full bg-rose-600 px-4 py-2 text-xs font-bold text-white"
+          >
+            Orders
+          </Link>
+          <Link
+            href="/admin/qr"
+            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
           >
             QR codes
           </Link>
