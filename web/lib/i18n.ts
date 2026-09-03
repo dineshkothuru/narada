@@ -13,6 +13,9 @@ export const LANG_NAME: Record<Lang, string> = {
 };
 
 type Strings = {
+  remove: string;
+  removed: string;
+  removeFailed: string;
   dineIn: string;
   veg: string;
   talkToAnna: string;
@@ -87,6 +90,9 @@ type Strings = {
 
 export const STRINGS: Record<Lang, Strings> = {
   en: {
+    remove: "Remove",
+    removed: "removed",
+    removeFailed: "Could not remove that",
     dineIn: "Dine-in",
     veg: "Veg",
     talkToAnna: "Talk to Narada",
@@ -165,6 +171,9 @@ export const STRINGS: Record<Lang, Strings> = {
     contains: "Contains",
   },
   hi: {
+    remove: "हटाएँ",
+    removed: "हटाया गया",
+    removeFailed: "हटाया नहीं जा सका",
     dineIn: "डाइन-इन",
     veg: "वेज",
     talkToAnna: "नारद से बात करें",
@@ -243,6 +252,9 @@ export const STRINGS: Record<Lang, Strings> = {
     contains: "इसमें है",
   },
   te: {
+    remove: "తీసివేయి",
+    removed: "తీసివేయబడింది",
+    removeFailed: "తీసివేయలేకపోయాం",
     dineIn: "డైన్-ఇన్",
     veg: "వెజ్",
     talkToAnna: "నారదతో మాట్లాడండి",

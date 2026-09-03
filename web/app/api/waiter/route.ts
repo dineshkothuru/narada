@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { computeBill } from "@/lib/billing";
 import { recordPayment } from "@/lib/settle";
+import { cancelItem } from "@/lib/cancel";
+import { audit, actorFrom } from "@/lib/audit";
 import { deriveTableStatus } from "@/lib/status";
 
 type TableRow = {
@@ -119,7 +121,14 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      action: "ack_call" | "mark_served" | "clear_table" | "record_payment";
+      action:
+        | "ack_call"
+        | "mark_served"
+        | "clear_table"
+        | "record_payment"
+        | "cancel_item";
+      itemId?: string;
+      reason?: string;
       amount?: number;
       method?: "upi_intent" | "cash" | "card";
       utr?: string;
@@ -176,6 +185,28 @@ export async function PATCH(req: NextRequest) {
         body: JSON.stringify({ needs_cleaning: false }),
       });
       return NextResponse.json({ ok: true });
+    }
+
+    // a waiter can take a dish off the bill for a guest, including one the
+    // kitchen has already started — a deliberate staff decision, recorded
+    if (body.action === "cancel_item" && body.itemId) {
+      const result = await cancelItem({
+        itemId: body.itemId,
+        by: body.attendedBy?.trim() || "staff",
+        guest: false,
+      });
+      if ("error" in result) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
+      }
+      await audit({
+        action: "item_cancelled",
+        entity: "order_item",
+        entityId: body.itemId,
+        actorRole: await actorFrom(req),
+        actorName: body.attendedBy,
+        detail: { name: result.name, reason: body.reason ?? null },
+      });
+      return NextResponse.json(result);
     }
 
     // the guest can pay wherever they are — at the table by UPI, or in cash to

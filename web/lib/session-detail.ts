@@ -32,7 +32,6 @@ export async function sessionRounds(sessionId: string): Promise<Round[]> {
       `&session_id=eq.${encodeURIComponent(sessionId)}&order=created_at`,
   );
   return rows
-    .filter((o) => o.status !== "cancelled")
     .map((o) => ({
       id: o.id,
       status: o.status,

@@ -115,7 +115,7 @@ export default function OrderExperience({
       status: string;
       total_inr: number;
       placed_by?: string | null;
-      items: { name: string; qty: number; status?: string }[];
+      items: { id?: string; name: string; qty: number; status?: string }[];
     }[]
   >([]);
   const [guestName, setGuestName] = useState("");
@@ -330,6 +330,34 @@ export default function OrderExperience({
 
   const qtyOf = (itemId: string) => cart.find((l) => l.itemId === itemId)?.qty ?? 0;
   const t = STRINGS[lang];
+
+  // A guest taking back something they did not mean to order. The server is the
+  // authority on whether it is still allowed — it refuses once the kitchen has
+  // started, and the message tells them to ask a waiter.
+  const removeItem = async (itemId: string, name: string) => {
+    try {
+      const res = await fetch(
+        `/api/order?itemId=${encodeURIComponent(itemId)}&tableCode=${encodeURIComponent(tableCode)}`,
+        { method: "DELETE" },
+      );
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setToast(d.error ?? t.removeFailed);
+        return;
+      }
+      setToast(`${name} ${t.removed}`);
+      setRounds((prev) =>
+        prev.map((r) => ({
+          ...r,
+          items: r.items.map((it) =>
+            it.id === itemId ? { ...it, status: "cancelled" } : it,
+          ),
+        })),
+      );
+    } catch {
+      setToast(t.removeFailed);
+    }
+  };
 
   const changeQty = (itemId: string, delta: number, notes?: string) => {
     setCart((prev) => {
@@ -1081,21 +1109,41 @@ export default function OrderExperience({
                           <span>{Number(r.total_inr) > 0 ? inr(Number(r.total_inr)) : ""}</span>
                         </div>
                         <div className="mt-1.5 space-y-1">
-                          {r.items.map((it, j) => (
-                            <div key={j} className="flex items-center justify-between">
-                              <span className="flex min-w-0 items-center gap-2 font-semibold text-stone-700">
+                          {r.items.map((it, j) => {
+                            const st = it.status ?? r.status;
+                            const removed = st === "cancelled";
+                            // a guest may take back a dish the kitchen has not
+                            // started; after that it exists and a waiter decides
+                            const canRemove = st === "queued" && Boolean(it.id);
+                            return (
+                              <div key={it.id ?? j} className="flex items-center justify-between">
                                 <span
-                                  className={`h-2 w-2 shrink-0 rounded-full ${statusDotFor(it.status ?? r.status)} ${(it.status ?? r.status) !== "served" ? "animate-pulse" : ""}`}
-                                />
-                                <span className="truncate">
-                                  {it.qty}× {it.name}
+                                  className={`flex min-w-0 items-center gap-2 font-semibold ${
+                                    removed ? "text-stone-400 line-through" : "text-stone-700"
+                                  }`}
+                                >
+                                  <span
+                                    className={`h-2 w-2 shrink-0 rounded-full ${statusDotFor(st)} ${st !== "served" && !removed ? "animate-pulse" : ""}`}
+                                  />
+                                  <span className="truncate">
+                                    {it.qty}× {it.name}
+                                  </span>
                                 </span>
-                              </span>
-                              <span className="ml-2 shrink-0 text-stone-500">
-                                {statusLabelFor(it.status ?? r.status)}
-                              </span>
-                            </div>
-                          ))}
+                                <span className="ml-2 flex shrink-0 items-center gap-2 text-stone-500">
+                                  {removed ? t.removed : statusLabelFor(st)}
+                                  {canRemove && (
+                                    <button
+                                      onClick={() => removeItem(it.id!, it.name)}
+                                      aria-label={`${t.remove} ${it.name}`}
+                                      className="grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] text-rose-600 ring-1 ring-rose-200 transition active:scale-90"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}

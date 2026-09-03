@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { lookupTable, getOrCreateSession } from "@/lib/table-session";
+import { cancelItem } from "@/lib/cancel";
+import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/ratelimit";
 import type { CartLine } from "@/lib/types";
 
@@ -114,7 +116,7 @@ export async function GET(req: NextRequest) {
             items: { name: string; qty: number; status: string }[];
           }[]
         >(
-          `orders?select=id,status,total_inr,created_at,placed_by,items:order_items(name,qty,status)&session_id=eq.${encodeURIComponent(session)}&status=neq.cancelled&order=created_at`,
+          `orders?select=id,status,total_inr,created_at,placed_by,items:order_items(id,name,qty,status)&session_id=eq.${encodeURIComponent(session)}&order=created_at`,
         ),
         sbFetch<{ discount_pct: number; status: string }[]>(
           `sessions?select=discount_pct,status&id=eq.${encodeURIComponent(session)}&limit=1`,
@@ -135,5 +137,45 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     console.error("order status:", e);
     return NextResponse.json({ error: "lookup failed" }, { status: 500 });
+  }
+}
+
+// A guest changing their mind. Allowed only while the kitchen has not started
+// the dish — after that the food exists, and they are asked to speak to a
+// waiter, who can still void it.
+export async function DELETE(req: NextRequest) {
+  if (!rateLimit(req, "order-cancel", 30)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
+  const itemId = req.nextUrl.searchParams.get("itemId");
+  const tableCode = req.nextUrl.searchParams.get("tableCode");
+  if (!itemId || !tableCode) {
+    return NextResponse.json({ error: "itemId and tableCode required" }, { status: 400 });
+  }
+  try {
+    const table = await lookupTable(tableCode);
+    if (!table) return NextResponse.json({ error: "unknown table" }, { status: 404 });
+
+    const result = await cancelItem({
+      itemId,
+      by: "guest",
+      guest: true,
+      tableId: table.id,
+    });
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+    await audit({
+      action: "item_cancelled",
+      entity: "order_item",
+      entityId: itemId,
+      actorRole: "guest",
+      restaurantId: table.restaurant_id,
+      detail: { name: result.name, by: "guest" },
+    });
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error("order cancel:", e);
+    return NextResponse.json({ error: "failed" }, { status: 500 });
   }
 }

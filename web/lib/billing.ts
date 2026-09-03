@@ -38,7 +38,13 @@ type SessionRow = {
   table: { label: string } | null;
   orders: {
     status: string;
-    items: { name: string; qty: number; unit_price: number; gst_pct: number }[];
+    items: {
+      name: string;
+      qty: number;
+      unit_price: number;
+      gst_pct: number;
+      status: string;
+    }[];
   }[];
   payments: { amount_inr: number; status: string }[];
 };
@@ -50,7 +56,7 @@ export async function computeBill(sessionId: string, tipOverride?: number): Prom
   const [sessions, restaurants] = await Promise.all([
     sbFetch<SessionRow[]>(
       `sessions?select=id,status,discount_pct,service_waived,bill_no,bill_tip,settled_at,restaurant_id,` +
-        `table:tables(label),orders(status,items:order_items(name,qty,unit_price,gst_pct)),` +
+        `table:tables(label),orders(status,items:order_items(name,qty,unit_price,gst_pct,status)),` +
         `payments(amount_inr,status)&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
     ),
     sbFetch<
@@ -63,7 +69,9 @@ export async function computeBill(sessionId: string, tipOverride?: number): Prom
 
   const items = s.orders
     .filter((o) => o.status !== "cancelled")
-    .flatMap((o) => o.items);
+    .flatMap((o) => o.items)
+    // a dish the guest removed before the kitchen started is not charged for
+    .filter((it) => it.status !== "cancelled");
   const totals = computeTotals({
     lines: toLines(items),
     discountPct: Number(s.discount_pct ?? 0),

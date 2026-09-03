@@ -35,6 +35,7 @@ const ITEM_MARK: Record<string, { icon: string; cls: string }> = {
   preparing: { icon: "👨‍🍳", cls: "text-sky-600" },
   ready: { icon: "🔔", cls: "font-semibold text-amber-600" },
   served: { icon: "✅", cls: "text-green-600" },
+  cancelled: { icon: "✕", cls: "text-stone-400" },
 };
 
 // Everything a table has ordered and everything it owes, in one floating panel.
@@ -45,12 +46,15 @@ export default function TableSheet({
   label,
   onClose,
   onShare,
+  onCancelItem,
   actions,
 }: {
   sessionId: string;
   label: string;
   onClose: () => void;
   onShare?: (net: number) => void;
+  /** staff only — voids a dish and takes it off the bill */
+  onCancelItem?: (itemId: string, name: string) => Promise<void> | void;
   actions?: React.ReactNode;
 }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -150,11 +154,31 @@ export default function TableSheet({
                       key={it.id}
                       className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 text-xs"
                     >
-                      <span className="min-w-0 truncate text-stone-700">
+                      <span
+                        className={`min-w-0 truncate ${
+                          it.status === "cancelled"
+                            ? "text-stone-400 line-through"
+                            : "text-stone-700"
+                        }`}
+                      >
                         {it.qty}× {it.name}
                       </span>
-                      <span className={`shrink-0 text-[11px] ${m.cls}`}>
-                        {m.icon} {it.status}
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className={`text-[11px] ${m.cls}`}>
+                          {m.icon} {it.status}
+                        </span>
+                        {onCancelItem && it.status !== "cancelled" && it.status !== "served" && (
+                          <button
+                            onClick={async () => {
+                              await onCancelItem(it.id, it.name);
+                              load();
+                            }}
+                            title={`Remove ${it.name} from the bill`}
+                            className="grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] text-rose-600 ring-1 ring-rose-200 transition active:scale-90"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </span>
                     </li>
                   );

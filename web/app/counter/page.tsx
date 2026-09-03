@@ -147,6 +147,26 @@ export default function CounterPage() {
     });
   };
 
+  const cancelItem = async (itemId: string, name: string) => {
+    const yes = await ask.confirm({
+      title: `Remove ${name}?`,
+      message: "It comes off the bill. This is recorded against your name.",
+      confirmLabel: "Remove it",
+      danger: true,
+    });
+    if (!yes) return;
+    await fetch("/api/waiter", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "cancel_item",
+        itemId,
+        attendedBy: cashier,
+      }),
+    });
+    load();
+  };
+
   const awaitingBill = tabs.filter((t) => !t.billNo);
   const awaitingPayment = tabs.filter((t) => t.billNo && t.due > 0);
 
@@ -245,6 +265,7 @@ export default function CounterPage() {
                 net,
               })
             }
+            onCancelItem={cancelItem}
           />
         )}
       </main>

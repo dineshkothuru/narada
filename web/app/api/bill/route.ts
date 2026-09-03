@@ -4,6 +4,7 @@ import { computeBill } from "@/lib/billing";
 import { lookupTable } from "@/lib/table-session";
 import { sessionRounds } from "@/lib/session-detail";
 import { rateLimit } from "@/lib/ratelimit";
+import { audit, actorFrom } from "@/lib/audit";
 
 // Customer-facing bill preview: itemised, GST, service charge, tip.
 export async function GET(req: NextRequest) {
@@ -41,8 +42,15 @@ export async function PATCH(req: NextRequest) {
     if (!sessionId) {
       return NextResponse.json({ error: "sessionId required" }, { status: 400 });
     }
-    // the session must belong to the table the customer is sitting at
-    if (tableCode) {
+
+    const actor = await actorFrom(req);
+    // A guest must prove which table they are sitting at. This check used to be
+    // conditional on tableCode being sent, which meant leaving it out skipped
+    // the check entirely — a session id alone could rewrite anyone's bill.
+    if (actor === "guest") {
+      if (!tableCode) {
+        return NextResponse.json({ error: "tableCode required" }, { status: 400 });
+      }
       const table = await lookupTable(tableCode);
       const owned = table
         ? await sbFetch<{ id: string }[]>(
@@ -52,6 +60,21 @@ export async function PATCH(req: NextRequest) {
       if (owned.length === 0) {
         return NextResponse.json({ error: "not your table" }, { status: 403 });
       }
+    }
+
+    // once the counter has raised the bill the totals are frozen: a tip is
+    // added by paying more, not by editing the invoice
+    const locked = await sbFetch<{ bill_no: string | null }[]>(
+      `sessions?select=bill_no&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
+    );
+    if (locked.length === 0) {
+      return NextResponse.json({ error: "unknown session" }, { status: 404 });
+    }
+    if (locked[0].bill_no) {
+      return NextResponse.json(
+        { error: "the bill has already been raised — ask the counter" },
+        { status: 409 },
+      );
     }
     const patch: Record<string, unknown> = {};
     if (typeof serviceWaived === "boolean") patch.service_waived = serviceWaived;
@@ -64,6 +87,13 @@ export async function PATCH(req: NextRequest) {
     await sbFetch(`sessions?id=eq.${encodeURIComponent(sessionId)}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
+    });
+    await audit({
+      action: typeof serviceWaived === "boolean" ? "service_charge" : "tip_set",
+      entity: "session",
+      entityId: sessionId,
+      actorRole: actor,
+      detail: patch,
     });
     const bill = await computeBill(sessionId);
     return NextResponse.json(bill);
