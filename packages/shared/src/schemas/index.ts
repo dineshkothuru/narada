@@ -1,6 +1,7 @@
 // zod request/response schemas, one file per resource, added as routes are ported
 export * from "./kitchen.js";
 export * from "./session.js";
+export * from "./menu.js";
 export * from "./order.js";
 export * from "./bill.js";
 export * from "./reward.js";

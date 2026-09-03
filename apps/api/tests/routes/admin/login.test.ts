@@ -35,6 +35,25 @@ describe("POST /api/admin/login", () => {
     const res = await app.inject({ method: "POST", url: "/api/admin/login", payload: {} });
     expect(res.statusCode).toBe(400);
   });
+
+  it("returns the legacy error after more than 10 attempts", async () => {
+    const { repos } = seed();
+    const app = buildApp({ repos });
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await app.inject({
+        method: "POST",
+        url: "/api/admin/login",
+        payload: { pin: "9999" },
+      });
+    }
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/admin/login",
+      payload: { pin: "9999" },
+    });
+    expect(res.statusCode).toBe(429);
+    expect(res.json()).toEqual({ error: "too many attempts — wait a minute" });
+  });
 });
 
 describe("DELETE /api/admin/login", () => {

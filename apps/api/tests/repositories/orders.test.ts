@@ -19,6 +19,7 @@ beforeEach(async () => {
   const session = await t.repos.sessions.create({ table_id: tableId, outlet_id: outletId });
   sessionId = session.id;
   menuItems = await t.repos.menuItems.findPricesByIds(
+    outletId,
     (await t.db.selectFrom("menu_items").select("id").limit(3).execute()).map((r) => r.id),
   );
 });

@@ -31,11 +31,12 @@ export function makeMenuItemsRepo(db: Kysely<DB>) {
         .execute(),
 
     // prices for a cart, in one round trip
-    findPricesByIds: async (ids: string[]) => {
+    findPricesByIds: async (outletId: string, ids: string[]) => {
       if (ids.length === 0) return [];
       return db
         .selectFrom("menu_items")
         .select(["id", "name", "price_inr", "gst_pct"])
+        .where("outlet_id", "=", outletId)
         .where("id", "in", ids)
         .execute();
     },

@@ -18,11 +18,8 @@ All 9 routes ported at the same paths, JSON shapes, and status codes, unless not
 
 - POST: PIN checked against `staff.pin` (active only) then `outlets.admin_pin`, both
   constant-time compared via `timingSafeEqual`, matching legacy exactly.
-- Rate limit: `rateLimited(10)` on POST, same as legacy's `rateLimit(req, "login", 10)`
-  (legacy returned 429 "too many attempts"; `@fastify/rate-limit`'s default 429 body
-  differs in wording from legacy's custom message — flagging as a **minor known
-  divergence**, not fixed here since the route README didn't call out exact 429 body
-  parity and `@fastify/rate-limit` owns that response).
+- Rate limit: `rateLimited(10)` on POST, same as legacy's `rateLimit(req, "login", 10)`,
+  including the exact 429 body `{error:"too many attempts — wait a minute"}`.
 - Cookie set/cleared exactly per `plugins/auth.ts` `setRoleCookie`/`clearRoleCookie`
   (`secure` only in production), unchanged from legacy.
 - `/api/admin/login` POST is exempt from the auth plugin's cookie gate (see

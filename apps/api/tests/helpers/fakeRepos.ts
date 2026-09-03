@@ -169,10 +169,10 @@ export function makeFakeRepos(data: FakeDb): Repos {
           ),
         ),
       listForAdmin: async () => clone(sortBy(data.menu_items, "sort_order")),
-      findPricesByIds: async (ids: string[]) =>
+      findPricesByIds: async (outletId: string, ids: string[]) =>
         clone(
           data.menu_items
-            .filter((m) => ids.includes(m.id as string))
+            .filter((m) => m.outlet_id === outletId && ids.includes(m.id as string))
             .map((m) => ({
               id: m.id,
               name: m.name,

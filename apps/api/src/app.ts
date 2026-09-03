@@ -12,6 +12,7 @@ import authPlugin from "./plugins/auth.js";
 import { makeRepos, type Repos } from "./repositories/index.js";
 import annaRoutes from "./routes/anna.js";
 import billRoutes from "./routes/bill.js";
+import publicMenuRoutes from "./routes/menu.js";
 import orderRoutes from "./routes/order.js";
 import rewardRoutes from "./routes/reward.js";
 import sessionRoutes from "./routes/session.js";
@@ -49,7 +50,17 @@ export function buildApp(opts?: BuildAppOptions): FastifyInstance {
 
   app.register(fastifyCookie);
   app.register(fastifyCors, { origin: true, credentials: true });
-  app.register(fastifyRateLimit, { global: false, keyGenerator: clientIp });
+  app.register(fastifyRateLimit, {
+    global: false,
+    keyGenerator: clientIp,
+    errorResponseBuilder: (request) => ({
+      statusCode: 429,
+      message:
+        request.routeOptions.url === "/api/admin/login"
+          ? "too many attempts — wait a minute"
+          : "too many requests",
+    }),
+  });
   app.register(authPlugin);
 
   // pg.Pool connects lazily, so tests that never touch a repo never open a
@@ -79,6 +90,7 @@ export function buildApp(opts?: BuildAppOptions): FastifyInstance {
 
   // Customer-facing public routes.
   app.register(sessionRoutes);
+  app.register(publicMenuRoutes);
   app.register(orderRoutes);
   app.register(billRoutes);
   app.register(rewardRoutes);
