@@ -35,7 +35,7 @@ export default function Collapsible({
     >
       {/* the padding lives on the button, so the whole header row toggles —
           not just the thin strip of text across its middle */}
-      <div className={`flex items-center gap-2 ${open ? "panel-head" : ""}`}>
+      <div className={`panel-head flex items-center gap-2 ${open ? "" : "panel-head-flat"}`}>
         <button
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}

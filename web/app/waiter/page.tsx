@@ -470,6 +470,7 @@ export default function WaiterPage() {
                   </span>
                 </header>
                 <div className="p-4">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
                 <button
                   onClick={async () => {
                     const who = await ask.prompt({
@@ -491,7 +492,7 @@ export default function WaiterPage() {
                       }),
                     }).then(load);
                   }}
-                  className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
                     s.attendant
                       ? "bg-violet-100 text-violet-700"
                       : "bg-slate-100 text-slate-400"
@@ -499,56 +500,54 @@ export default function WaiterPage() {
                 >
                   {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
                 </button>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                   {s.guests ? (
                     <span>
-                      🪑 {s.guests}/{t.capacity} seated
+                      🪑 {s.guests}/{t.capacity}
                     </span>
                   ) : null}
                   <span>
-                    {s.orders.length === 0
-                      ? "nothing ordered yet"
-                      : `${s.orders.length} order${s.orders.length !== 1 ? "s" : ""}`}
+                    {s.orders.length} round{s.orders.length !== 1 ? "s" : ""}
                   </span>
-                  <span>billed {inr(s.ordered)}</span>
                   {s.discountPct > 0 && (
-                    <span className="font-bold text-rose-600">-{s.discountPct}% 🎡</span>
+                    <span className="font-bold text-rose-600">−{s.discountPct}% 🎡</span>
                   )}
-                  <span>+GST {inr(s.gst)}</span>
-                  {s.service > 0 && <span>+svc {inr(s.service)}</span>}
-                  {s.serviceWaived && <span className="text-slate-400">svc waived</span>}
-                  <span>paid {inr(s.paid)}</span>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span
-                    className={`text-sm font-extrabold ${
-                      s.orders.length === 0
-                        ? "text-stone-300"
-                        : s.due > 0
-                          ? "text-rose-600"
-                          : "text-emerald-600"
-                    }`}
+
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p
+                      className={`font-display text-xl font-semibold tabular-nums ${
+                        s.due > 0 ? "text-rose-600" : "text-emerald-600"
+                      }`}
+                    >
+                      {s.due > 0 ? inr(s.due) : "Settled ✓"}
+                    </p>
+                    {/* the arithmetic behind the figure, demoted to a caption —
+                        it is reference, not the thing being scanned for */}
+                    <p className="truncate text-[10px] text-slate-400">
+                      {inr(s.ordered)} + GST {inr(s.gst)}
+                      {s.service > 0 && ` + svc ${inr(s.service)}`}
+                      {s.serviceWaived && " · svc waived"}
+                      {s.paid > 0 && ` · paid ${inr(s.paid)}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <a
+                    href={`/waiter/order/${t.code}`}
+                    className="rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
                   >
-                    {s.orders.length === 0
-                      ? "—"
-                      : s.due > 0
-                        ? `Due ${inr(s.due)}`
-                        : "Settled ✓"}
-                  </span>
+                    + Order
+                  </a>
+                  <button
+                    onClick={() => setOpenTable({ id: s.id, label: t.label })}
+                    className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                  >
+                    Details
+                  </button>
                   {s.due > 0 && (
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      <a
-                        href={`/waiter/order/${t.code}`}
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200"
-                      >
-                        + Order
-                      </a>
-                      <button
-                        onClick={() => setOpenTable({ id: s.id, label: t.label })}
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
-                      >
-                        🧾 Details
-                      </button>
+                    <div className="ml-auto flex gap-1.5">
                       {!s.billNo ? (
                         // the counter raises the bill; a waiter can only carry
                         // it and take the money against it
@@ -557,18 +556,6 @@ export default function WaiterPage() {
                         </span>
                       ) : (
                         <>
-                          <button
-                            onClick={() =>
-                              shareBillOnWhatsApp({
-                                sessionId: s.id,
-                                label: t.label,
-                                net: s.due,
-                              })
-                            }
-                            className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200"
-                          >
-                            Share
-                          </button>
                           <button
                             onClick={async () => {
                               const out = await ask.form({

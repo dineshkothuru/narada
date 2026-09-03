@@ -167,12 +167,21 @@ body {
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
-/* the short upright line that starts every section title */
+/* a closed section is nothing but its header, so it keeps the strip and drops
+   the rule that would otherwise underline nothing */
+.panel-head-flat {
+  border-bottom: 0;
+}
+
+/* The short upright line that starts every section title. It is neutral: it
+   marks where a title begins, which is a structural job, not a colour-coded
+   one. Colour is left to the two places that genuinely need it — a status chip
+   and the rule across a metric card. */
 .panel-pill {
   width: 3px;
   height: 16px;
   border-radius: 99px;
-  background: var(--tone);
+  background: #cbd5e1;
   flex-shrink: 0;
 }
 
