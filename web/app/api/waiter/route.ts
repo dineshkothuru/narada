@@ -97,12 +97,17 @@ export async function PATCH(req: NextRequest) {
               : null,
         }),
       });
-      // whoever attends becomes this table's attendant for the visit
-      if (body.attendedBy && body.sessionId) {
-        await sbFetch(`sessions?id=eq.${encodeURIComponent(body.sessionId)}`, {
-          method: "PATCH",
-          body: JSON.stringify({ attendant: body.attendedBy.trim().slice(0, 40) }),
-        });
+      // assignment is two-way: a waiter can claim a table up front, and if
+      // nobody has, whoever attends the call takes it — without stealing a
+      // table someone already claimed
+      if (body.attendedBy?.trim() && body.sessionId) {
+        await sbFetch(
+          `sessions?id=eq.${encodeURIComponent(body.sessionId)}&attendant=is.null`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ attendant: body.attendedBy.trim().slice(0, 40) }),
+          },
+        );
       }
       return NextResponse.json({ ok: true });
     }
