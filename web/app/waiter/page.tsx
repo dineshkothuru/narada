@@ -422,7 +422,7 @@ export default function WaiterPage() {
                     {!t.session!.attendant && (
                       <button
                         onClick={() => claim(t)}
-                        className="rounded-full bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition active:scale-95"
+                        className="rounded-full bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200 transition active:scale-95"
                       >
                         I&apos;ll take it
                       </button>
