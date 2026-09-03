@@ -13,7 +13,6 @@ export default function Menu({
   menu,
   lang,
   t,
-  vegOnly,
   activeCat,
   heroDishes,
   discountPct,
@@ -32,7 +31,6 @@ export default function Menu({
   menu: MenuPayload;
   lang: Lang;
   t: Strings;
-  vegOnly: boolean;
   activeCat: string;
   heroDishes: MenuItem[];
   discountPct: number;
@@ -144,7 +142,7 @@ export default function Menu({
           </div>
         )}
         {categories.map((cat) => {
-          const items = menuItems.filter((m) => m.categoryId === cat.id && (!vegOnly || m.isVeg));
+          const items = menuItems.filter((m) => m.categoryId === cat.id);
           if (items.length === 0) return null;
           return (
             <section

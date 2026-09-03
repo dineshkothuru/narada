@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { inr, minutesAgo } from "../src/format";
+import { inr, minutesAgo, orderToken } from "../src/format";
+
+describe("orderToken", () => {
+  it("formats the first eight UUID characters as an uppercase token", () => {
+    expect(orderToken("a1b2c3d4-1234-5678-9abc-def012345678")).toBe("A1B2C3D4");
+  });
+});
 
 describe("inr", () => {
   it("formats a number as Indian rupees with grouping", () => {

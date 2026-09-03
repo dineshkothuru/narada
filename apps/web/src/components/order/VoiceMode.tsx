@@ -20,7 +20,6 @@ export default function VoiceMode({
   onTurn,
   onTextTurn,
   onClose,
-  onSwitchToChat,
   minimal = false,
   strings,
 }: {
@@ -28,7 +27,6 @@ export default function VoiceMode({
   onTurn: (wavBase64: string) => Promise<VoiceTurnResult>;
   onTextTurn: (text: string) => Promise<VoiceTurnResult>;
   onClose: () => void;
-  onSwitchToChat?: () => void;
   minimal?: boolean;
   strings: {
     listening: string;
@@ -353,20 +351,6 @@ export default function VoiceMode({
             </p>
           </div>
 
-          {onSwitchToChat && (
-            <button
-              onClick={() => {
-                closedRef.current = true;
-                stopListeningSilently();
-                playerRef.current?.pause();
-                onSwitchToChat();
-              }}
-              aria-label="switch to text chat"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-sm transition active:scale-95"
-            >
-              ⌨️
-            </button>
-          )}
           <button
             onClick={end}
             aria-label={strings.endVoice}

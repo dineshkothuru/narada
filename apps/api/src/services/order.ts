@@ -1,4 +1,4 @@
-import { sanitizeCartLines, validItemIds, type CartLine } from "@narada/shared";
+import { orderToken, sanitizeCartLines, validItemIds, type CartLine } from "@narada/shared";
 import { badRequest, notFound } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
 import { getOrCreateSession, lookupTable } from "./tableSession.js";
@@ -68,7 +68,7 @@ export async function placeOrder(
 
   return {
     orderId: order.id,
-    orderNo: order.id.slice(0, 8).toUpperCase(),
+    orderNo: orderToken(order.id),
     total,
     discountPct: Number(session.discount_pct ?? 0),
     sessionId: session.id,
@@ -79,6 +79,7 @@ export async function placeOrder(
 export type SessionOrdersResult = {
   rounds: {
     id: string;
+    orderNo: string;
     status: string;
     total_inr: number;
     created_at: string;
@@ -103,6 +104,7 @@ export async function getSessionOrders(
       .filter((o) => o.status !== "cancelled")
       .map((o) => ({
         id: o.id,
+        orderNo: orderToken(o.id),
         status: o.status,
         total_inr: Number(o.total_inr),
         created_at: o.created_at,

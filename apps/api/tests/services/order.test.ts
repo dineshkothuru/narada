@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { orderToken } from "@narada/shared";
 import { describe, expect, it } from "vitest";
 import { getOrderStatus, getSessionOrders, placeOrder } from "../../src/services/order.js";
 import { seed } from "../helpers/fakeRepos.js";
@@ -17,7 +18,7 @@ describe("placeOrder", () => {
     expect(result.total).toBe(280 * 2 + 120);
     expect(result.tableLabel).toBe("Table 1");
     expect(result.discountPct).toBe(0);
-    expect(result.orderNo).toBe(result.orderId.slice(0, 8).toUpperCase());
+    expect(result.orderNo).toBe(orderToken(result.orderId));
     expect(data.orders).toHaveLength(1);
     expect(data.order_items).toHaveLength(2);
     expect(data.sessions).toHaveLength(1);
@@ -109,6 +110,7 @@ describe("getSessionOrders", () => {
     });
     const view = await getSessionOrders(repos, placed.sessionId);
     expect(view.rounds).toHaveLength(1);
+    expect(view.rounds[0].orderNo).toBe(orderToken(view.rounds[0].id));
     expect(view.rounds[0].items).toEqual([{ name: "Paneer Tikka", qty: 2, status: "queued" }]);
     expect(view.discountPct).toBe(0);
     expect(view.sessionStatus).toBe("active");

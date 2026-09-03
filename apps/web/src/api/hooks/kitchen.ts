@@ -12,6 +12,7 @@ export type KitchenItem = {
 
 export type KitchenOrder = {
   id: string;
+  orderNo?: string;
   status: "placed" | "preparing" | "ready" | "served";
   total_inr: number;
   placed_via: "ui" | "anna";

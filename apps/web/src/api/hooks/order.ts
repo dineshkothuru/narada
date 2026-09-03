@@ -6,6 +6,7 @@ import { queryKeys } from "../keys";
 export type OrderRoundItem = { name: string; qty: number; status?: string };
 export type OrderRound = {
   id: string;
+  orderNo?: string;
   status: string;
   total_inr: number;
   placed_by?: string | null;
@@ -22,6 +23,7 @@ export type SessionOrders = {
 export type PlacedOrder = {
   total?: number;
   orderId?: string | null;
+  orderNo?: string | null;
   sessionId?: string | null;
   discountPct?: number;
 };

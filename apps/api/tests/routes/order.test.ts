@@ -1,3 +1,4 @@
+import { orderToken } from "@narada/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../src/app.js";
 import { seed } from "../helpers/fakeRepos.js";
@@ -15,6 +16,7 @@ describe("POST /api/order", () => {
     const body = res.json();
     expect(body.total).toBe(560);
     expect(body.tableLabel).toBe("Table 1");
+    expect(body.orderNo).toBe(orderToken(body.orderId));
   });
 
   it("400s when the cart is empty", async () => {
@@ -79,6 +81,7 @@ describe("GET /api/order", () => {
     const res = await app.inject({ method: "GET", url: `/api/order?session=${sessionId}` });
     expect(res.statusCode).toBe(200);
     expect(res.json().rounds).toHaveLength(1);
+    expect(res.json().rounds[0].orderNo).toBe(orderToken(res.json().rounds[0].id));
   });
 
   it("returns a single order's status", async () => {

@@ -43,7 +43,7 @@ export default function StoryViewer({
   showSpin: boolean;
   onOpenSpin: () => void;
   highlightId: string | null;
-  orderBanner: { label: string; dotClass: string; payText: string } | null;
+  orderBanner: { label: string; dotClass: string; payText: string; orderNo?: string | null } | null;
   jumpRef: RefObject<((itemId: string) => void) | null>;
 }) {
   const dishes = useMemo(
@@ -208,8 +208,15 @@ export default function StoryViewer({
               <span className={`h-2 w-2 animate-pulse rounded-full ${orderBanner.dotClass}`} />
               {orderBanner.label}
             </span>
-            <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
-              {orderBanner.payText} ›
+            <span className="flex items-center gap-2">
+              {orderBanner.orderNo && (
+                <span className="rounded border border-dashed border-white/40 px-1.5 py-0.5 text-[10px] font-extrabold tracking-[0.08em] text-white">
+                  KOT #{orderBanner.orderNo}
+                </span>
+              )}
+              <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
+                {orderBanner.payText} ›
+              </span>
             </span>
           </button>
         )}

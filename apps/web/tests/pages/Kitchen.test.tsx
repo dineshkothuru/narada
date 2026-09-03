@@ -28,6 +28,7 @@ describe("KitchenPage", () => {
             orders: [
               {
                 id: "o1",
+                orderNo: "AB12CD34",
                 status: "placed",
                 total_inr: 250,
                 placed_via: "ui",
@@ -61,7 +62,8 @@ describe("KitchenPage", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText("Table 3")).toBeInTheDocument();
+    expect(await screen.findByText("KOT #AB12CD34")).toBeInTheDocument();
+    expect(screen.queryByText("Table 3")).not.toBeInTheDocument();
     expect(screen.getByText(/Masala Dosa/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/kitchen",

@@ -1,3 +1,4 @@
+import { orderToken } from "@narada/shared";
 import { describe, expect, it } from "vitest";
 import { kitchenOrders, updateItemStatus, updateOrderStatus } from "../../src/services/kitchen.js";
 import { seed, type FakeDb } from "../helpers/fakeRepos.js";
@@ -55,7 +56,8 @@ describe("kitchenOrders", () => {
   it("lists open tickets", async () => {
     const { repos, orderId } = ticket();
     const orders = await kitchenOrders(repos);
-    expect(orders.map((o) => o.id)).toContain(orderId);
+    const order = orders.find((o) => o.id === orderId);
+    expect(order?.orderNo).toBe(orderToken(orderId));
   });
 });
 

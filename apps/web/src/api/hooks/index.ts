@@ -13,5 +13,4 @@ export * from "./menu";
 export * from "./session";
 export * from "./order";
 export * from "./reward";
-export * from "./anna";
 export * from "./voice";

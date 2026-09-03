@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  LANGS,
   LANG_NAME,
   STRINGS,
   inr,
@@ -12,7 +11,6 @@ import {
   type MenuPayload,
 } from "@narada/shared";
 import {
-  useAskAnna,
   useCallWaiter,
   useCustomerBill,
   useGameReward,
@@ -38,7 +36,6 @@ import {
   upiLink,
 } from "@/lib/cartMath";
 import Cart, { type PlacedState } from "./Cart";
-import Chat from "./Chat";
 import Menu, { DishDetail } from "./Menu";
 import SpinSheet from "./SpinSheet";
 import { OrderBanner, dishChipsFor, statusDotFor, statusLabelFor } from "./OrderStatus";
@@ -47,9 +44,9 @@ import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
 
 const COMP_ITEM_NAME = "Gulab Jamun (2 pcs)";
 
-// Orchestrator for the whole customer experience. It owns the cart, the
-// language, the Narada transcript and the placed-order state; Menu, Cart, Chat,
-// VoiceMode, the games and the stories view are all driven from here.
+// Orchestrator for the whole customer experience. It owns the cart, ephemeral
+// voice context and placed-order state; Menu, Cart, VoiceMode, the games and
+// stories view are all driven from here.
 export default function OrderExperience({
   tableCode,
   menu,
@@ -61,13 +58,10 @@ export default function OrderExperience({
   const [cart, setCart] = useState<CartLine[]>([]);
   const [lang, setLang] = useState<Lang>("en");
   const [hydrated, setHydrated] = useState(false);
-  const [vegOnly, setVegOnly] = useState(false);
   const [activeCat, setActiveCat] = useState(categories[0]?.id ?? "");
   const [cartOpen, setCartOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [draft, setDraft] = useState("");
-  const [chatChips, setChatChips] = useState<string[]>([]);
+  const [joinedSession, setJoinedSession] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [orderPlaced, setOrderPlaced] = useState<PlacedState | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("placed");
@@ -92,8 +86,6 @@ export default function OrderExperience({
   const itemRefs = useRef<Record<string, HTMLElement | null>>({});
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `narada:${tableCode}`;
-
-  const askAnna = useAskAnna();
   const voiceTurnMutation = useVoiceTurn();
   const placeOrderMutation = usePlaceOrder();
   const spinReward = useSpinReward();
@@ -101,7 +93,6 @@ export default function OrderExperience({
   const callWaiterMutation = useCallWaiter();
   const patchBillMutation = usePatchBill();
 
-  const thinking = askAnna.isPending;
   const placing = placeOrderMutation.isPending;
 
   // stable refs so async voice turns and deferred confirms never see stale state
@@ -136,7 +127,6 @@ export default function OrderExperience({
         if (saved) {
           const s = JSON.parse(saved);
           if (Array.isArray(s.cart)) setCart(s.cart);
-          if (Array.isArray(s.messages)) setMessages(s.messages);
           if (s.lang === "en" || s.lang === "hi" || s.lang === "te") setLang(s.lang);
           if (s.spinDone) setSpinDone(true);
           if (typeof s.discountPct === "number") setDiscountPct(s.discountPct);
@@ -158,6 +148,7 @@ export default function OrderExperience({
     const sessionId = sessionLookup.data?.sessionId;
     if (!sessionId || orderPlaced) return;
     setOrderPlaced({ total: 0, orderId: null, sessionId });
+    setJoinedSession(true);
   }, [sessionLookup.data?.sessionId, orderPlaced]);
 
   useEffect(() => {
@@ -167,7 +158,6 @@ export default function OrderExperience({
         storageKey,
         JSON.stringify({
           cart,
-          messages,
           lang,
           spinDone,
           discountPct,
@@ -179,18 +169,7 @@ export default function OrderExperience({
     } catch {
       // a full or blocked quota must not take the ordering flow down
     }
-  }, [
-    hydrated,
-    cart,
-    messages,
-    lang,
-    spinDone,
-    discountPct,
-    orderPlaced,
-    guestName,
-    myOrderIds,
-    storageKey,
-  ]);
+  }, [hydrated, cart, lang, spinDone, discountPct, orderPlaced, guestName, myOrderIds, storageKey]);
 
   useEffect(() => {
     if (!toast) return;
@@ -210,6 +189,7 @@ export default function OrderExperience({
       if (d.sessionStatus && d.sessionStatus !== "active") {
         // table was settled — reset so the next guest starts clean
         setOrderPlaced(null);
+        setJoinedSession(false);
         setRounds([]);
         setDiscountPct(0);
         setMyOrderIds([]);
@@ -304,34 +284,6 @@ export default function OrderExperience({
     return confirmed;
   };
 
-  const sendToAnna = async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || thinking) return;
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", text: trimmed }];
-    setMessages(nextMessages);
-    setDraft("");
-    try {
-      const data = await askAnna.mutateAsync({
-        messages: nextMessages,
-        cart,
-        language: LANG_NAME[langRef.current],
-        tableCode,
-      });
-      setMessages((m) => [...m, { role: "assistant", text: data.reply }]);
-      applyAnnaActions(data);
-      highlightMentioned(data.showItems);
-      setChatChips(data.quickReplies ?? []);
-    } catch {
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          text: "Sorry, I lost my train of thought — could you say that again?",
-        },
-      ]);
-    }
-  };
-
   const voiceTurn = async (body: {
     audio?: string;
     text?: string;
@@ -397,11 +349,14 @@ export default function OrderExperience({
         total: data.total ?? snapshotTotal,
         orderId: data.orderId ?? null,
         sessionId: data.sessionId ?? null,
+        orderNo: data.orderNo ?? null,
       });
+      setJoinedSession(false);
       if (data.orderId) setMyOrderIds((prev) => [...prev, data.orderId!]);
       if (typeof data.discountPct === "number") setDiscountPct(data.discountPct);
     } catch {
       setOrderPlaced({ total: snapshotTotal, orderId: null });
+      setJoinedSession(false);
     } finally {
       setOrderStatus("placed");
       setCart([]);
@@ -437,7 +392,6 @@ export default function OrderExperience({
     sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const tableLabel = menu.tableLabel;
   const allServed = rounds.length > 0 && rounds.every((r) => r.status === "served");
   const dishChips = useMemo(() => dishChipsFor(rounds, t), [rounds, t]);
   const heroDishes = useMemo<MenuItem[]>(() => {
@@ -458,7 +412,7 @@ export default function OrderExperience({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.18em] text-rose-400 uppercase">
-                {tableLabel} · {t.dineIn}
+                {t.dineIn}
               </p>
               <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-white">
                 {outlet.name}
@@ -466,32 +420,6 @@ export default function OrderExperience({
               <p className="mt-0.5 text-xs text-stone-400">{outlet.tagline}</p>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <div className="flex rounded-full bg-white/10 p-0.5">
-                {LANGS.map((l) => (
-                  <button
-                    key={l.code}
-                    onClick={() => setLang(l.code)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
-                      lang === l.code ? "bg-white text-stone-900" : "text-stone-400"
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => setVegOnly((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  vegOnly
-                    ? "border-green-400 bg-green-500/15 text-green-300"
-                    : "border-white/20 text-stone-300"
-                }`}
-              >
-                <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border border-green-600">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                </span>{" "}
-                {t.veg}
-              </button>
               <button
                 onClick={callWaiter}
                 className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
@@ -519,6 +447,7 @@ export default function OrderExperience({
             allServed={allServed}
             statusLabel={statusLabel}
             orderStatus={orderStatus}
+            orderNo={orderPlaced.orderNo ?? (joinedSession ? rounds.at(-1)?.orderNo : null)}
             payableText={t.payUpi.replace("{amount}", inr(payable))}
             chips={dishChips}
             onOpen={() => setCartOpen(true)}
@@ -530,7 +459,6 @@ export default function OrderExperience({
         menu={menu}
         lang={lang}
         t={t}
-        vegOnly={vegOnly}
         activeCat={activeCat}
         heroDishes={heroDishes}
         discountPct={discountPct}
@@ -570,7 +498,7 @@ export default function OrderExperience({
       )}
 
       {/* Narada FAB — opens the voice conversation */}
-      {!chatOpen && !voiceOpen && (
+      {!voiceOpen && (
         <button
           onClick={() => setVoiceOpen(true)}
           aria-label="Talk to Narada"
@@ -602,7 +530,6 @@ export default function OrderExperience({
           menuById={MENU_BY_ID}
           lang={lang}
           t={t}
-          tableLabel={tableLabel}
           total={total}
           discountPct={discountPct}
           paymentTiming={outlet.paymentTiming}
@@ -652,30 +579,6 @@ export default function OrderExperience({
         />
       )}
 
-      {/* Anna chat sheet */}
-      {chatOpen && (
-        <Chat
-          messages={messages}
-          draft={draft}
-          chips={chatChips}
-          thinking={thinking}
-          itemCount={itemCount}
-          total={total}
-          t={t}
-          onDraft={setDraft}
-          onSend={sendToAnna}
-          onReviewOrder={() => {
-            setChatOpen(false);
-            setCartOpen(true);
-          }}
-          onSwitchToVoice={() => {
-            setChatOpen(false);
-            setVoiceOpen(true);
-          }}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
-
       {/* Feast Stories mode (per-table ui_variant) */}
       {storiesOpen && (
         <StoryViewer
@@ -701,11 +604,12 @@ export default function OrderExperience({
           onOpenSpin={() => setWheelOpen(true)}
           highlightId={highlightIds[0] ?? null}
           orderBanner={
-            orderPlaced && rounds.length > 0
+            orderPlaced
               ? {
                   label: allServed ? t.allServed : statusLabel,
                   dotClass: allServed ? "bg-green-400" : statusDotFor(orderStatus),
                   payText: t.payUpi.replace("{amount}", inr(payable)),
+                  orderNo: orderPlaced.orderNo ?? (joinedSession ? rounds.at(-1)?.orderNo : null),
                 }
               : null
           }
@@ -736,10 +640,6 @@ export default function OrderExperience({
           onTurn={(wav) => voiceTurn({ audio: wav })}
           onTextTurn={(text) => voiceTurn({ text })}
           onClose={() => setVoiceOpen(false)}
-          onSwitchToChat={() => {
-            setVoiceOpen(false);
-            setChatOpen(true);
-          }}
           strings={{
             listening: t.listening,
             thinking: t.thinking,

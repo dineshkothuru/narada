@@ -1,3 +1,4 @@
+import { orderToken } from "@narada/shared";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../src/app.js";
 import { ADMIN_COOKIE, roleToken } from "../../src/plugins/auth.js";
@@ -63,7 +64,8 @@ describe("GET /api/kitchen", () => {
       headers: { cookie: await cookieFor("kitchen") },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().orders.map((o: { id: string }) => o.id)).toContain(orderId);
+    const order = res.json().orders.find((o: { id: string }) => o.id === orderId);
+    expect(order?.orderNo).toBe(orderToken(orderId));
   });
 
   it("403s a role kitchen excludes", async () => {

@@ -7,7 +7,12 @@ import { RoundList, statusDotFor } from "./OrderStatus";
 
 type Strings = (typeof STRINGS)["en"];
 
-export type PlacedState = { total: number; orderId: string | null; sessionId?: string | null };
+export type PlacedState = {
+  total: number;
+  orderId: string | null;
+  orderNo?: string | null;
+  sessionId?: string | null;
+};
 
 // The bottom sheet the guest checks out in. Before the order is placed it is
 // the cart; afterwards it becomes the live order + bill + pay view, which is
@@ -17,7 +22,6 @@ export default function Cart({
   menuById,
   lang,
   t,
-  tableLabel,
   total,
   discountPct,
   paymentTiming,
@@ -48,7 +52,6 @@ export default function Cart({
   menuById: Map<string, MenuItem>;
   lang: Lang;
   t: Strings;
-  tableLabel: string;
   total: number;
   discountPct: number;
   paymentTiming: "pre" | "post";
@@ -88,8 +91,13 @@ export default function Cart({
             <h2 className="font-display mt-4 text-2xl font-semibold text-stone-900">
               {t.orderSent}
             </h2>
+            {orderPlaced.orderNo && (
+              <span className="mt-3 rounded border border-dashed border-stone-300 px-3 py-1.5 text-xs font-extrabold tracking-[0.1em] text-stone-700">
+                KOT #{orderPlaced.orderNo}
+              </span>
+            )}
             <p className="mt-2 max-w-xs text-sm text-stone-500">
-              {tableLabel} · {inr(orderPlaced.total)}. {t.orderSentNote}
+              {inr(orderPlaced.total)}. {t.orderSentNote}
             </p>
             {rounds.length > 0 ? (
               <RoundList rounds={rounds} myOrderIds={myOrderIds} t={t} />
@@ -241,9 +249,7 @@ export default function Cart({
         ) : (
           <>
             <h2 className="font-display text-2xl font-semibold text-stone-900">{t.yourOrder}</h2>
-            <p className="text-xs text-stone-400">
-              {tableLabel} · {t.payNote}
-            </p>
+            <p className="text-xs text-stone-400">{t.payNote}</p>
             {cart.length === 0 ? (
               <p className="py-10 text-center text-sm text-stone-400">{t.emptyCart}</p>
             ) : (

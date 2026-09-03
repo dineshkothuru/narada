@@ -1,16 +1,19 @@
-import { deriveOrderStatus } from "@narada/shared";
+import { deriveOrderStatus, orderToken } from "@narada/shared";
 import { notFound } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
 
 // Port of web/app/api/kitchen/route.ts.
 
-export type KitchenOrderRow = Awaited<ReturnType<Repos["orders"]["listForKitchen"]>>[number];
+export type KitchenOrderRow = Awaited<ReturnType<Repos["orders"]["listForKitchen"]>>[number] & {
+  orderNo: string;
+};
 
 export async function kitchenOrders(
   repos: Pick<Repos, "orders">,
   limit = 60,
 ): Promise<KitchenOrderRow[]> {
-  return repos.orders.listForKitchen(limit);
+  const orders = await repos.orders.listForKitchen(limit);
+  return orders.map((order) => ({ ...order, orderNo: orderToken(order.id) }));
 }
 
 type KitchenRepos = Pick<Repos, "orders" | "orderItems">;

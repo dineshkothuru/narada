@@ -60,6 +60,7 @@ export function OrderBanner({
   allServed,
   statusLabel,
   orderStatus,
+  orderNo,
   payableText,
   chips,
   onOpen,
@@ -68,6 +69,7 @@ export function OrderBanner({
   allServed: boolean;
   statusLabel: string;
   orderStatus: string;
+  orderNo?: string | null;
   payableText: string;
   chips: { text: string; status: string }[];
   onOpen: () => void;
@@ -87,6 +89,11 @@ export function OrderBanner({
           {payableText} ›
         </span>
       </span>
+      {orderNo && (
+        <span className="mt-1 block text-[10px] font-extrabold tracking-[0.1em] text-stone-400">
+          KOT #{orderNo}
+        </span>
+      )}
       {chips.length > 1 && !allServed && (
         // continuously scrolling per-dish progress strip
         <span className="mt-1.5 block overflow-hidden">
@@ -135,7 +142,14 @@ export function RoundList({
                 </span>
               )}
             </span>
-            <span>{Number(r.total_inr) > 0 ? inr(Number(r.total_inr)) : ""}</span>
+            <span className="flex items-center gap-2">
+              {r.orderNo && (
+                <span className="rounded border border-dashed border-stone-300 px-1.5 py-0.5 text-[10px] font-extrabold tracking-[0.08em] text-stone-600">
+                  KOT #{r.orderNo}
+                </span>
+              )}
+              {Number(r.total_inr) > 0 ? inr(Number(r.total_inr)) : ""}
+            </span>
           </div>
           <div className="mt-1.5 space-y-1">
             {r.items.map((it, j) => (

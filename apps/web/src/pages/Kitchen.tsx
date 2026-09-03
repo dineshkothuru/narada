@@ -82,9 +82,13 @@ export default function KitchenPage() {
                       className={`card-float rounded-2xl border-l-4 bg-white p-4 ${col.accent}`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-stone-900">
-                          {o.session?.table?.label ?? "Unknown table"}
-                        </span>
+                        <div>
+                          {o.orderNo && (
+                            <p className="font-display text-lg font-semibold tracking-tight text-stone-900">
+                              KOT #{o.orderNo}
+                            </p>
+                          )}
+                        </div>
                         <span className="text-[11px] text-stone-400">
                           {minutesAgo(o.created_at)}
                         </span>
