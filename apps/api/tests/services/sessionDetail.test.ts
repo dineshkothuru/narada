@@ -41,7 +41,7 @@ describe("sessionRounds", () => {
     round("o-1", "served", "2026-09-03T10:00:00.000Z", 280);
     round("o-x", "cancelled", "2026-09-03T10:30:00.000Z", 999);
 
-    const rounds = await sessionRounds(repos, sessionId);
+    const rounds = await sessionRounds(repos, sessionId, ids.outlet);
 
     // cancelled rounds never reach the floor screens
     expect(rounds.map((r) => r.id)).toEqual(["o-1", "o-2"]);
@@ -57,7 +57,7 @@ describe("sessionRounds", () => {
   });
 
   it("is empty for a session that has not ordered", async () => {
-    const { repos } = seed();
-    expect(await sessionRounds(repos, "nope")).toEqual([]);
+    const { repos, ids } = seed();
+    expect(await sessionRounds(repos, "nope", ids.outlet)).toEqual([]);
   });
 });

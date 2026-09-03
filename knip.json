@@ -1,15 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
-    ".": {
-      "entry": ["test/server-only-stub.ts"],
-      "project": ["test/**/*.ts"]
-    },
-    "web": {
-      "next": {
-        "entry": ["middleware.ts"]
-      }
-    },
+    ".": {},
     "apps/api": {},
     "apps/web": {
       "vite": {},
@@ -17,5 +9,6 @@
     },
     "packages/shared": {}
   },
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["wait"]
 }

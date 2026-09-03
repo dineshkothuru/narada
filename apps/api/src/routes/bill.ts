@@ -2,6 +2,8 @@ import { billQuerySchema, patchBillSchema } from "@narada/shared";
 import type { FastifyInstance } from "fastify";
 import { HttpError } from "../lib/http.js";
 import { rateLimited } from "../lib/ratelimit.js";
+import { CUSTOMER_COOKIE } from "../lib/customerCapability.js";
+import { requireCustomerSession } from "../services/customerSession.js";
 import { customerBill, patchCustomerBill } from "../services/customerBill.js";
 
 // Port of web/app/api/bill/route.ts GET + PATCH.
@@ -15,7 +17,21 @@ export default async function billRoutes(app: FastifyInstance): Promise<void> {
     try {
       const tipRaw = Number(parsed.data.tip ?? 0);
       const tip = Number.isFinite(tipRaw) ? tipRaw : 0;
-      return await customerBill(app.repos, parsed.data.session, tip);
+      const customer = request.staffSession
+        ? null
+        : await requireCustomerSession(
+            app.repos,
+            request.cookies[CUSTOMER_COOKIE],
+            parsed.data.session,
+          );
+      const outletId = request.staffSession?.outletId ?? customer?.outlet.id;
+      return await customerBill(
+        app.repos,
+        customer?.session.id ?? parsed.data.session,
+        tip,
+        outletId,
+        request.staffSession ? parsed.data.tableCode : undefined,
+      );
     } catch (error) {
       if (error instanceof HttpError) throw error;
       request.log.error(error);
@@ -30,7 +46,27 @@ export default async function billRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: "sessionId required" });
     }
     try {
-      return await patchCustomerBill(app.repos, parsed.data);
+      const customer = request.staffSession
+        ? null
+        : await requireCustomerSession(
+            app.repos,
+            request.cookies[CUSTOMER_COOKIE],
+            parsed.data.sessionId,
+          );
+      return await patchCustomerBill(
+        app.repos,
+        customer
+          ? { ...parsed.data, sessionId: customer.session.id, tableCode: undefined }
+          : parsed.data,
+        request.staffSession?.outletId ?? customer?.outlet.id,
+        request.staffSession
+          ? {
+              staffId: request.staffSession.staffId,
+              role: request.staffSession.role,
+              actorName: request.staffSession.displayName,
+            }
+          : undefined,
+      );
     } catch (error) {
       if (error instanceof HttpError) throw error;
       request.log.error(error);

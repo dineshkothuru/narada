@@ -5,7 +5,7 @@ import { z } from "zod";
 // or a whole-ticket advance (orderId + status).
 
 export const kitchenItemStatuses = ["queued", "preparing", "ready", "served"] as const;
-export const kitchenOrderStatuses = ["preparing", "ready", "served", "cancelled"] as const;
+export const kitchenOrderStatuses = ["preparing", "ready", "served"] as const;
 
 export const kitchenPatchSchema = z.object({
   orderId: z.string().optional(),

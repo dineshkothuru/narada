@@ -4,6 +4,8 @@ import { ask } from "@/components/Dialogs";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
 import { inr, minutesAgo } from "@narada/shared";
 import { useCounterAction, useCounterTabs, type CounterTab } from "@/api/hooks";
+import { SoldOutAlerts, SoldOutPanel } from "@/components/SoldOut";
+import { useWaiterAction } from "@/api/hooks";
 
 // The billing desk. Raising a bill happens here and nowhere else — it freezes
 // the totals and mints the invoice number. Collecting the money can happen
@@ -12,24 +14,11 @@ export default function CounterPage() {
   const { data, isError } = useCounterTabs();
   const tabs = data?.tabs ?? [];
   const action = useCounterAction();
-  const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
-  const [cashier, setCashier] = useState(() => {
-    try {
-      return localStorage.getItem("narada:staff-name") ?? "";
-    } catch {
-      return "";
-    }
-  });
-
-  const rememberCashier = (who: string) => {
-    if (!who.trim()) return;
-    setCashier(who.trim());
-    try {
-      localStorage.setItem("narada:staff-name", who.trim());
-    } catch {
-      // storage unavailable — the name just won't be remembered next visit
-    }
-  };
+  const waiterAction = useWaiterAction();
+  const [showSoldOut, setShowSoldOut] = useState(false);
+  const [openTable, setOpenTable] = useState<{ id: string; code: string; label: string } | null>(
+    null,
+  );
 
   const raiseBill = async (t: CounterTab) => {
     if (t.unserved > 0) {
@@ -68,21 +57,18 @@ export default function CounterPage() {
         ...(method === "upi_intent"
           ? [{ name: "utr", label: "UPI reference / UTR", placeholder: "optional" }]
           : []),
-        { name: "by", label: "Taken by", defaultValue: cashier, placeholder: "your name" },
       ],
       confirmLabel: "Record payment",
     });
     if (out === null) return;
     const amount = Number(out.amount);
     if (!Number.isFinite(amount) || amount <= 0) return;
-    rememberCashier(out.by ?? "");
     action.mutate({
       action: "record_payment",
       sessionId: t.sessionId,
       amount,
       method,
       utr: out.utr,
-      collectedBy: out.by,
     });
   };
 
@@ -91,14 +77,33 @@ export default function CounterPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <header className="mb-5 max-w-5xl">
-          <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Counter</h1>
-          <p className="text-xs text-stone-500">
+          <h1 className="font-display text-2xl font-semibold text-slate-900">Narada · Counter</h1>
+          <p className="text-xs text-slate-500">
             Raise bills here · payment can be taken anywhere
             {isError && <span className="ml-2 font-semibold text-rose-600">Could not refresh</span>}
           </p>
+          <button
+            onClick={() => setShowSoldOut((value) => !value)}
+            className="mt-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
+          >
+            {showSoldOut ? "Hide menu availability" : "Sold out"}
+          </button>
         </header>
+        <SoldOutAlerts />
+        {showSoldOut && (
+          <section className="panel panel-lift mb-5 max-w-5xl p-4">
+            <SoldOutPanel />
+          </section>
+        )}
+        {action.isError && (
+          <p className="mb-4 max-w-5xl rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
+            {action.error instanceof Error
+              ? action.error.message
+              : "That action did not go through. The bill may already be raised."}
+          </p>
+        )}
 
         <Section
           title={`Awaiting a bill (${awaitingBill.length})`}
@@ -108,7 +113,7 @@ export default function CounterPage() {
           render={(t) => (
             <>
               <button
-                onClick={() => setOpenTable({ id: t.sessionId, label: t.label })}
+                onClick={() => setOpenTable({ id: t.sessionId, code: t.code, label: t.label })}
                 className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
               >
                 🧾 Details
@@ -131,14 +136,19 @@ export default function CounterPage() {
           render={(t) => (
             <>
               <button
-                onClick={() => setOpenTable({ id: t.sessionId, label: t.label })}
+                onClick={() => setOpenTable({ id: t.sessionId, code: t.code, label: t.label })}
                 className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
               >
                 🧾 Details
               </button>
               <button
                 onClick={() =>
-                  shareBillOnWhatsApp({ sessionId: t.sessionId, label: t.label, net: t.due })
+                  shareBillOnWhatsApp({
+                    sessionId: t.sessionId,
+                    tableCode: t.code,
+                    label: t.label,
+                    net: t.due,
+                  })
                 }
                 className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-green-700 ring-1 ring-green-200"
               >
@@ -169,11 +179,28 @@ export default function CounterPage() {
         {openTable && (
           <TableSheet
             sessionId={openTable.id}
+            tableCode={openTable.code}
             label={openTable.label}
             onClose={() => setOpenTable(null)}
             onShare={(net) =>
-              shareBillOnWhatsApp({ sessionId: openTable.id, label: openTable.label, net })
+              shareBillOnWhatsApp({
+                sessionId: openTable.id,
+                tableCode: openTable.code,
+                label: openTable.label,
+                net,
+              })
             }
+            onCancelItem={(itemId, name) => {
+              void (async () => {
+                const yes = await ask.confirm({
+                  title: `Void ${name}?`,
+                  message: "Unserved food is removed from the bill and recorded.",
+                  confirmLabel: "Void item",
+                  danger: true,
+                });
+                if (yes) waiterAction.mutate({ action: "cancel_item", itemId });
+              })();
+            }}
           />
         )}
       </main>

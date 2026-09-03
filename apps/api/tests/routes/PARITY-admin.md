@@ -1,10 +1,11 @@
 # Parity notes — admin routes
 
-Source of truth: `web/app/api/admin/{categories,login,me,menu,orders,settings,staff,tables}/route.ts`
-in this worktree, and `git show main:web/app/api/admin/image/route.ts` for the image route
-(the image route does not exist in this worktree's `web/app/api/admin/`).
+These notes compare the pre-restructure admin route contracts with the Fastify
+routes. The image contract is from the main branch's legacy image handler.
 
-All 9 routes ported at the same paths, JSON shapes, and status codes, unless noted below.
+Staff authentication has one outlet-scoped entry point. Deliberate contract
+replacements and response differences are recorded below rather than treated as
+unchanged parity.
 
 ## categories
 
@@ -16,21 +17,29 @@ All 9 routes ported at the same paths, JSON shapes, and status codes, unless not
 
 ## login
 
-- POST: PIN checked against `staff.pin` (active only) then `outlets.admin_pin`, both
-  constant-time compared via `timingSafeEqual`, matching legacy exactly.
-- Rate limit: `rateLimited(10)` on POST, same as legacy's `rateLimit(req, "login", 10)`,
-  including the exact 429 body `{error:"too many attempts — wait a minute"}`.
-- Cookie set/cleared exactly per `plugins/auth.ts` `setRoleCookie`/`clearRoleCookie`
-  (`secure` only in production), unchanged from legacy.
-- `/api/admin/login` POST is exempt from the auth plugin's cookie gate (see
-  `plugins/auth.ts` line checking `pathname === "/api/admin/login"`); DELETE is also
-  reachable without a cookie in both legacy and this port (no auth required to log out).
+- The entry point is `POST /api/outlet/:slug/login`, requiring
+  `{username, password}`. The outlet is selected from the URL slug, and the
+  username is trimmed and lowercased before matching an active account within
+  that outlet.
+- The server derives the role from the matched account. There is no
+  client-supplied role or outlet selector; invalid outlet, username, and
+  password combinations share the same generic failure.
+- The POST route uses `rateLimited(10)` and the shared generic rate-limit
+  message.
+- Successful login sets the HTTP-only `narada_staff` cookie. Its signed v3 token
+  contains `staffId`, `outletId`, stored role, and expiry; `secure` is enabled in
+  production. `DELETE /api/auth/staff/logout` clears it and remains reachable
+  without a valid session.
 
 ## me
 
-- Was already inline in `app.ts` from the foundation layer; moved verbatim into
-  `routes/admin/me.ts`, no behaviour change. Still gated to any staff role via
-  `ROLE_ACCESS["/api/admin/me"]`.
+- `GET /api/admin/me` remains available to every staff role, but its response now
+  comes from the authenticated account. It returns role, full staff identity
+  (`id`, `username`, first/last/display name), outlet identity, and flattened
+  compatibility fields.
+- Every protected request verifies the v3 signature and expiry, then reloads the
+  active staff and outlet. The stored outlet and role must match the claims, so
+  deactivation or a role/outlet mismatch invalidates an existing cookie.
 
 ## menu
 
@@ -56,9 +65,14 @@ reason}` at **200**, matching legacy.
 
 ## staff
 
-- GET/POST/PATCH/DELETE identical. POST 409s both on "PIN already used by the owner"
-  (matches outlet `admin_pin`) and "PIN already in use" (duplicate active staff pin,
-  surfaced via the repo's unique-index violation caught in the service).
+- GET/POST/PATCH/DELETE retain the account-management paths and are scoped to the
+  authenticated admin's outlet. POST requires a lowercase username, required
+  first name, optional last name, stored role, and a 15–128-code-point password.
+  Duplicate usernames return 409 only within the same outlet.
+- PATCH can enroll an incomplete legacy row or update identity, role, active
+  state, and optionally password. Self-deletion/deactivation and removal or
+  demotion of the final active admin are rejected. Password hashes are never
+  included in staff responses.
 
 ## tables
 
@@ -84,8 +98,8 @@ reason}` at **200**, matching legacy.
 
 ## image (POST/DELETE)
 
-- Ported from `main`'s `web/app/api/admin/image/route.ts` (this worktree's `web/`
-  has no `image` route at all — folder wasn't carried over in the restructure branch).
+- Ported from the main branch's legacy image handler (the route was not present
+  in the deleted legacy workspace on this branch).
 - Multipart handled via `@fastify/multipart`, registered locally to
   `routes/admin/image.ts` only (not globally in `app.ts`), so no other route pays the
   parsing cost.
@@ -103,3 +117,11 @@ reason}` at **200**, matching legacy.
   the README's storage note doesn't specify a code — left as-is rather than changing
   code I don't own, since editing `services/storage.ts` beyond what's assigned wasn't
   part of this task and it already has a passing test suite pinned to 500).
+
+## tenant scope
+
+Protected admin reads and mutations derive the outlet from the authenticated staff
+session. The body `outletId` in settings is accepted for old clients but ignored when
+the session outlet is available; cross-outlet IDs behave as unknown and do not mutate
+the other outlet. Menu, order, table, and image repository queries carry the session
+outlet predicate.

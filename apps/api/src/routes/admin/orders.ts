@@ -9,7 +9,11 @@ export default async function ordersRoutes(app: FastifyInstance): Promise<void> 
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "invalid range" });
     }
-    const result = await listAdminOrders(app.repos, parsed.data.range);
+    const result = await listAdminOrders(
+      app.repos,
+      parsed.data.range,
+      request.staffSession!.outletId,
+    );
     return reply.send(result);
   });
 }

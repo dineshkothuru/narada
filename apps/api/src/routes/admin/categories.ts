@@ -9,7 +9,7 @@ export default async function categoriesRoutes(app: FastifyInstance): Promise<vo
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "name required" });
     }
-    const result = await createCategory(app.repos, parsed.data);
+    const result = await createCategory(app.repos, parsed.data, request.staffSession!.outletId);
     return reply.send(result);
   });
 
@@ -18,7 +18,7 @@ export default async function categoriesRoutes(app: FastifyInstance): Promise<vo
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.issues[0]?.message ?? "id required" });
     }
-    const result = await deleteCategory(app.repos, parsed.data.id);
+    const result = await deleteCategory(app.repos, parsed.data.id, request.staffSession!.outletId);
     return reply.send(result);
   });
 }

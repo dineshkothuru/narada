@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../src/app.js";
-import { ADMIN_COOKIE, roleToken } from "../../src/plugins/auth.js";
 import { generateBill } from "../../src/services/settle.js";
 import { seed, type FakeDb } from "../helpers/fakeRepos.js";
 import type { Repos } from "../../src/repositories/index.js";
+import { staffHeader } from "../helpers/staffCookie.js";
 
-const cookieFor = async (role: "kitchen" | "waiter" | "admin" | "cashier" | "reception") =>
-  `${ADMIN_COOKIE}=${await roleToken(role)}`;
-
-function seated(): { data: FakeDb; repos: Repos; sessionId: string; tableId: string } {
+function seated(): {
+  data: FakeDb;
+  repos: Repos;
+  sessionId: string;
+  tableId: string;
+  outletId: string;
+} {
   const { data, repos, ids } = seed();
   const sessionId = "aaaaaaaa-6666-0000-0000-000000000001";
   data.sessions.push({
@@ -52,16 +55,16 @@ function seated(): { data: FakeDb; repos: Repos; sessionId: string; tableId: str
     status: "served",
     gst_pct: 5,
   });
-  return { data, repos, sessionId, tableId: ids.tableA as string };
+  return { data, repos, sessionId, tableId: ids.tableA as string, outletId: ids.outlet };
 }
 
 describe("GET /api/waiter", () => {
   it("200s for waiter and shows the board", async () => {
-    const { repos, tableId } = seated();
+    const { data, repos, tableId } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
     });
     expect(res.statusCode).toBe(200);
     expect(
@@ -70,11 +73,11 @@ describe("GET /api/waiter", () => {
   });
 
   it("403s a role waiter excludes", async () => {
-    const { repos } = seated();
+    const { data, repos } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("cashier") },
+      headers: { cookie: staffHeader(data, "cashier") },
     });
     expect(res.statusCode).toBe(403);
   });
@@ -88,7 +91,7 @@ describe("PATCH /api/waiter", () => {
     const res = await app.inject({
       method: "PATCH",
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
       payload: { action: "mark_served", orderId: data.orders[0].id },
     });
     expect(res.statusCode).toBe(200);
@@ -97,27 +100,34 @@ describe("PATCH /api/waiter", () => {
   });
 
   it("records a payment against a raised bill", async () => {
-    const { data, repos, sessionId } = seated();
-    await generateBill(repos, sessionId);
+    const { data, repos, sessionId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("waiter") },
-      payload: { action: "record_payment", sessionId, method: "cash" },
+      headers: { cookie: staffHeader(data, "waiter") },
+      payload: {
+        action: "record_payment",
+        sessionId,
+        method: "cash",
+        collectedBy: "attacker-controlled name",
+      },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ ok: true, closed: true });
     expect(data.sessions.find((s) => s.id === sessionId)?.status).toBe("closed");
+    expect(data.payments[0]?.reference).toContain("collected by Demo Waiter");
+    expect(data.payments[0]?.reference).not.toContain("attacker-controlled name");
   });
 
   it("400s an unknown action", async () => {
-    const { repos } = seated();
+    const { data, repos } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
       payload: { action: "bogus" },
     });
     expect(res.statusCode).toBe(400);
@@ -125,12 +135,12 @@ describe("PATCH /api/waiter", () => {
   });
 
   it("400s a recognized action missing its required field", async () => {
-    const { repos } = seated();
+    const { data, repos } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
       payload: { action: "mark_served" },
     });
     expect(res.statusCode).toBe(400);
@@ -138,12 +148,12 @@ describe("PATCH /api/waiter", () => {
   });
 
   it("403s a role waiter excludes", async () => {
-    const { repos } = seated();
+    const { data, repos } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/waiter",
-      headers: { cookie: await cookieFor("reception") },
+      headers: { cookie: staffHeader(data, "reception") },
       payload: { action: "clear_table", tableId: "x" },
     });
     expect(res.statusCode).toBe(403);

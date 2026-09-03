@@ -1,23 +1,25 @@
 import { deriveTableStatus } from "@narada/shared";
+import { HttpError, notFound } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
 import { computeBill } from "./billing.js";
 import { recordPayment, type PaymentInput } from "./settle.js";
+import { updateItemStatus, updateWholeOrderStatus } from "./kitchen.js";
 
 // Port of web/app/api/waiter/route.ts.
 
 type WaiterBoardRepos = Pick<Repos, "tables" | "sessions" | "waiterCalls" | "outlets">;
 
-export async function waiterBoard(repos: WaiterBoardRepos) {
+export async function waiterBoard(repos: WaiterBoardRepos, outletId: string) {
   const [tables, sessions, calls] = await Promise.all([
-    repos.tables.listAll(),
-    repos.sessions.listActiveForWaiter(),
-    repos.waiterCalls.listOpen(),
+    repos.tables.listAll(outletId),
+    repos.sessions.listActiveForWaiter(outletId),
+    repos.waiterCalls.listOpen(outletId),
   ]);
 
   const bills = new Map<string, Awaited<ReturnType<typeof computeBill>>>();
   for (const s of sessions) {
     try {
-      bills.set(s.id, await computeBill(repos, s.id));
+      bills.set(s.id, await computeBill(repos, s.id, undefined, outletId));
     } catch {
       // a session mid-write (e.g. no orders yet) just has no bill to show
     }
@@ -60,7 +62,13 @@ export async function waiterBoard(repos: WaiterBoardRepos) {
               due,
               billRaised: Boolean(session.bill_no),
             }),
-            orders: session.orders,
+            orders: session.orders.map((order) => ({
+              ...order,
+              items: order.items.map((item) => {
+                const row = item as typeof item & { id?: string; status?: string };
+                return { ...item, id: row.id ?? null, status: row.status ?? "queued" };
+              }),
+            })),
             ordered,
             paid,
             discountPct: session.discount_pct,
@@ -78,7 +86,16 @@ export async function waiterBoard(repos: WaiterBoardRepos) {
     };
   });
 
-  return { tables: byTable };
+  const liveOrderCount = (table: (typeof byTable)[number]) =>
+    table.session?.orders.filter((order) => order.status !== "cancelled").length ?? 0;
+  const active = byTable.filter((table) => table.session);
+  return {
+    tables: byTable,
+    waitingToOrder: active
+      .filter((table) => liveOrderCount(table) === 0)
+      .sort((a, b) => Date.parse(a.session!.since) - Date.parse(b.session!.since)),
+    running: active.filter((table) => liveOrderCount(table) > 0),
+  };
 }
 
 type AckCallRepos = Pick<Repos, "waiterCalls" | "sessions">;
@@ -88,34 +105,74 @@ type AckCallRepos = Pick<Repos, "waiterCalls" | "sessions">;
 export async function ackCall(
   repos: AckCallRepos,
   input: { callId: string; attendedBy?: string; sessionId?: string },
+  outletId: string,
+  displayName?: string,
 ): Promise<{ ok: true }> {
-  const attendedBy = input.attendedBy?.trim() ? input.attendedBy.trim().slice(0, 40) : null;
-  await repos.waiterCalls.ack(input.callId, new Date().toISOString(), attendedBy);
+  let call: { id: string; table_id: string } | null = null;
+  call = await repos.waiterCalls.findOpenById(input.callId, outletId);
+  if (!call) throw notFound("unknown call");
+  const attendedBy = displayName?.trim().slice(0, 40) || null;
+
+  if (input.sessionId) {
+    const session = await repos.sessions.findById(input.sessionId, outletId);
+    if (!session || (call && session.table_id !== call.table_id)) {
+      throw notFound("unknown session");
+    }
+  }
+
+  await repos.waiterCalls.ack(input.callId, new Date().toISOString(), attendedBy, outletId);
 
   if (attendedBy && input.sessionId) {
-    await repos.sessions.claimWaiter(input.sessionId, attendedBy);
+    await repos.sessions.claimWaiter(input.sessionId, attendedBy, outletId);
   }
   return { ok: true };
 }
 
-type MarkServedRepos = Pick<Repos, "orders" | "orderItems">;
+type MarkServedRepos = Pick<Repos, "orders" | "orderItems"> & {
+  transaction?: Repos["transaction"];
+};
 
-export async function markServed(repos: MarkServedRepos, orderId: string): Promise<{ ok: true }> {
-  await repos.orders.setStatus(orderId, "served");
-  await repos.orderItems.setStatusByOrder(orderId, "served");
+export async function markServed(
+  repos: MarkServedRepos,
+  orderId: string,
+  outletId: string,
+): Promise<{ ok: true }> {
+  await updateWholeOrderStatus(repos, orderId, "served", outletId);
   return { ok: true };
+}
+
+export async function markItemServed(
+  repos: Pick<Repos, "orders" | "orderItems"> & { transaction?: Repos["transaction"] },
+  itemId: string,
+  outletId: string,
+): Promise<{ ok: true; orderStatus: string }> {
+  const found = await repos.orderItems.findForServing(itemId, outletId);
+  if (!found) throw notFound("unknown item");
+  if (found.status !== "ready") throw new HttpError(409, "item is not ready to serve");
+  return updateItemStatus(repos, itemId, "served", outletId);
 }
 
 export async function clearTable(
-  repos: Pick<Repos, "tables">,
+  repos: Pick<Repos, "tables" | "waiterCalls">,
   tableId: string,
+  outletId: string,
 ): Promise<{ ok: true }> {
-  await repos.tables.setNeedsCleaning([tableId], false);
+  if (!(await repos.tables.findById(tableId, outletId))) {
+    throw notFound("unknown table");
+  }
+  await repos.tables.setNeedsCleaning([tableId], false, outletId);
+  await repos.waiterCalls.closeOpenByTables([tableId], "table cleared", outletId);
   return { ok: true };
 }
 
-type WaiterPaymentRepos = Pick<Repos, "sessions" | "outlets" | "payments" | "tables">;
+type WaiterPaymentRepos = Pick<Repos, "sessions" | "outlets" | "payments" | "tables" | "audit">;
 
-export async function waiterRecordPayment(repos: WaiterPaymentRepos, input: PaymentInput) {
-  return recordPayment(repos, input);
+export async function waiterRecordPayment(
+  repos: WaiterPaymentRepos,
+  input: PaymentInput,
+  outletId: string,
+  displayName?: string,
+  actor?: { staffId?: string | null; role?: string; actorName?: string },
+) {
+  return recordPayment(repos, input, outletId, displayName, actor);
 }

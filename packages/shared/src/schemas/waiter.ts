@@ -10,16 +10,24 @@ import { z } from "zod";
 export const waiterPaymentMethods = ["upi_intent", "cash", "card"] as const;
 
 export const waiterPatchSchema = z.object({
-  action: z.enum(["ack_call", "mark_served", "clear_table", "record_payment"]),
+  action: z.enum([
+    "ack_call",
+    "mark_served",
+    "mark_item_served",
+    "cancel_item",
+    "clear_table",
+    "record_payment",
+  ]),
   amount: z.number().optional(),
   method: z.enum(waiterPaymentMethods).optional(),
   utr: z.string().optional(),
-  collectedBy: z.string().optional(),
   orderId: z.string().optional(),
   tableId: z.string().optional(),
   callId: z.string().optional(),
-  attendedBy: z.string().optional(),
   sessionId: z.string().optional(),
+  itemId: z.string().optional(),
+  reason: z.string().optional(),
+  attendedBy: z.string().optional(),
 });
 
 export type WaiterPatchInput = z.infer<typeof waiterPatchSchema>;

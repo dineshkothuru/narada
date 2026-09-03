@@ -23,14 +23,12 @@ export default function RequireRole({
   const role = data?.role ?? null;
 
   if (unauthorized || !role) {
-    const next = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/admin/login?next=${next}`} replace />;
+    return <Navigate to="/" replace />;
   }
 
   const allowed = roles ? roles.includes(role) : canAccess(location.pathname, role);
   if (!allowed) {
-    const next = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/admin/login?next=${next}&denied=${role}`} replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

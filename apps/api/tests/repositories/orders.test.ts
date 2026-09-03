@@ -54,10 +54,17 @@ async function placeRound(status = "placed") {
 }
 
 describe("orders.create + listBySessionWithItems", () => {
+  it("detects live orders while ignoring cancelled rounds", async () => {
+    await placeRound("cancelled");
+    expect(await t.repos.orders.hasLiveForSession(sessionId, outletId)).toBe(false);
+    await placeRound("placed");
+    expect(await t.repos.orders.hasLiveForSession(sessionId, outletId)).toBe(true);
+  });
+
   it("stores a round and reads it back with its dishes", async () => {
     const order = await placeRound();
 
-    const rounds = await t.repos.orders.listBySessionWithItems(sessionId);
+    const rounds = await t.repos.orders.listBySessionWithItems(sessionId, outletId);
     expect(rounds).toHaveLength(1);
     expect(rounds[0]).toMatchObject({
       id: order.id,
@@ -79,27 +86,27 @@ describe("orders.create + listBySessionWithItems", () => {
     const first = await placeRound();
     await new Promise((r) => setTimeout(r, 5));
     const second = await placeRound();
-    const rounds = await t.repos.orders.listBySessionWithItems(sessionId);
+    const rounds = await t.repos.orders.listBySessionWithItems(sessionId, outletId);
     expect(rounds.map((r) => r.id)).toEqual([first.id, second.id]);
   });
 
   it("gives a round with no dishes an empty array, not null", async () => {
     await t.repos.orders.create({ session_id: sessionId, outlet_id: outletId, total_inr: 0 });
-    const rounds = await t.repos.orders.listBySessionWithItems(sessionId);
+    const rounds = await t.repos.orders.listBySessionWithItems(sessionId, outletId);
     expect(rounds[0].items).toEqual([]);
   });
 
   it("existsForSession gates the comp prize", async () => {
-    expect(await t.repos.orders.existsForSession(sessionId)).toBe(false);
+    expect(await t.repos.orders.existsForSession(sessionId, outletId)).toBe(false);
     await placeRound();
-    expect(await t.repos.orders.existsForSession(sessionId)).toBe(true);
+    expect(await t.repos.orders.existsForSession(sessionId, outletId)).toBe(true);
   });
 });
 
 describe("orders.listForKitchen", () => {
   it("carries the table label down through the session", async () => {
     await placeRound();
-    const tickets = await t.repos.orders.listForKitchen();
+    const tickets = await t.repos.orders.listForKitchen(60, outletId);
     expect(tickets).toHaveLength(1);
     expect(tickets[0].session?.table?.label).toBe("Table 1");
     expect(tickets[0].items).toHaveLength(2);
@@ -108,12 +115,34 @@ describe("orders.listForKitchen", () => {
 
   it("hides cancelled tickets from the rail", async () => {
     const order = await placeRound();
-    await t.repos.orders.setStatus(order.id, "cancelled");
-    expect(await t.repos.orders.listForKitchen()).toEqual([]);
+    await t.repos.orders.setStatus(order.id, "cancelled", outletId);
+    expect(await t.repos.orders.listForKitchen(60, outletId)).toEqual([]);
   });
 });
 
 describe("order item status", () => {
+  it("cancels only an allowed, unbilled item in the exact session", async () => {
+    const order = await placeRound();
+    const item = await t.db
+      .selectFrom("order_items")
+      .select("id")
+      .where("order_id", "=", order.id)
+      .limit(1)
+      .executeTakeFirstOrThrow();
+
+    const cancelled = await t.repos.orderItems.cancel(item.id, "Ravi", outletId, {
+      sessionId,
+      statuses: ["queued"],
+    });
+    expect(cancelled?.name).toBe(menuItems[0].name);
+    expect(
+      await t.repos.orderItems.cancel(item.id, "Ravi", outletId, {
+        sessionId,
+        statuses: ["queued"],
+      }),
+    ).toBeNull();
+  });
+
   it("advances one dish and reads its siblings back for the derived status", async () => {
     const order = await placeRound();
     const items = await t.db
@@ -122,11 +151,13 @@ describe("order item status", () => {
       .where("order_id", "=", order.id)
       .execute();
 
-    await t.repos.orderItems.setStatus(items[0].id, "ready");
-    const statuses = await t.repos.orderItems.listStatusesByOrder(order.id);
+    await t.repos.orderItems.setStatus(items[0].id, "ready", outletId);
+    const statuses = await t.repos.orderItems.listStatusesByOrder(order.id, outletId);
     expect(statuses.map((s) => s.status).sort()).toEqual(["queued", "ready"]);
 
-    expect(await t.repos.orderItems.findOrderId(items[0].id)).toEqual({ order_id: order.id });
+    expect(await t.repos.orderItems.findOrderId(items[0].id, outletId)).toEqual({
+      order_id: order.id,
+    });
   });
 
   it("setStatusByOrderWhere only moves the dishes nobody has touched", async () => {
@@ -137,9 +168,9 @@ describe("order item status", () => {
       .where("order_id", "=", order.id)
       .orderBy("id")
       .execute();
-    await t.repos.orderItems.setStatus(items[0].id, "ready");
+    await t.repos.orderItems.setStatus(items[0].id, "ready", outletId);
 
-    await t.repos.orderItems.setStatusByOrderWhere(order.id, "queued", "preparing");
+    await t.repos.orderItems.setStatusByOrderWhere(order.id, "queued", "preparing", outletId);
     const after = await t.db
       .selectFrom("order_items")
       .select(["id", "status"])
@@ -152,8 +183,8 @@ describe("order item status", () => {
 
   it("setStatusByOrder drags every dish along with the ticket", async () => {
     const order = await placeRound();
-    await t.repos.orderItems.setStatusByOrder(order.id, "served");
-    const statuses = await t.repos.orderItems.listStatusesByOrder(order.id);
+    await t.repos.orderItems.setStatusByOrder(order.id, "served", outletId);
+    const statuses = await t.repos.orderItems.listStatusesByOrder(order.id, outletId);
     expect(statuses.every((s) => s.status === "served")).toBe(true);
   });
 });
@@ -168,7 +199,7 @@ describe("orders.listForAdmin", () => {
       method: "cash",
     });
 
-    const rows = await t.repos.orders.listForAdmin(null);
+    const rows = await t.repos.orders.listForAdmin(null, 300, outletId);
     expect(rows).toHaveLength(1);
     expect(rows[0].session?.table?.label).toBe("Table 1");
     expect(rows[0].session?.payments).toHaveLength(1);
@@ -178,8 +209,12 @@ describe("orders.listForAdmin", () => {
 
   it("filters by the since boundary", async () => {
     await placeRound();
-    expect(await t.repos.orders.listForAdmin("2020-01-01T00:00:00.000Z")).toHaveLength(1);
-    expect(await t.repos.orders.listForAdmin("2999-01-01T00:00:00.000Z")).toHaveLength(0);
+    expect(
+      await t.repos.orders.listForAdmin("2020-01-01T00:00:00.000Z", 300, outletId),
+    ).toHaveLength(1);
+    expect(
+      await t.repos.orders.listForAdmin("2999-01-01T00:00:00.000Z", 300, outletId),
+    ).toHaveLength(0);
   });
 });
 
@@ -193,7 +228,7 @@ describe("sessions.findForBilling", () => {
       method: "upi_intent",
     });
 
-    const row = await t.repos.sessions.findForBilling(sessionId);
+    const row = await t.repos.sessions.findForBilling(sessionId, outletId);
     expect(row?.table?.label).toBe("Table 1");
     expect(row?.orders).toHaveLength(1);
     expect(row?.orders[0].items).toHaveLength(2);
@@ -207,7 +242,7 @@ describe("sessions.findForBilling", () => {
 
   it("is null for a session that does not exist", async () => {
     expect(
-      await t.repos.sessions.findForBilling("00000000-0000-0000-0000-000000000000"),
+      await t.repos.sessions.findForBilling("00000000-0000-0000-0000-000000000000", outletId),
     ).toBeNull();
   });
 });

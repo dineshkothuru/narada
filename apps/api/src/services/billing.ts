@@ -1,5 +1,5 @@
 import { computeTotals, toLines, type BillLine, type GstSlab } from "@narada/shared";
-import { notFound } from "../lib/http.js";
+import { conflict, notFound } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
 
 // Port of web/lib/billing.ts. The arithmetic itself lives in @narada/shared.
@@ -28,7 +28,24 @@ export type Bill = {
   status: string;
 };
 
-type BillingRepos = Pick<Repos, "sessions" | "outlets">;
+type BillingRepos = Pick<Repos, "sessions" | "outlets"> & {
+  transaction?: Repos["transaction"];
+};
+
+export function billDatePart(date = new Date()): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(date)
+      .filter(({ type }) => type !== "literal")
+      .map(({ type, value }) => [type, value]),
+  );
+  return `${parts.year}${parts.month}${parts.day}`;
+}
 
 // Single source of truth for what a table owes. GST is charged per item on the
 // post-discount value (Indian practice); service charge is optional and always
@@ -37,22 +54,27 @@ export async function computeBill(
   repos: BillingRepos,
   sessionId: string,
   tipOverride?: number,
+  outletId?: string,
+  lockSession = false,
 ): Promise<Bill> {
-  const [session, outlet] = await Promise.all([
-    repos.sessions.findForBilling(sessionId),
-    repos.outlets.findBillingConfig(),
-  ]);
+  if (!outletId) throw notFound("unknown session");
+  const primaryId = await repos.sessions.findPrimaryId(sessionId, outletId);
+  if (!primaryId) throw notFound("unknown session");
+  const session = await repos.sessions.findForBilling(primaryId, outletId, lockSession);
   if (!session) throw notFound("unknown session");
+  const outlet = await repos.outlets.findBillingConfig(session.outlet_id);
 
   const items = session.orders
     .filter((o) => o.status !== "cancelled")
     .flatMap((o) =>
-      o.items.map((it) => ({
-        name: it.name,
-        qty: it.qty,
-        unit_price: Number(it.unit_price),
-        gst_pct: Number(it.gst_pct),
-      })),
+      o.items
+        .filter((it) => (it as { status?: string }).status !== "cancelled")
+        .map((it) => ({
+          name: it.name,
+          qty: it.qty,
+          unit_price: Number(it.unit_price),
+          gst_pct: Number(it.gst_pct),
+        })),
     );
 
   const totals = computeTotals({
@@ -72,7 +94,7 @@ export async function computeBill(
 
   return {
     billNo: session.bill_no,
-    tableLabel: session.table?.label ?? "—",
+    tableLabel: session.table?.label ?? "Takeaway",
     outletName: outlet?.name ?? "Narada",
     gstin: outlet?.gstin ?? null,
     ...totals,
@@ -89,32 +111,42 @@ export async function finalizeBill(
   tip: number,
   outletId: string,
 ): Promise<Bill> {
-  const bill = await computeBill(repos, sessionId, tip);
+  const finish = async (bound: Pick<Repos, "sessions" | "outlets">, inTransaction = false) => {
+    // The transaction-bound query locks the session before taking the bill
+    // snapshot, so order/cancellation transactions cannot commit mid-freeze.
+    const primaryId = await bound.sessions.findPrimaryId(sessionId, outletId);
+    if (!primaryId) throw notFound("unknown session");
+    // Lock the full group first, then snapshot in a separate statement. This
+    // makes an order/cancellation that commits while waiting for the lock
+    // visible in the frozen totals.
+    await bound.sessions.lockBillingGroup(primaryId, outletId);
+    const bill = await computeBill(bound, primaryId, tip, outletId);
 
-  const current = await repos.outlets.findBillSeq(outletId);
-  const seq = (current?.bill_seq ?? 0) + 1;
-  await repos.outlets.setBillSeq(outletId, seq);
+    const datePart = billDatePart();
+    const frozen = {
+      bill_gross: bill.gross,
+      bill_discount: bill.discount,
+      bill_gst: bill.gst,
+      bill_service: bill.service,
+      bill_tip: bill.tip,
+      bill_net: bill.net,
+      settled_at: new Date().toISOString(),
+    };
+    const claimed = await (inTransaction
+      ? bound.sessions.finalizeBillInTransaction(
+          primaryId,
+          frozen,
+          outletId,
+          datePart,
+          bill.tip > 0,
+        )
+      : bound.sessions.finalizeBill(primaryId, frozen, outletId, datePart, bill.tip > 0));
+    if (!claimed) throw conflict("bill already raised");
+    return { ...bill, billNo: claimed.billNo };
+  };
 
-  // whoever was serving the table earns its tip — frozen here so a later
-  // change of attendant can't move money that was already handed over
-  const session = await repos.sessions.findById(sessionId);
-
-  const d = new Date();
-  const billNo = `NAR-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(
-    d.getDate(),
-  ).padStart(2, "0")}-${String(seq).padStart(4, "0")}`;
-
-  await repos.sessions.update(sessionId, {
-    bill_no: billNo,
-    bill_gross: bill.gross,
-    bill_discount: bill.discount,
-    bill_gst: bill.gst,
-    bill_service: bill.service,
-    bill_tip: bill.tip,
-    tip_to: bill.tip > 0 ? (session?.attendant ?? null) : null,
-    bill_net: bill.net,
-    settled_at: new Date().toISOString(),
-  });
-
-  return { ...bill, billNo };
+  if ("transaction" in repos && repos.transaction) {
+    return repos.transaction((txRepos) => finish(txRepos, true));
+  }
+  return finish(repos);
 }

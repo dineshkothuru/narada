@@ -8,16 +8,17 @@ export default function AdminQrPage() {
   const { data } = useAdminTables();
   const tables = data?.tables ?? [];
   const outletName = data?.outletName ?? "Narada";
+  const outletSlug = data?.outletSlug;
   const [qrs, setQrs] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (tables.length === 0) return;
+    if (tables.length === 0 || !outletSlug) return;
     let cancelled = false;
     (async () => {
       const origin = window.location.origin;
       const entries = await Promise.all(
         tables.map(async (t) => {
-          const dataUrl = await QRCode.toDataURL(tableQrUrl(origin, t.code), {
+          const dataUrl = await QRCode.toDataURL(tableQrUrl(origin, outletSlug, t.code), {
             width: 480,
             margin: 1,
             color: { dark: "#1c1c1c", light: "#ffffff" },
@@ -31,7 +32,7 @@ export default function AdminQrPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tables.map((t) => t.id).join(",")]);
+  }, [tables.map((t) => t.id).join(","), outletSlug]);
 
   return (
     <AdminShell>
@@ -51,30 +52,36 @@ export default function AdminQrPage() {
           </div>
         </header>
 
-        <div className="mx-auto grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 print:grid-cols-2 print:gap-6">
-          {tables.map((t) => (
-            <div
-              key={t.id}
-              className="card-float flex flex-col items-center rounded-3xl bg-white p-5 text-center ring-1 ring-stone-200/80 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
-            >
-              <p className="font-display text-lg font-semibold text-stone-900">{outletName}</p>
-              <p className="mt-0.5 text-[11px] font-bold tracking-widest text-rose-600 uppercase">
-                {t.label}
-              </p>
-              {qrs[t.id] ? (
-                <img src={qrs[t.id]} alt={`QR for ${t.label}`} className="mt-3 w-full max-w-44" />
-              ) : (
-                <div className="mt-3 grid aspect-square w-full max-w-44 place-items-center bg-stone-100 text-xs text-stone-400">
-                  …
-                </div>
-              )}
-              <p className="mt-3 text-xs font-semibold text-stone-700">
-                Scan to see the menu &amp; order
-              </p>
-              <p className="text-[10px] text-stone-400">Talk to Narada · no app needed</p>
-            </div>
-          ))}
-        </div>
+        {!outletSlug && tables.length > 0 ? (
+          <p className="mx-auto max-w-3xl rounded-2xl bg-amber-50 p-4 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-200">
+            Table QR codes are unavailable until this outlet has a canonical URL.
+          </p>
+        ) : (
+          <div className="mx-auto grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 print:grid-cols-2 print:gap-6">
+            {tables.map((t) => (
+              <div
+                key={t.id}
+                className="card-float flex flex-col items-center rounded-3xl bg-white p-5 text-center ring-1 ring-stone-200/80 print:break-inside-avoid print:rounded-none print:shadow-none print:ring-1 print:ring-stone-300"
+              >
+                <p className="font-display text-lg font-semibold text-stone-900">{outletName}</p>
+                <p className="mt-0.5 text-[11px] font-bold tracking-widest text-rose-600 uppercase">
+                  {t.label}
+                </p>
+                {qrs[t.id] ? (
+                  <img src={qrs[t.id]} alt={`QR for ${t.label}`} className="mt-3 w-full max-w-44" />
+                ) : (
+                  <div className="mt-3 grid aspect-square w-full max-w-44 place-items-center bg-stone-100 text-xs text-stone-400">
+                    …
+                  </div>
+                )}
+                <p className="mt-3 text-xs font-semibold text-stone-700">
+                  Scan to see the menu &amp; order
+                </p>
+                <p className="text-[10px] text-stone-400">Talk to Narada · no app needed</p>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
     </AdminShell>
   );

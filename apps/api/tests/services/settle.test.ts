@@ -5,7 +5,13 @@ import type { Repos } from "../../src/repositories/index.js";
 
 // A table with one served round of 400, no discount, 5% service charge.
 // gross 400 + gst 20 + service 20 = net 440.
-function seated(): { data: FakeDb; repos: Repos; sessionId: string; tableId: string } {
+function seated(): {
+  data: FakeDb;
+  repos: Repos;
+  sessionId: string;
+  tableId: string;
+  outletId: string;
+} {
   const { data, repos, ids } = seed();
   const sessionId = "aaaaaaaa-0000-0000-0000-000000000001";
   data.sessions.push({
@@ -49,13 +55,13 @@ function seated(): { data: FakeDb; repos: Repos; sessionId: string; tableId: str
     status: "served",
     gst_pct: 5,
   });
-  return { data, repos, sessionId, tableId: ids.tableA as string };
+  return { data, repos, sessionId, tableId: ids.tableA as string, outletId: ids.outlet };
 }
 
 describe("generateBill", () => {
   it("freezes the totals and mints an invoice number", async () => {
-    const { data, repos, sessionId } = seated();
-    const result = await generateBill(repos, sessionId);
+    const { data, repos, sessionId, outletId } = seated();
+    const result = await generateBill(repos, sessionId, outletId);
     expect(result.ok).toBe(true);
     expect(result.billNo).toMatch(/^NAR-\d{8}-0001$/);
     expect(result.net).toBe(440);
@@ -63,36 +69,36 @@ describe("generateBill", () => {
   });
 
   it("refuses to mint a second invoice number on a double tap", async () => {
-    const { repos, sessionId } = seated();
-    await generateBill(repos, sessionId);
-    await expect(generateBill(repos, sessionId)).rejects.toMatchObject({
+    const { repos, sessionId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
+    await expect(generateBill(repos, sessionId, outletId)).rejects.toMatchObject({
       statusCode: 409,
       message: "bill already raised",
     });
   });
 
   it("404s an unknown session", async () => {
-    const { repos } = seed();
-    await expect(generateBill(repos, "00000000-0000-0000-0000-000000000000")).rejects.toMatchObject(
-      { statusCode: 404 },
-    );
+    const { repos, ids } = seed();
+    await expect(
+      generateBill(repos, "00000000-0000-0000-0000-000000000000", ids.outlet),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });
 
 describe("recordPayment", () => {
   it("refuses money before a bill has been raised", async () => {
-    const { repos, sessionId } = seated();
-    await expect(recordPayment(repos, { sessionId })).rejects.toMatchObject({
+    const { repos, sessionId, outletId } = seated();
+    await expect(recordPayment(repos, { sessionId }, outletId, "Ravi")).rejects.toMatchObject({
       statusCode: 409,
       message: "no bill has been raised for this table yet",
     });
   });
 
   it("settles the full amount, closes the tab and flags the table for cleaning", async () => {
-    const { data, repos, sessionId, tableId } = seated();
-    await generateBill(repos, sessionId);
+    const { data, repos, sessionId, tableId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
 
-    const result = await recordPayment(repos, { sessionId, method: "cash", collectedBy: "Ravi" });
+    const result = await recordPayment(repos, { sessionId, method: "cash" }, outletId, "Ravi");
     expect(result).toMatchObject({ ok: true, due: 0, closed: true });
     expect(data.sessions[0].status).toBe("closed");
     expect(data.sessions[0].closed_at).toBeTruthy();
@@ -105,21 +111,37 @@ describe("recordPayment", () => {
     expect(payment.reference).toContain("collected by Ravi");
   });
 
-  it("keeps the tab open on a part payment", async () => {
-    const { data, repos, sessionId } = seated();
-    await generateBill(repos, sessionId);
+  it("closes an open waiter call when settlement releases the table", async () => {
+    const { data, repos, sessionId, tableId, outletId } = seated();
+    data.waiter_calls.push({
+      id: "dddddddd-0000-0000-0000-000000000001",
+      table_id: tableId,
+      outlet_id: outletId,
+      status: "open",
+      created_at: new Date().toISOString(),
+      acked_at: null,
+      acked_by: null,
+    });
+    await generateBill(repos, sessionId, outletId);
+    await recordPayment(repos, { sessionId }, outletId, "Ravi");
+    expect(data.waiter_calls[0]).toMatchObject({ status: "done", acked_by: "auto · settled" });
+  });
 
-    const first = await recordPayment(repos, { sessionId, amount: 200 });
+  it("keeps the tab open on a part payment", async () => {
+    const { data, repos, sessionId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
+
+    const first = await recordPayment(repos, { sessionId, amount: 200 }, outletId, "Ravi");
     expect(first).toMatchObject({ ok: true, due: 240, closed: false });
     expect(data.sessions[0].status).toBe("active");
 
-    const second = await recordPayment(repos, { sessionId, amount: 240 });
+    const second = await recordPayment(repos, { sessionId, amount: 240 }, outletId, "Ravi");
     expect(second).toMatchObject({ ok: true, due: 0, closed: true });
     expect(data.sessions[0].status).toBe("closed");
   });
 
   it("closes the whole merged group and flags every table in it", async () => {
-    const { data, repos, sessionId, tableId } = seated();
+    const { data, repos, sessionId, tableId, outletId } = seated();
     const joinedTable = data.tables[1].id as string;
     const joinedSession = "aaaaaaaa-0000-0000-0000-000000000002";
     data.sessions.push({
@@ -141,8 +163,8 @@ describe("recordPayment", () => {
       settled_at: null,
     });
 
-    await generateBill(repos, sessionId);
-    const result = await recordPayment(repos, { sessionId });
+    await generateBill(repos, sessionId, outletId);
+    const result = await recordPayment(repos, { sessionId }, outletId, "Ravi");
     expect(result.closed).toBe(true);
 
     expect(data.sessions.find((s) => s.id === joinedSession)?.status).toBe("closed");
@@ -151,18 +173,23 @@ describe("recordPayment", () => {
   });
 
   it("refuses a payment against an already closed tab", async () => {
-    const { data, repos, sessionId } = seated();
+    const { data, repos, sessionId, outletId } = seated();
     data.sessions[0].status = "closed";
-    await expect(recordPayment(repos, { sessionId })).rejects.toMatchObject({
+    await expect(recordPayment(repos, { sessionId }, outletId, "Ravi")).rejects.toMatchObject({
       statusCode: 409,
       message: "already closed",
     });
   });
 
   it("records the UTR on a UPI payment", async () => {
-    const { data, repos, sessionId } = seated();
-    await generateBill(repos, sessionId);
-    await recordPayment(repos, { sessionId, method: "upi_intent", utr: "  123456789  " });
+    const { data, repos, sessionId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
+    await recordPayment(
+      repos,
+      { sessionId, method: "upi_intent", utr: "  123456789  " },
+      outletId,
+      "Ravi",
+    );
     expect(data.payments[0].reference).toContain("UTR 123456789");
     expect(data.payments[0].method).toBe("upi_intent");
   });
@@ -172,13 +199,18 @@ describe("recordPayment", () => {
 // guest pays above it becomes the tip, credited to whoever served the table.
 describe("overpayment becomes a tip", () => {
   it("credits the round-up to the attendant and grows the frozen invoice", async () => {
-    const { data, repos, sessionId } = seated();
+    const { data, repos, sessionId, outletId } = seated();
     data.sessions[0].attendant = "Ravi";
-    await generateBill(repos, sessionId);
+    await generateBill(repos, sessionId, outletId);
     expect(data.sessions[0].bill_tip).toBe(0);
 
     // bill is 440, the guest sends 500
-    const result = await recordPayment(repos, { sessionId, amount: 500, method: "upi_intent" });
+    const result = await recordPayment(
+      repos,
+      { sessionId, amount: 500, method: "upi_intent" },
+      outletId,
+      "Ravi",
+    );
     expect(result).toMatchObject({ ok: true, closed: true });
 
     expect(data.sessions[0].bill_tip).toBe(60);
@@ -188,9 +220,9 @@ describe("overpayment becomes a tip", () => {
   });
 
   it("leaves an exact payment untouched", async () => {
-    const { data, repos, sessionId } = seated();
-    await generateBill(repos, sessionId);
-    await recordPayment(repos, { sessionId, amount: 440 });
+    const { data, repos, sessionId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
+    await recordPayment(repos, { sessionId, amount: 440 }, outletId, "Ravi");
 
     expect(data.sessions[0].bill_tip).toBe(0);
     expect(data.sessions[0].tip_to).toBeNull();
@@ -198,19 +230,19 @@ describe("overpayment becomes a tip", () => {
   });
 
   it("keeps an already-frozen tip_to rather than moving the money", async () => {
-    const { data, repos, sessionId } = seated();
+    const { data, repos, sessionId, outletId } = seated();
     data.sessions[0].attendant = "Meera";
-    await generateBill(repos, sessionId);
+    await generateBill(repos, sessionId, outletId);
     data.sessions[0].tip_to = "Ravi";
 
-    await recordPayment(repos, { sessionId, amount: 500 });
+    await recordPayment(repos, { sessionId, amount: 500 }, outletId, "Ravi");
     expect(data.sessions[0].tip_to).toBe("Ravi");
   });
 
   it("treats a part payment as no tip at all", async () => {
-    const { data, repos, sessionId } = seated();
-    await generateBill(repos, sessionId);
-    const first = await recordPayment(repos, { sessionId, amount: 200 });
+    const { data, repos, sessionId, outletId } = seated();
+    await generateBill(repos, sessionId, outletId);
+    const first = await recordPayment(repos, { sessionId, amount: 200 }, outletId, "Ravi");
     expect(first).toMatchObject({ closed: false });
     expect(data.sessions[0].bill_tip).toBe(0);
   });

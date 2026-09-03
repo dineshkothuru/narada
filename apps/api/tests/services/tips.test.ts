@@ -24,7 +24,11 @@ describe("tipsForDay", () => {
     // yesterday's shift, already excluded by the repository's since filter
     settled("Ravi", 999, "2026-09-01T09:00:00.000Z");
 
-    const result = await tipsForDay(repos, new Date("2026-09-03T12:00:00.000Z"));
+    const result = await tipsForDay(
+      repos,
+      new Date("2026-09-03T12:00:00.000Z"),
+      data.outlets[0].id as string,
+    );
 
     expect(result.since).toBe("2026-09-02T18:30:00.000Z");
     expect(result.rows).toEqual([
@@ -36,8 +40,8 @@ describe("tipsForDay", () => {
   });
 
   it("reports an empty board when nothing has settled", async () => {
-    const { repos } = seed();
-    const result = await tipsForDay(repos, new Date("2026-09-03T12:00:00.000Z"));
+    const { repos, ids } = seed();
+    const result = await tipsForDay(repos, new Date("2026-09-03T12:00:00.000Z"), ids.outlet);
     expect(result.rows).toEqual([]);
     expect(result.total).toBe(0);
   });

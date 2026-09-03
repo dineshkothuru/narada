@@ -4,15 +4,7 @@ import react from "@vitejs/plugin-react";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 
-// apps/web's "@" points at apps/web/src, which collides with the "@" -> web/
-// alias every other workspace here relies on. Splitting into two projects
-// gives apps/web its own alias without touching the shared one.
-const sharedInclude = [
-  "web/tests/**/*.test.ts",
-  "apps/api/tests/**/*.test.ts",
-  "apps/web/tests/**/*.test.{ts,tsx}",
-  "packages/**/tests/**/*.test.ts",
-];
+const apiInclude = ["apps/api/tests/**/*.test.ts", "packages/shared/tests/**/*.test.ts"];
 
 export default defineConfig({
   test: {
@@ -26,15 +18,13 @@ export default defineConfig({
     // Without an explicit projects list, vitest auto-discovers
     // apps/web/vite.config.ts as a second project and runs the include globs
     // below a second time, double-counting every test. Declaring both
-    // projects here also lets apps/web's "@" -> apps/web/src alias coexist
-    // with the "@" -> web/ alias every other workspace here relies on.
+    // projects here also gives apps/web its own "@" alias.
     projects: [
       {
         extends: true,
         test: {
           name: "default",
-          include: sharedInclude,
-          exclude: ["apps/web/tests/**"],
+          include: apiInclude,
         },
       },
       {
@@ -52,11 +42,5 @@ export default defineConfig({
         },
       },
     ],
-  },
-  resolve: {
-    alias: {
-      "@": `${root}web`,
-      "server-only": `${root}test/server-only-stub.ts`,
-    },
   },
 });

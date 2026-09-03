@@ -8,7 +8,7 @@ export type WaiterOrder = {
   status: string;
   total_inr: number;
   created_at: string;
-  items: { name: string; qty: number }[];
+  items: { id: string; name: string; qty: number; status: string }[];
 };
 
 export type WaiterSession = {
@@ -50,9 +50,50 @@ export function useWaiterTables() {
   });
 }
 
+export type WaiterMenuResponse = {
+  tableLabel: string;
+  categories: { id: string; name: string; emoji: string }[];
+  items: {
+    id: string;
+    categoryId: string;
+    name: string;
+    priceInr: number;
+    isVeg: boolean;
+    isAvailable: boolean;
+    emoji: string;
+  }[];
+};
+
+export function useWaiterMenu(tableCode: string) {
+  return useQuery({
+    queryKey: ["waiter", "menu", tableCode] as const,
+    queryFn: () => api<WaiterMenuResponse>(`/waiter/menu?table=${encodeURIComponent(tableCode)}`),
+    enabled: tableCode.length > 0,
+    staleTime: 30_000,
+  });
+}
+
+export type WaiterDictateResponse = {
+  transcript: string;
+  lines: { itemId: string; qty: number; name: string }[];
+  unmatched: string[];
+};
+
+export function useWaiterDictate() {
+  return useMutation({
+    mutationFn: (body: { tableCode: string; audio?: string; text?: string }) =>
+      api<WaiterDictateResponse>("/waiter/dictate", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+  });
+}
+
 export type WaiterAction =
   | { action: "ack_call"; callId: string; sessionId?: string; attendedBy?: string }
   | { action: "mark_served"; orderId: string }
+  | { action: "mark_item_served"; itemId: string }
+  | { action: "cancel_item"; itemId: string; reason?: string }
   | { action: "clear_table"; tableId: string }
   | {
       action: "record_payment";
@@ -60,7 +101,6 @@ export type WaiterAction =
       amount: number;
       method: "upi_intent" | "cash" | "card";
       utr?: string;
-      collectedBy?: string;
     };
 
 export function useWaiterAction() {

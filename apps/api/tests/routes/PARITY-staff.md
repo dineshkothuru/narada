@@ -1,12 +1,8 @@
 # Parity notes — staff routes (kitchen, waiter, waiter/tips, floor, counter)
 
-Ported 1:1 from:
-
-- `web/app/api/kitchen/route.ts`
-- `web/app/api/waiter/route.ts`
-- `web/app/api/waiter/tips/route.ts`
-- `web/app/api/floor/route.ts`
-- `web/app/api/counter/route.ts` (main's version, already using `outlets`/`outlet_id` — no rename needed)
+Ported 1:1 from the pre-restructure kitchen, waiter, waiter/tips, floor, and
+counter route contracts (the main branch's counter version already used
+`outlets`/`outlet_id`, so no rename was needed).
 
 All five paths, methods, JSON shapes, and status codes are unchanged. Auth/role
 gating for `/api/kitchen`, `/api/waiter`, `/api/floor`, `/api/counter` is
@@ -45,18 +41,21 @@ here do not re-check roles.
 - **Waiter `record_payment` and counter `record_payment`/`generate_bill`**
   both call the _same_ `settle.ts` service functions the counter's Phase-1
   `/api/settle`-equivalent code already uses (`generateBill`,
-  `recordPayment`) — not reimplemented per route, exactly like the legacy
-  `web/lib/settle.ts` was one shared module imported by both
-  `web/app/api/waiter/route.ts` and `web/app/api/counter/route.ts`.
+  `recordPayment`) — not reimplemented per route, exactly like the shared
+  settlement module used by both legacy staff handlers.
 
-## Repositories
+## Tenant scope and attribution
 
-No new repository functions were needed — `tables`, `sessions`, `orders`,
-`orderItems`, `waiterCalls`, `payments`, `outlets` already exposed everything
-these five routes needed (`listActiveForWaiter`/`listActiveForFloor`/
-`listActiveForCounter`, `claimWaiter`, `clearCleaningIfNeeded`, etc), including
-matching fakes in `tests/helpers/fakeRepos.ts`. `app.ts` route registration
-was appended, not rewritten.
+Protected staff reads and mutations derive the outlet from the authenticated staff
+session. The repository methods used by these boards and actions accept an outlet
+scope, so cross-outlet IDs behave as unknown and cannot update another outlet's
+orders, sessions, tables, or waiter calls. Payment references use the session's
+authenticated `displayName`; client `collectedBy`, `attendedBy`, and `attendant`
+fields are ignored.
+
+The `tables`, `sessions`, `orders`, `orderItems`, and `waiterCalls` fakes mirror the
+outlet-scoped method arguments used by production. `app.ts` route registration was
+appended, not rewritten.
 
 ## Files
 

@@ -1,5 +1,5 @@
 import { deriveTableStatus } from "@narada/shared";
-import { badRequest, notFound } from "../lib/http.js";
+import { badRequest, conflict, notFound } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
 import { computeBill } from "./billing.js";
 
@@ -8,11 +8,11 @@ import { computeBill } from "./billing.js";
 
 type FloorBoardRepos = Pick<Repos, "tables" | "sessions" | "waiterCalls" | "outlets">;
 
-export async function floorBoard(repos: FloorBoardRepos) {
+export async function floorBoard(repos: FloorBoardRepos, outletId: string) {
   const [tables, sessions, calls] = await Promise.all([
-    repos.tables.listAll(),
-    repos.sessions.listActiveForFloor(),
-    repos.waiterCalls.listOpen(),
+    repos.tables.listAll(outletId),
+    repos.sessions.listActiveForFloor(outletId),
+    repos.waiterCalls.listOpen(outletId),
   ]);
 
   const callByTable = new Map(calls.map((c) => [c.table_id, c]));
@@ -23,7 +23,7 @@ export async function floorBoard(repos: FloorBoardRepos) {
   for (const s of sessions) {
     const primary = s.merged_into ?? s.id;
     const arr = mergeGroups.get(primary) ?? [];
-    arr.push(s.table_id);
+    if (s.table_id) arr.push(s.table_id);
     mergeGroups.set(primary, arr);
   }
 
@@ -39,7 +39,7 @@ export async function floorBoard(repos: FloorBoardRepos) {
         const primary = session.merged_into ?? session.id;
         if (primary === session.id) {
           try {
-            const bill = await computeBill(repos, session.id);
+            const bill = await computeBill(repos, session.id, undefined, outletId);
             due = Math.max(0, bill.net - bill.paid);
           } catch {
             // no bill yet is not an error here, just nothing owed to show
@@ -117,21 +117,70 @@ export async function floorBoard(repos: FloorBoardRepos) {
 }
 
 export async function clearTable(
-  repos: Pick<Repos, "tables">,
+  repos: Pick<Repos, "tables"> & {
+    waiterCalls?: Pick<Repos["waiterCalls"], "closeOpenByTables">;
+  },
   tableId: string,
+  outletId: string,
 ): Promise<{ ok: true }> {
-  await repos.tables.setNeedsCleaning([tableId], false);
+  if (!(await repos.tables.findById(tableId, outletId))) {
+    throw notFound("unknown table");
+  }
+  await repos.tables.setNeedsCleaning([tableId], false, outletId);
+  await repos.waiterCalls?.closeOpenByTables([tableId], "table cleared", outletId);
+  return { ok: true };
+}
+
+type ReleaseRepos = Pick<Repos, "sessions" | "orders" | "waiterCalls" | "audit">;
+
+export async function releaseTable(
+  repos: ReleaseRepos,
+  sessionId: string,
+  outletId: string,
+  actor: { staffId: string; role: string; actorName: string },
+): Promise<{ ok: true }> {
+  const session = await repos.sessions.findById(sessionId, outletId);
+  if (!session) throw notFound("unknown session");
+  if (session.status !== "active" || session.service_type !== "dine_in" || !session.table_id) {
+    throw conflict("only an active dine-in table can be released");
+  }
+  const closedAt = new Date().toISOString();
+  const released = await repos.sessions.releaseIfEmpty(session.id, outletId, closedAt);
+  if (!released) throw conflict("this table has ordered — settle it at the counter");
+  await repos.waiterCalls.closeOpenByTables([session.table_id], "table released", outletId);
+  try {
+    await repos.audit.create({
+      outlet_id: outletId,
+      staff_id: actor.staffId,
+      role: actor.role,
+      actor_name: actor.actorName,
+      action: "table_released",
+      entity_type: "session",
+      entity_id: session.id,
+      details: { tableId: session.table_id },
+    });
+  } catch {
+    // Release committed; do not make a host retry a completed state change.
+  }
   return { ok: true };
 }
 
 export async function setAttendant(
   repos: Pick<Repos, "sessions">,
   sessionId: string,
+  outletId: string,
   attendant?: string,
 ): Promise<{ ok: true }> {
-  await repos.sessions.update(sessionId, {
-    attendant: attendant?.trim() ? attendant.trim().slice(0, 40) : null,
-  });
+  if (!(await repos.sessions.findById(sessionId, outletId))) {
+    throw notFound("unknown session");
+  }
+  await repos.sessions.update(
+    sessionId,
+    {
+      attendant: attendant?.trim() ? attendant.trim().slice(0, 40) : null,
+    },
+    outletId,
+  );
   return { ok: true };
 }
 
@@ -142,16 +191,17 @@ type SeatRepos = Pick<Repos, "tables" | "sessions">;
 export async function seatTable(
   repos: SeatRepos,
   tableId: string,
+  outletId: string,
   guests?: number,
 ): Promise<{ ok: true; sessionId: string }> {
-  const table = await repos.tables.findById(tableId);
+  const table = await repos.tables.findById(tableId, outletId);
   if (!table) throw notFound("unknown table");
 
   const n = typeof guests === "number" && guests > 0 && guests <= 50 ? Math.floor(guests) : null;
 
-  const existing = await repos.sessions.findActiveByTableId(tableId);
+  const existing = await repos.sessions.findActiveByTableId(tableId, outletId);
   if (existing) {
-    await repos.sessions.update(existing.id, { guests: n });
+    await repos.sessions.update(existing.id, { guests: n }, outletId);
     return { ok: true, sessionId: existing.id };
   }
 
@@ -161,7 +211,7 @@ export async function seatTable(
     guests: n,
   });
   // seating it settles the question of whether it was cleaned
-  await repos.tables.clearCleaningIfNeeded(tableId);
+  await repos.tables.clearCleaningIfNeeded(tableId, outletId);
   return { ok: true, sessionId: created.id };
 }
 
@@ -174,21 +224,36 @@ export async function mergeSession(
   repos: MergeRepos,
   sessionId: string,
   intoSessionId: string,
+  outletId: string,
 ): Promise<{ ok: true; mergedInto: string }> {
   if (sessionId === intoSessionId) throw badRequest("same session");
 
-  const primary = await repos.sessions.findById(intoSessionId);
-  if (!primary) throw notFound("unknown target");
+  const target = await repos.sessions.findById(intoSessionId, outletId);
+  if (!target) {
+    throw notFound("unknown target");
+  }
+  const session = await repos.sessions.findById(sessionId, outletId);
+  if (!session) {
+    throw notFound("unknown session");
+  }
 
-  const target = primary.merged_into ?? primary.id;
-  await repos.sessions.update(sessionId, { merged_into: target });
-  return { ok: true, mergedInto: target };
+  const targetId = target.merged_into ?? target.id;
+  if (!(await repos.sessions.mergeIfActiveUnbilled(sessionId, targetId, outletId))) {
+    throw conflict("only active unbilled sessions can be merged");
+  }
+  return { ok: true, mergedInto: targetId };
 }
 
 export async function unmergeSession(
   repos: Pick<Repos, "sessions">,
   sessionId: string,
+  outletId: string,
 ): Promise<{ ok: true }> {
-  await repos.sessions.update(sessionId, { merged_into: null });
+  if (!(await repos.sessions.findById(sessionId, outletId))) {
+    throw notFound("unknown session");
+  }
+  if (!(await repos.sessions.unmergeIfActiveUnbilled(sessionId, outletId))) {
+    throw conflict("only an active unbilled session can be unmerged");
+  }
   return { ok: true };
 }

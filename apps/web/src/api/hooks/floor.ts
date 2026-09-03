@@ -40,10 +40,11 @@ export type FloorStats = {
   seatsBusy: number;
 };
 
-export function useFloor() {
+export function useFloor(enabled = true) {
   return useQuery({
     queryKey: queryKeys.floor,
     queryFn: () => api<{ tables: FloorTable[]; stats: FloorStats }>("/floor"),
+    enabled,
     refetchInterval: () => (document.hidden ? false : 5000),
     refetchIntervalInBackground: false,
   });
@@ -51,9 +52,10 @@ export function useFloor() {
 
 export type FloorAction =
   | { action: "seat"; tableId: string; guests: number }
+  | { action: "release"; sessionId: string }
   | { action: "merge"; sessionId: string; intoSessionId: string }
   | { action: "unmerge"; sessionId: string }
-  | { action: "attendant"; sessionId: string; attendant: string }
+  | { action: "attendant"; sessionId: string }
   | { action: "clear_table"; tableId: string };
 
 export function useFloorAction() {

@@ -1,5 +1,5 @@
 import { orderToken } from "@narada/shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { kitchenOrders, updateItemStatus, updateOrderStatus } from "../../src/services/kitchen.js";
 import { seed, type FakeDb } from "../helpers/fakeRepos.js";
 import type { Repos } from "../../src/repositories/index.js";
@@ -54,8 +54,8 @@ function ticket(): { data: FakeDb; repos: Repos; orderId: string; itemId: string
 
 describe("kitchenOrders", () => {
   it("lists open tickets", async () => {
-    const { repos, orderId } = ticket();
-    const orders = await kitchenOrders(repos);
+    const { repos, orderId, data } = ticket();
+    const orders = await kitchenOrders(repos, 60, data.outlets[0].id as string);
     const order = orders.find((o) => o.id === orderId);
     expect(order?.orderNo).toBe(orderToken(orderId));
   });
@@ -64,7 +64,7 @@ describe("kitchenOrders", () => {
 describe("updateItemStatus", () => {
   it("sets the dish and derives the ticket status from its siblings", async () => {
     const { data, repos, orderId, itemId } = ticket();
-    const result = await updateItemStatus(repos, itemId, "preparing");
+    const result = await updateItemStatus(repos, itemId, "preparing", data.outlets[0].id as string);
     expect(result).toEqual({ ok: true, orderStatus: "preparing" });
     expect(data.order_items[0].status).toBe("preparing");
     expect(data.orders.find((o) => o.id === orderId)?.status).toBe("preparing");
@@ -85,19 +85,44 @@ describe("updateItemStatus", () => {
       gst_pct: 5,
     });
 
-    await updateItemStatus(repos, itemId, "served");
+    await updateItemStatus(repos, itemId, "served", data.outlets[0].id as string);
     expect(data.orders.find((o) => o.id === orderId)?.status).toBe("preparing");
 
-    const result = await updateItemStatus(repos, secondItemId, "served");
+    const result = await updateItemStatus(
+      repos,
+      secondItemId,
+      "served",
+      data.outlets[0].id as string,
+    );
     expect(result.orderStatus).toBe("served");
     expect(data.orders.find((o) => o.id === orderId)?.status).toBe("served");
   });
 
   it("404s an unknown item", async () => {
-    const { repos } = ticket();
+    const { repos, data } = ticket();
     await expect(
-      updateItemStatus(repos, "00000000-0000-0000-0000-000000000000", "ready"),
+      updateItemStatus(
+        repos,
+        "00000000-0000-0000-0000-000000000000",
+        "ready",
+        data.outlets[0].id as string,
+      ),
     ).rejects.toMatchObject({ statusCode: 404, message: "unknown item" });
+  });
+
+  it("does not overwrite an item cancelled after the stale precheck", async () => {
+    const { data, repos, orderId, itemId } = ticket();
+    const findOrderId = repos.orderItems.findOrderId;
+    vi.spyOn(repos.orderItems, "findOrderId").mockImplementation(async (id, outletId) => {
+      const found = await findOrderId(id, outletId);
+      data.order_items.find((item) => item.id === itemId)!.status = "cancelled";
+      return found;
+    });
+    await expect(
+      updateItemStatus(repos, itemId, "served", data.outlets[0].id as string),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(data.order_items.find((item) => item.id === itemId)?.status).toBe("cancelled");
+    expect(data.orders.find((order) => order.id === orderId)?.status).toBe("placed");
   });
 });
 
@@ -116,7 +141,7 @@ describe("updateOrderStatus", () => {
       gst_pct: 18,
     });
 
-    await updateOrderStatus(repos, orderId, "preparing");
+    await updateOrderStatus(repos, orderId, "preparing", data.outlets[0].id as string);
     expect(data.orders.find((o) => o.id === orderId)?.status).toBe("preparing");
     expect(data.order_items.find((it) => it.id === itemId)?.status).toBe("preparing");
     expect(data.order_items.find((it) => it.name === "Gulab Jamun")?.status).toBe("ready");
@@ -124,15 +149,23 @@ describe("updateOrderStatus", () => {
 
   it("dragging to ready or served moves every dish at once", async () => {
     const { data, repos, orderId } = ticket();
-    await updateOrderStatus(repos, orderId, "served");
+    await updateOrderStatus(repos, orderId, "served", data.outlets[0].id as string);
     expect(data.orders.find((o) => o.id === orderId)?.status).toBe("served");
     expect(data.order_items.every((it) => it.status === "served")).toBe(true);
   });
 
-  it("cancels a ticket without touching its items", async () => {
-    const { data, repos, orderId } = ticket();
-    await updateOrderStatus(repos, orderId, "cancelled");
+  it("does not resurrect an item that was cancelled", async () => {
+    const { data, repos, orderId, itemId } = ticket();
+    data.order_items.find((it) => it.id === itemId)!.status = "cancelled";
+    await updateOrderStatus(repos, orderId, "served", data.outlets[0].id as string);
+    expect(data.order_items.find((it) => it.id === itemId)?.status).toBe("cancelled");
     expect(data.orders.find((o) => o.id === orderId)?.status).toBe("cancelled");
-    expect(data.order_items[0].status).toBe("queued");
+  });
+
+  it("requires item cancellation instead of bypassing the canonical guard", async () => {
+    const { data, repos, orderId } = ticket();
+    await expect(
+      updateOrderStatus(repos, orderId, "cancelled", data.outlets[0].id as string),
+    ).rejects.toMatchObject({ statusCode: 409 });
   });
 });

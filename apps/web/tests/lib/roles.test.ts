@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { canAccess, rolesForPath, ROLE_ACCESS } from "../../src/lib/roles";
+import {
+  canAccess,
+  rolesForPath,
+  ROLE_ACCESS,
+  ROLE_HOME,
+  ROLE_SIGNUP_PATH,
+} from "../../src/lib/roles";
 
 describe("roles matrix", () => {
   it("mirrors the legacy admin-auth ROLE_ACCESS shape", () => {
@@ -29,5 +35,10 @@ describe("roles matrix", () => {
 
   it("canAccess allows any role for an unlisted path", () => {
     expect(canAccess("/t/table-1", "waiter")).toBe(true);
+  });
+
+  it("maps each staff role to its signup URL", () => {
+    expect(ROLE_SIGNUP_PATH.cashier).toBe("/counter/signup");
+    expect(ROLE_HOME.cashier).toBe("/counter");
   });
 });

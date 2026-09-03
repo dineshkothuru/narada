@@ -1,11 +1,8 @@
 import { orderToken } from "@narada/shared";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../src/app.js";
-import { ADMIN_COOKIE, roleToken } from "../../src/plugins/auth.js";
 import { seed } from "../helpers/fakeRepos.js";
-
-const cookieFor = async (role: "kitchen" | "waiter" | "admin" | "cashier" | "reception") =>
-  `${ADMIN_COOKIE}=${await roleToken(role)}`;
+import { staffHeader } from "../helpers/staffCookie.js";
 
 function ticketFixture() {
   const { data, repos, ids } = seed();
@@ -57,11 +54,11 @@ function ticketFixture() {
 
 describe("GET /api/kitchen", () => {
   it("200s for kitchen and lists open tickets", async () => {
-    const { repos, orderId } = ticketFixture();
+    const { data, repos, orderId } = ticketFixture();
     const app = buildApp({ repos });
     const res = await app.inject({
       url: "/api/kitchen",
-      headers: { cookie: await cookieFor("kitchen") },
+      headers: { cookie: staffHeader(data, "kitchen") },
     });
     expect(res.statusCode).toBe(200);
     const order = res.json().orders.find((o: { id: string }) => o.id === orderId);
@@ -69,11 +66,11 @@ describe("GET /api/kitchen", () => {
   });
 
   it("403s a role kitchen excludes", async () => {
-    const { repos } = ticketFixture();
+    const { data, repos } = ticketFixture();
     const app = buildApp({ repos });
     const res = await app.inject({
       url: "/api/kitchen",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
     });
     expect(res.statusCode).toBe(403);
   });
@@ -86,7 +83,7 @@ describe("PATCH /api/kitchen", () => {
     const res = await app.inject({
       method: "PATCH",
       url: "/api/kitchen",
-      headers: { cookie: await cookieFor("kitchen") },
+      headers: { cookie: staffHeader(data, "kitchen") },
       payload: { orderId, status: "served" },
     });
     expect(res.statusCode).toBe(200);
@@ -95,12 +92,12 @@ describe("PATCH /api/kitchen", () => {
   });
 
   it("advances a single dish and derives the ticket status", async () => {
-    const { repos, itemId } = ticketFixture();
+    const { data, repos, itemId } = ticketFixture();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/kitchen",
-      headers: { cookie: await cookieFor("kitchen") },
+      headers: { cookie: staffHeader(data, "kitchen") },
       payload: { itemId, itemStatus: "preparing" },
     });
     expect(res.statusCode).toBe(200);
@@ -108,12 +105,12 @@ describe("PATCH /api/kitchen", () => {
   });
 
   it("400s an invalid status", async () => {
-    const { repos, orderId } = ticketFixture();
+    const { data, repos, orderId } = ticketFixture();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/kitchen",
-      headers: { cookie: await cookieFor("kitchen") },
+      headers: { cookie: staffHeader(data, "kitchen") },
       payload: { orderId, status: "bogus" },
     });
     expect(res.statusCode).toBe(400);
@@ -121,12 +118,12 @@ describe("PATCH /api/kitchen", () => {
   });
 
   it("403s a role kitchen excludes", async () => {
-    const { repos, orderId } = ticketFixture();
+    const { data, repos, orderId } = ticketFixture();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/kitchen",
-      headers: { cookie: await cookieFor("reception") },
+      headers: { cookie: staffHeader(data, "reception") },
       payload: { orderId, status: "served" },
     });
     expect(res.statusCode).toBe(403);

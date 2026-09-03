@@ -13,8 +13,8 @@ import {
 
 // Port of web/app/api/admin/menu/route.ts.
 export default async function menuRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/api/admin/menu", async (_request, reply) => {
-    const result = await getAdminMenu(app.repos);
+  app.get("/api/admin/menu", async (request, reply) => {
+    const result = await getAdminMenu(app.repos, request.staffSession!.outletId);
     return reply.send(result);
   });
 
@@ -26,7 +26,7 @@ export default async function menuRoutes(app: FastifyInstance): Promise<void> {
           parsed.error.issues[0]?.message ?? "category_id, name and positive price_inr required",
       });
     }
-    const result = await createMenuItem(app.repos, parsed.data);
+    const result = await createMenuItem(app.repos, parsed.data, request.staffSession!.outletId);
     return reply.send(result);
   });
 
@@ -37,7 +37,11 @@ export default async function menuRoutes(app: FastifyInstance): Promise<void> {
         .status(400)
         .send({ error: parsed.error.issues[0]?.message ?? "itemId required" });
     }
-    const result = await deleteMenuItem(app.repos, parsed.data.itemId);
+    const result = await deleteMenuItem(
+      app.repos,
+      parsed.data.itemId,
+      request.staffSession!.outletId,
+    );
     return reply.send(result);
   });
 
@@ -48,7 +52,7 @@ export default async function menuRoutes(app: FastifyInstance): Promise<void> {
         .status(400)
         .send({ error: parsed.error.issues[0]?.message ?? "itemId required" });
     }
-    const result = await patchMenuItem(app.repos, parsed.data);
+    const result = await patchMenuItem(app.repos, parsed.data, request.staffSession!.outletId);
     return reply.send(result);
   });
 }

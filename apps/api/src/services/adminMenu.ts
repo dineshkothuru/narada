@@ -5,25 +5,46 @@ import type { CreateMenuItemInput, PatchMenuItemInput } from "@narada/shared";
 const ALLOWED_TAGS = ["chef-special", "bestseller", "spicy"];
 
 // Port of web/app/api/admin/menu/route.ts GET — the full menu, admin shaped.
-export async function getAdminMenu(repos: Pick<Repos, "menuCategories" | "menuItems" | "outlets">) {
+export async function getAdminMenu(
+  repos: Pick<Repos, "menuCategories" | "menuItems" | "outlets">,
+  outletId: string,
+) {
   const [categories, items, outlet] = await Promise.all([
-    repos.menuCategories.listForAdmin(),
-    repos.menuItems.listForAdmin(),
-    repos.outlets.findFirst(),
+    repos.menuCategories.listForAdmin(outletId),
+    repos.menuItems.listForAdmin(outletId),
+    repos.outlets.findById(outletId),
   ]);
-  return { categories, items, outlet };
+  return {
+    categories,
+    items,
+    outlet: outlet
+      ? {
+          id: outlet.id,
+          name: outlet.name,
+          slug: outlet.slug,
+          upi_vpa: outlet.upi_vpa,
+          payment_timing: outlet.payment_timing,
+          gemini_api_key: outlet.gemini_api_key,
+          sarvam_api_key: outlet.sarvam_api_key,
+          comp_item_id: outlet.comp_item_id,
+          service_charge_pct: outlet.service_charge_pct,
+          gstin: outlet.gstin,
+        }
+      : null,
+  };
 }
 
 export async function createMenuItem(
   repos: Pick<Repos, "menuCategories" | "menuItems">,
   input: CreateMenuItemInput,
+  outletId: string,
 ): Promise<{ ok: true; id: string }> {
   const name = input.name.trim();
   if (!input.category_id || !name || input.price_inr <= 0) {
     throw badRequest("category_id, name and positive price_inr required");
   }
 
-  const category = await repos.menuCategories.findOutletId(input.category_id);
+  const category = await repos.menuCategories.findOutletId(input.category_id, outletId);
   if (!category) throw notFound("unknown category");
 
   const created = await repos.menuItems.create({
@@ -49,13 +70,15 @@ export async function createMenuItem(
 export async function deleteMenuItem(
   repos: Pick<Repos, "menuItems">,
   itemId: string,
+  outletId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!itemId) throw badRequest("itemId required");
+  if (!(await repos.menuItems.findById(itemId, outletId))) throw notFound("unknown dish");
   try {
-    await repos.menuItems.remove(itemId);
+    await repos.menuItems.remove(itemId, outletId);
     return { ok: true };
   } catch {
-    await repos.menuItems.update(itemId, { is_available: false });
+    await repos.menuItems.update(itemId, { is_available: false }, outletId);
     return {
       ok: false,
       reason: "Dish has past orders — marked unavailable instead of deleting.",
@@ -66,8 +89,10 @@ export async function deleteMenuItem(
 export async function patchMenuItem(
   repos: Pick<Repos, "menuItems">,
   input: PatchMenuItemInput,
+  outletId: string,
 ): Promise<{ ok: true }> {
   if (!input.itemId) throw badRequest("itemId required");
+  if (!(await repos.menuItems.findById(input.itemId, outletId))) throw notFound("unknown dish");
 
   const patch: Record<string, unknown> = {};
   if (typeof input.is_available === "boolean") patch.is_available = input.is_available;
@@ -91,6 +116,6 @@ export async function patchMenuItem(
   }
   if (Object.keys(patch).length === 0) throw badRequest("nothing to update");
 
-  await repos.menuItems.update(input.itemId, patch);
+  await repos.menuItems.update(input.itemId, patch, outletId);
   return { ok: true };
 }

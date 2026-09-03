@@ -111,7 +111,15 @@ alter table orders add constraint orders_status_check
 
 alter table order_items drop constraint if exists order_items_status_check;
 alter table order_items add constraint order_items_status_check
-  check (status in ('queued','preparing','ready','served'));
+  check (status in ('queued','preparing','ready','served','cancelled'));
+
+alter table order_items
+  add column if not exists cancelled_at timestamptz,
+  add column if not exists cancelled_by text;
+
+alter table orders drop constraint if exists orders_placed_via_check;
+alter table orders add constraint orders_placed_via_check
+  check (placed_via in ('ui','anna','waiter'));
 
 alter table payments drop constraint if exists payments_method_check;
 `;

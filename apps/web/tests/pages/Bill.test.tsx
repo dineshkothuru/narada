@@ -51,6 +51,19 @@ function renderBill() {
   );
 }
 
+function renderScopedBill() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={["/bill/sess-1?tableCode=t1-demo"]}>
+        <Routes>
+          <Route path="/bill/:session" element={<BillPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 describe("BillPage", () => {
   const fetchMock = vi.fn();
 
@@ -86,6 +99,16 @@ describe("BillPage", () => {
 
     expect(await screen.findByText("CGST @ 2.5%")).toBeInTheDocument();
     expect(screen.getByText("SGST @ 2.5%")).toBeInTheDocument();
+  });
+
+  it("passes tableCode from a customer bill link", async () => {
+    renderScopedBill();
+
+    expect(await screen.findByText("Spice Garden")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/bill?session=sess-1&tableCode=t1-demo",
+      expect.objectContaining({ credentials: "include" }),
+    );
   });
 
   it("says the bill is not found when the session is unknown", async () => {

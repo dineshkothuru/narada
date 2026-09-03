@@ -63,7 +63,7 @@ describe("KitchenPage", () => {
     );
 
     expect(await screen.findByText("KOT #AB12CD34")).toBeInTheDocument();
-    expect(screen.queryByText("Table 3")).not.toBeInTheDocument();
+    expect(screen.getByText("Table 3")).toBeInTheDocument();
     expect(screen.getByText(/Masala Dosa/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/kitchen",

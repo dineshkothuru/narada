@@ -3,13 +3,14 @@ import type { CartLine, Lang } from "@narada/shared";
 import { api } from "../client";
 import { queryKeys } from "../keys";
 
-export type OrderRoundItem = { name: string; qty: number; status?: string };
+export type OrderRoundItem = { id?: string; name: string; qty: number; status?: string };
 export type OrderRound = {
   id: string;
   orderNo?: string;
   status: string;
   total_inr: number;
   placed_by?: string | null;
+  placed_via?: "ui" | "anna" | "waiter";
   items: OrderRoundItem[];
 };
 
@@ -47,9 +48,12 @@ export function usePlaceOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: {
-      tableCode: string;
+      outletSlug: string;
+      tableCode?: string;
+      sessionId?: string;
+      serviceType: "dine_in" | "takeaway";
       cart: CartLine[];
-      placedVia: "ui" | "anna";
+      placedVia: "ui" | "anna" | "waiter";
       guestName: string;
       lang: Lang;
     }) => api<PlacedOrder>("/order", { method: "POST", body: JSON.stringify(body) }),
@@ -58,5 +62,14 @@ export function usePlaceOrder() {
         qc.invalidateQueries({ queryKey: queryKeys.orderRounds(data.sessionId) });
       }
     },
+  });
+}
+
+export function useCancelOrderItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      api(`/order?itemId=${encodeURIComponent(itemId)}`, { method: "DELETE" }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["order"] }),
   });
 }

@@ -48,22 +48,25 @@ const COMP_ITEM_NAME = "Gulab Jamun (2 pcs)";
 // voice context and placed-order state; Menu, Cart, VoiceMode, the games and
 // stories view are all driven from here.
 export default function OrderExperience({
+  outletSlug,
   tableCode,
   menu,
 }: {
-  tableCode: string;
+  outletSlug: string;
+  tableCode?: string;
   menu: MenuPayload;
 }) {
   const { outlet, categories, items: menuItems } = menu;
+  const serviceType = tableCode ? "dine_in" : "takeaway";
   const [cart, setCart] = useState<CartLine[]>([]);
   const [lang, setLang] = useState<Lang>("en");
   const [hydrated, setHydrated] = useState(false);
   const [activeCat, setActiveCat] = useState(categories[0]?.id ?? "");
   const [cartOpen, setCartOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [joinedSession, setJoinedSession] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [orderPlaced, setOrderPlaced] = useState<PlacedState | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>("placed");
   const [rounds, setRounds] = useState<OrderRound[]>([]);
   const [guestName, setGuestName] = useState("");
@@ -85,7 +88,7 @@ export default function OrderExperience({
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const itemRefs = useRef<Record<string, HTMLElement | null>>({});
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const storageKey = `narada:${tableCode}`;
+  const storageKey = `narada:${outletSlug}:${tableCode ?? "takeaway"}`;
   const voiceTurnMutation = useVoiceTurn();
   const placeOrderMutation = usePlaceOrder();
   const spinReward = useSpinReward();
@@ -130,7 +133,6 @@ export default function OrderExperience({
           if (s.lang === "en" || s.lang === "hi" || s.lang === "te") setLang(s.lang);
           if (s.spinDone) setSpinDone(true);
           if (typeof s.discountPct === "number") setDiscountPct(s.discountPct);
-          if (s.orderPlaced) setOrderPlaced(s.orderPlaced);
           if (typeof s.guestName === "string") setGuestName(s.guestName);
           if (Array.isArray(s.myOrderIds)) setMyOrderIds(s.myOrderIds);
         }
@@ -142,14 +144,10 @@ export default function OrderExperience({
     return () => clearTimeout(t);
   }, [storageKey]);
 
-  // a fresh phone at an already-active table joins the group's live order view
-  const sessionLookup = useSession(tableCode, hydrated && !orderPlaced);
-  useEffect(() => {
-    const sessionId = sessionLookup.data?.sessionId;
-    if (!sessionId || orderPlaced) return;
-    setOrderPlaced({ total: 0, orderId: null, sessionId });
-    setJoinedSession(true);
-  }, [sessionLookup.data?.sessionId, orderPlaced]);
+  // The server mints/resumes the HttpOnly capability. The returned ID is only
+  // an in-memory resource key for polling, never persisted or sent as auth.
+  const sessionLookup = useSession({ outletSlug, tableCode }, hydrated);
+  const activeSessionId = sessionLookup.data?.sessionId ?? orderPlaced?.sessionId ?? null;
 
   useEffect(() => {
     if (!hydrated) return;
@@ -161,7 +159,6 @@ export default function OrderExperience({
           lang,
           spinDone,
           discountPct,
-          orderPlaced,
           guestName,
           myOrderIds,
         }),
@@ -179,17 +176,16 @@ export default function OrderExperience({
 
   // live kitchen progress: poll the whole table session (every round)
   const roundsQuery = useOrderRounds(
-    orderPlaced?.sessionId ?? null,
+    activeSessionId,
     orderPlaced?.sessionId ? null : (orderPlaced?.orderId ?? null),
   );
   useEffect(() => {
     const d = roundsQuery.data;
     if (!d) return;
-    if (orderPlaced?.sessionId) {
+    if (activeSessionId) {
       if (d.sessionStatus && d.sessionStatus !== "active") {
         // table was settled — reset so the next guest starts clean
         setOrderPlaced(null);
-        setJoinedSession(false);
         setRounds([]);
         setDiscountPct(0);
         setMyOrderIds([]);
@@ -202,26 +198,31 @@ export default function OrderExperience({
         setRounds(d.rounds);
         const latest = d.rounds[d.rounds.length - 1];
         if (latest) setOrderStatus(latest.status);
+        if (!orderPlaced && d.rounds.length > 0) {
+          setOrderPlaced({
+            total: d.rounds.reduce((sum, round) => sum + Number(round.total_inr), 0),
+            orderId: d.rounds[0]?.id ?? null,
+            orderNo: latest?.orderNo ?? null,
+            sessionId: activeSessionId,
+          });
+        }
       }
       if (typeof d.discountPct === "number") setDiscountPct(d.discountPct);
     } else if (d.status) {
       setOrderStatus(d.status);
     }
-  }, [roundsQuery.data, orderPlaced?.sessionId]);
+  }, [roundsQuery.data, activeSessionId, orderPlaced]);
 
   // live bill (GST + service charge + tip) whenever the order sheet is open
-  const billQuery = useCustomerBill(orderPlaced?.sessionId ?? null, tip, cartOpen);
+  const billQuery = useCustomerBill(activeSessionId, serviceType, tip, cartOpen);
   useEffect(() => {
     if (billQuery.data) setBill(billQuery.data);
   }, [billQuery.data]);
 
   const patchBill = (patch: { serviceWaived?: boolean; tip?: number }) => {
-    const sessionId = orderPlaced?.sessionId;
+    const sessionId = activeSessionId;
     if (!sessionId) return;
-    patchBillMutation.mutate(
-      { sessionId, tableCode, ...patch },
-      { onSuccess: (next) => setBill(next) },
-    );
+    patchBillMutation.mutate({ sessionId, ...patch }, { onSuccess: (next) => setBill(next) });
   };
 
   const total = useMemo(() => cartTotal(cart, MENU_BY_ID), [cart, MENU_BY_ID]);
@@ -296,6 +297,8 @@ export default function OrderExperience({
         messages: messagesRef.current,
         language: LANG_NAME[langRef.current],
         tableCode,
+        outletSlug,
+        sessionId: activeSessionId ?? undefined,
       });
       // render the UI in the language the customer is actually using
       // (brain-judged: Hinglish → hi, Tenglish → te, even in Latin script)
@@ -337,9 +340,12 @@ export default function OrderExperience({
     const lines = cartRef.current;
     if (placing || lines.length === 0) return;
     const snapshotTotal = cartTotal(lines, MENU_BY_ID);
+    setOrderError(null);
     try {
       const data = await placeOrderMutation.mutateAsync({
+        outletSlug,
         tableCode,
+        serviceType,
         cart: lines,
         placedVia: via,
         guestName,
@@ -351,17 +357,15 @@ export default function OrderExperience({
         sessionId: data.sessionId ?? null,
         orderNo: data.orderNo ?? null,
       });
-      setJoinedSession(false);
       if (data.orderId) setMyOrderIds((prev) => [...prev, data.orderId!]);
       if (typeof data.discountPct === "number") setDiscountPct(data.discountPct);
-    } catch {
-      setOrderPlaced({ total: snapshotTotal, orderId: null });
-      setJoinedSession(false);
-    } finally {
-      setOrderStatus("placed");
+      cartRef.current = [];
       setCart([]);
       setCompItem(null);
       setGameOpen(false);
+      setOrderStatus("placed");
+    } catch {
+      setOrderError("Could not place the order. Please try again.");
     }
   };
   useEffect(() => {
@@ -369,13 +373,14 @@ export default function OrderExperience({
   });
 
   const callWaiter = () => {
+    if (!tableCode) return;
     setToast(t.waiterComing);
     callWaiterMutation.mutate(tableCode);
   };
 
   // the SERVER draws the prize (client only animates it) — unforgeable
   const resolveSpin = async (): Promise<number> => {
-    const d = await spinReward.mutateAsync(tableCode);
+    const d = await spinReward.mutateAsync(tableCode ?? "");
     if (typeof d.discountPct === "number") setDiscountPct(d.discountPct);
     return typeof d.sliceIndex === "number" ? d.sliceIndex : 0;
   };
@@ -412,7 +417,7 @@ export default function OrderExperience({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.18em] text-rose-400 uppercase">
-                {t.dineIn}
+                {serviceType === "dine_in" ? t.dineIn : "Takeaway"}
               </p>
               <h1 className="font-display mt-1 text-3xl font-semibold tracking-tight text-white">
                 {outlet.name}
@@ -420,12 +425,14 @@ export default function OrderExperience({
               <p className="mt-0.5 text-xs text-stone-400">{outlet.tagline}</p>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <button
-                onClick={callWaiter}
-                className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
-              >
-                🔔 {t.callWaiter}
-              </button>
+              {serviceType === "dine_in" && (
+                <button
+                  onClick={callWaiter}
+                  className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
+                >
+                  🔔 {t.callWaiter}
+                </button>
+              )}
               {menu.uiVariant === "stories" && (
                 <button
                   onClick={() => setStoriesOpen(true)}
@@ -447,7 +454,7 @@ export default function OrderExperience({
             allServed={allServed}
             statusLabel={statusLabel}
             orderStatus={orderStatus}
-            orderNo={orderPlaced.orderNo ?? (joinedSession ? rounds.at(-1)?.orderNo : null)}
+            orderNo={orderPlaced.orderNo}
             payableText={t.payUpi.replace("{amount}", inr(payable))}
             chips={dishChips}
             onOpen={() => setCartOpen(true)}
@@ -464,6 +471,7 @@ export default function OrderExperience({
         discountPct={discountPct}
         orderPlaced={Boolean(orderPlaced)}
         spinDone={spinDone}
+        showRewards={serviceType === "dine_in"}
         highlightIds={highlightIds}
         qtyOf={qtyOf}
         sectionRefs={sectionRefs}
@@ -548,7 +556,7 @@ export default function OrderExperience({
                   vpa: outlet.upiVpa,
                   payeeName: outlet.name,
                   amount: payable,
-                  tableCode,
+                  tableCode: tableCode ?? "Takeaway",
                 })
               : ""
           }
@@ -556,15 +564,18 @@ export default function OrderExperience({
             vpa: outlet.upiVpa,
             payeeName: outlet.name,
             amount: Math.round(total * (1 - discountPct / 100)),
-            tableCode,
+            tableCode: tableCode ?? "Takeaway",
           })}
           compItem={compItem}
           gameOpen={gameOpen}
+          canPlayGame={serviceType === "dine_in"}
+          sessionReady={serviceType === "dine_in" || Boolean(activeSessionId)}
+          orderError={orderError}
           onOpenGame={() => setGameOpen(true)}
           onGameComplete={() => {
             setCompItem(COMP_ITEM_NAME);
             // fire the free dessert to the kitchen as a ₹0 ticket
-            gameReward.mutate(tableCode);
+            gameReward.mutate(tableCode ?? "");
           }}
           onChangeQty={(itemId, delta) => setCart((prev) => changeQtyPure(prev, itemId, delta))}
           onGuestName={setGuestName}
@@ -600,7 +611,7 @@ export default function OrderExperience({
           onOpenCart={() => setCartOpen(true)}
           onOpenVoice={() => setVoiceOpen(true)}
           onClose={() => setStoriesOpen(false)}
-          showSpin={!spinDone && !orderPlaced}
+          showSpin={serviceType === "dine_in" && !spinDone && !orderPlaced}
           onOpenSpin={() => setWheelOpen(true)}
           highlightId={highlightIds[0] ?? null}
           orderBanner={
@@ -609,7 +620,7 @@ export default function OrderExperience({
                   label: allServed ? t.allServed : statusLabel,
                   dotClass: allServed ? "bg-green-400" : statusDotFor(orderStatus),
                   payText: t.payUpi.replace("{amount}", inr(payable)),
-                  orderNo: orderPlaced.orderNo ?? (joinedSession ? rounds.at(-1)?.orderNo : null),
+                  orderNo: orderPlaced.orderNo,
                 }
               : null
           }

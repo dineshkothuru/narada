@@ -1,17 +1,13 @@
 {
   "name": "narada",
   "private": true,
-  "workspaces": [
-    "web",
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
-    "dev": "npm run dev -w web",
-    "dev:api": "npm run dev -w @narada/api",
-    "dev:web": "npm run dev -w @narada/web",
-    "lint": "eslint . && npm run lint -w web && npm run lint -w @narada/web",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev": "pnpm run dev:api & pnpm run dev:web & wait",
+    "dev:api": "pnpm --filter @narada/api dev",
+    "dev:web": "pnpm --filter @narada/web dev",
+    "lint": "eslint . && pnpm --filter @narada/web lint",
+    "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -31,14 +27,10 @@
     "typescript": "^5"
   },
   "simple-git-hooks": {
-    "pre-commit": "npx lint-staged"
-  },
-  "overrides": {
-    "vite": "^7"
+    "pre-commit": "pnpm lint-staged"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json,css,md}": "prettier --write",
-    "web/**/*.{ts,tsx}": "npm run lint -w web --",
     "apps/web/**/*.{ts,tsx}": "eslint --config apps/web/eslint.config.js --fix",
     "{apps/api,packages}/**/*.{ts,tsx}": "eslint --fix"
   }

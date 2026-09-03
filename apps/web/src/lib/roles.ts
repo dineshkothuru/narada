@@ -4,9 +4,6 @@
 export const STAFF_ROLES = ["admin", "kitchen", "waiter", "reception", "cashier"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
-export const isStaffRole = (v: unknown): v is StaffRole =>
-  typeof v === "string" && (STAFF_ROLES as readonly string[]).includes(v);
-
 export const ROLE_ACCESS: Record<string, StaffRole[]> = {
   "/admin": ["admin"],
   "/kitchen": ["admin", "kitchen"],
@@ -48,5 +45,38 @@ export const ROLE_HOME: Record<StaffRole, string> = {
   kitchen: "/kitchen",
   waiter: "/waiter",
   reception: "/floor",
-  cashier: "/floor",
+  cashier: "/counter",
 };
+
+export const ROLE_SIGNUP_PATH: Record<StaffRole, string> = {
+  admin: "/admin/signup",
+  kitchen: "/kitchen/signup",
+  waiter: "/waiter/signup",
+  reception: "/floor/signup",
+  cashier: "/counter/signup",
+};
+
+export const isSignupPath = (pathname: string): boolean =>
+  (Object.values(ROLE_SIGNUP_PATH) as string[]).includes(pathname);
+
+const isStaffLoginPath = (pathname: string): boolean => {
+  const segments = pathname.split("/").filter(Boolean);
+  return segments.length === 3 && segments[0] === "outlet" && segments[2] === "login";
+};
+
+export function safeNext(next: string | null, role: StaffRole): string | null {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return null;
+  try {
+    const target = new URL(next, window.location.origin);
+    if (
+      target.origin !== window.location.origin ||
+      isStaffLoginPath(target.pathname) ||
+      (isSignupPath(target.pathname) && role !== "admin") ||
+      !canAccess(target.pathname, role)
+    )
+      return null;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return null;
+  }
+}

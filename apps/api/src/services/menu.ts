@@ -24,12 +24,50 @@ export async function fetchMenu(
   if (!table) return null;
 
   const [outlet, cats, items] = await Promise.all([
-    repos.outlets.findById(table.outlet_id),
+    repos.outlets.findActiveById(table.outlet_id),
     repos.menuCategories.listByOutlet(table.outlet_id),
     repos.menuItems.listByOutlet(table.outlet_id),
   ]);
-  if (!outlet || cats.length === 0 || items.length === 0) return null;
+  if (!outlet || !outlet.tables_enabled || cats.length === 0 || items.length === 0) return null;
 
+  return buildMenu(outlet, table.label, table.ui_variant, cats, items);
+}
+
+export async function fetchOutletMenu(
+  repos: Pick<Repos, "outlets" | "tables" | "menuCategories" | "menuItems">,
+  slug: string,
+  tableCode?: string,
+): Promise<MenuPayload | null> {
+  const outlet = await repos.outlets.findActiveBySlug(slug);
+  if (!outlet) return null;
+  let tableLabel = "Takeaway";
+  let uiVariant = "classic";
+  if (tableCode) {
+    if (!outlet.tables_enabled) return null;
+    const table = await repos.tables.findByCodeForOutlet(tableCode, outlet.id);
+    if (!table) return null;
+    tableLabel = table.label;
+    uiVariant = table.ui_variant;
+  }
+  const [cats, items] = await Promise.all([
+    repos.menuCategories.listByOutlet(outlet.id),
+    repos.menuItems.listByOutlet(outlet.id),
+  ]);
+  if (cats.length === 0 || items.length === 0) return null;
+  return buildMenu(outlet, tableLabel, uiVariant, cats, items);
+}
+
+function buildMenu(
+  outlet: {
+    name: string;
+    upi_vpa: string | null;
+    payment_timing: string;
+  },
+  tableLabel: string,
+  uiVariant: string,
+  cats: Awaited<ReturnType<Repos["menuCategories"]["listByOutlet"]>>,
+  items: Awaited<ReturnType<Repos["menuItems"]["listByOutlet"]>>,
+): MenuPayload {
   return {
     outlet: {
       name: outlet.name,
@@ -37,8 +75,8 @@ export async function fetchMenu(
       upiVpa: outlet.upi_vpa || "",
       paymentTiming: outlet.payment_timing === "pre" ? "pre" : "post",
     },
-    tableLabel: table.label,
-    uiVariant: table.ui_variant === "stories" ? "stories" : "classic",
+    tableLabel,
+    uiVariant: uiVariant === "stories" ? "stories" : "classic",
     categories: cats.map((c) => ({
       id: c.id,
       name: loc(c.name, c.name_hi, c.name_te),

@@ -1,8 +1,8 @@
 # Parity notes: customer-facing routes
 
-Legacy = `web/app/api/**/route.ts` on Supabase/PostgREST. New = Fastify routes
-in `apps/api/src/routes/**` on Kysely/Postgres. Same paths, same JSON shapes
-and status codes, with the deviations below called out explicitly.
+These notes compare the pre-restructure route contracts with the Fastify routes
+in `apps/api/src/routes/**` on Kysely/Postgres. Paths, JSON shapes, and status
+codes are the same, with the deviations below called out explicitly.
 
 ## GET /api/session
 
@@ -83,16 +83,6 @@ and status codes, with the deviations below called out explicitly.
 | unexpected DB error            | 500 `{error:"failed"}`                 | same |
 | rate limit (>6/min/ip)         | 429 `{error:"too many requests"}`      | same |
 
-## POST /api/anna
-
-| case                                                       | legacy                                                                                                            | new                                                                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| missing/empty `messages`                                   | 400 `{error:"messages required"}`                                                                                 | same                                                                                                                                                                                                                                                                                            |
-| Gemini call throws (no key, network, non-retryable status) | 502 `{error:"Anna is unavailable right now"}`                                                                     | same                                                                                                                                                                                                                                                                                            |
-| happy path                                                 | 200 `AnnaResponse` JSON                                                                                           | same                                                                                                                                                                                                                                                                                            |
-| unknown table code                                         | legacy `fetchMenu` always returns a menu (falls back to a bundled local fixture when Supabase/table lookup fails) | **deviation**: the API has no bundled fixture menu, so an unknown/blank table code yields an empty in-memory menu (`categories:[]`, `items:[]`) built inline in the route instead of a null. Anna still answers, just with nothing to recommend — flagged for the team, not a new failure mode. |
-| rate limit (>30/min/ip)                                    | 429 `{error:"too many requests"}`                                                                                 | same                                                                                                                                                                                                                                                                                            |
-
 ## POST /api/voice
 
 | case                                                  | legacy                                                                                                               | new                                                                                                                                                                                                                                                                            |
@@ -117,3 +107,8 @@ and status codes, with the deviations below called out explicitly.
   depends on the _parsed_ body, not just its shape) stay in the service/route
   layer rather than zod, since zod validates shape, not cross-field business
   rules.
+
+- **AI credentials**: Anna and voice derive the outlet from the requested table
+  before loading BYOK credentials. The API-key cache is keyed by outlet, and an
+  unknown table can use only environment fallback credentials rather than another
+  outlet's settings.

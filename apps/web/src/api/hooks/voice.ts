@@ -11,7 +11,9 @@ export type VoiceTurnBody = {
   cart: CartLine[];
   messages: ChatMessage[];
   language: string;
-  tableCode: string;
+  tableCode?: string;
+  outletSlug?: string;
+  sessionId?: string;
 };
 
 export type VoiceTurnResponse = AnnaResponse & {

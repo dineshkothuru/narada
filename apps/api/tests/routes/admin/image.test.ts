@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../../src/app.js";
-import { ADMIN_COOKIE, roleToken } from "../../../src/plugins/auth.js";
 import { seed } from "../../helpers/fakeRepos.js";
+import { staffCookie } from "../../helpers/staffCookie.js";
 
 // Builds a minimal valid multipart/form-data body without a browser.
 function multipartBody(
@@ -46,7 +46,7 @@ describe("POST /api/admin/image", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/image",
-      cookies: { [ADMIN_COOKIE]: await roleToken("admin") },
+      cookies: staffCookie(data, "admin"),
       headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
       payload: body,
     });
@@ -58,7 +58,7 @@ describe("POST /api/admin/image", () => {
   });
 
   it("415s on an unsupported content type", async () => {
-    const { repos, ids } = seed();
+    const { data, repos, ids } = seed();
     const app = buildApp({ repos });
     const boundary = "----adminImageTest2";
     const body = multipartBody(boundary, ids.items[0], {
@@ -69,7 +69,7 @@ describe("POST /api/admin/image", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/image",
-      cookies: { [ADMIN_COOKIE]: await roleToken("admin") },
+      cookies: staffCookie(data, "admin"),
       headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
       payload: body,
     });
@@ -78,7 +78,7 @@ describe("POST /api/admin/image", () => {
   });
 
   it("413s on an oversize file", async () => {
-    const { repos, ids } = seed();
+    const { data, repos, ids } = seed();
     const app = buildApp({ repos });
     const boundary = "----adminImageTest3";
     const body = multipartBody(boundary, ids.items[0], {
@@ -89,7 +89,7 @@ describe("POST /api/admin/image", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/image",
-      cookies: { [ADMIN_COOKIE]: await roleToken("admin") },
+      cookies: staffCookie(data, "admin"),
       headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
       payload: body,
     });
@@ -108,7 +108,7 @@ describe("DELETE /api/admin/image", () => {
     const res = await app.inject({
       method: "DELETE",
       url: `/api/admin/image?itemId=${ids.items[0]}`,
-      cookies: { [ADMIN_COOKIE]: await roleToken("admin") },
+      cookies: staffCookie(data, "admin"),
     });
 
     expect(res.statusCode).toBe(200);
@@ -116,12 +116,12 @@ describe("DELETE /api/admin/image", () => {
   });
 
   it("400s without itemId", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "DELETE",
       url: "/api/admin/image",
-      cookies: { [ADMIN_COOKIE]: await roleToken("admin") },
+      cookies: staffCookie(data, "admin"),
     });
     expect(res.statusCode).toBe(400);
   });

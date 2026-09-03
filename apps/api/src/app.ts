@@ -1,16 +1,19 @@
 import fastifyCookie from "@fastify/cookie";
-import fastifyCors from "@fastify/cors";
+import fastifyHelmet from "@fastify/helmet";
 import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import Redis from "ioredis";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { db } from "./db/index.js";
-import { env } from "./env.js";
+import { type Deps, makeDeps } from "./deps.js";
+import { env, trustedProxyHops } from "./env.js";
 import { clientIp } from "./lib/ratelimit.js";
 import authPlugin from "./plugins/auth.js";
-import { makeRepos, type Repos } from "./repositories/index.js";
-import annaRoutes from "./routes/anna.js";
+import { type Repos } from "./repositories/index.js";
+import { ensureAdminBootstrap } from "./services/adminStaff.js";
 import billRoutes from "./routes/bill.js";
 import publicMenuRoutes from "./routes/menu.js";
 import orderRoutes from "./routes/order.js";
@@ -20,52 +23,83 @@ import voiceRoutes from "./routes/voice.js";
 import waiterCallRoutes from "./routes/waiterCall.js";
 import categoriesRoutes from "./routes/admin/categories.js";
 import imageRoutes from "./routes/admin/image.js";
-import loginRoutes from "./routes/admin/login.js";
 import meRoutes from "./routes/admin/me.js";
 import menuRoutes from "./routes/admin/menu.js";
 import ordersRoutes from "./routes/admin/orders.js";
 import settingsRoutes from "./routes/admin/settings.js";
 import staffRoutes from "./routes/admin/staff.js";
+import authLoginRoutes from "./routes/auth/login.js";
+import authPasswordRoutes from "./routes/auth/password.js";
+import customerAuthRoutes from "./routes/auth/customer.js";
 import tablesRoutes from "./routes/admin/tables.js";
 import counterRoutes from "./routes/counter.js";
 import floorRoutes from "./routes/floor.js";
 import kitchenRoutes from "./routes/kitchen.js";
 import waiterRoutes from "./routes/waiter.js";
 import waiterTipsRoutes from "./routes/waiterTips.js";
+import customerSessionRoutes from "./routes/customerSession.js";
+import availabilityRoutes from "./routes/availability.js";
+import reportRoutes from "./routes/admin/report.js";
+import waiterMenuRoutes from "./routes/waiterMenu.js";
+import waiterDictateRoutes from "./routes/waiterDictate.js";
+import kotRoutes from "./routes/kot.js";
 
 declare module "fastify" {
   interface FastifyInstance {
     repos: Repos;
+    deps: Deps;
   }
 }
 
 export type BuildAppOptions = {
   logger?: boolean;
-  // tests inject in-memory fakes instead of opening a Postgres pool
+  /** @deprecated pass `deps: { repos }` instead */
   repos?: Repos;
+  // tests inject in-memory fakes instead of opening a Postgres pool
+  deps?: Partial<Deps>;
 };
 
 export function buildApp(opts?: BuildAppOptions): FastifyInstance {
-  const app = Fastify({ logger: opts?.logger ?? false });
+  // Trust no proxy by default. Set TRUST_PROXY_HOPS=1 only after confirming
+  // the deployment has exactly one edge proxy hop (for example, Railway).
+  const app = Fastify({
+    logger: opts?.logger ?? false,
+    trustProxy: trustedProxyHops > 0 ? (_address, hop) => hop < trustedProxyHops : false,
+    requestIdHeader: false,
+    genReqId: () => randomUUID(),
+  });
+  const redis = env.REDIS_URL
+    ? new Redis(env.REDIS_URL, { connectTimeout: 10_000, maxRetriesPerRequest: 1 })
+    : null;
 
   app.register(fastifyCookie);
-  app.register(fastifyCors, { origin: true, credentials: true });
+  app.register(fastifyHelmet);
   app.register(fastifyRateLimit, {
     global: false,
     keyGenerator: clientIp,
-    errorResponseBuilder: (request) => ({
+    ...(redis ? { redis } : {}),
+    errorResponseBuilder: () => ({
       statusCode: 429,
-      message:
-        request.routeOptions.url === "/api/admin/login"
-          ? "too many attempts — wait a minute"
-          : "too many requests",
+      message: "too many requests",
     }),
+  });
+  app.addHook("onSend", async (request, reply) => {
+    reply.header("x-request-id", request.id);
+  });
+  app.addHook("onClose", async () => {
+    if (redis) await redis.quit();
   });
   app.register(authPlugin);
 
   // pg.Pool connects lazily, so tests that never touch a repo never open a
   // socket; passing fakes replaces the real ones entirely
-  app.decorate("repos", opts?.repos ?? makeRepos(db));
+  const deps = makeDeps(db, {
+    ...opts?.deps,
+    repos: opts?.deps?.repos ?? opts?.repos,
+  });
+  app.decorate("deps", deps);
+  app.decorate("repos", deps.repos);
+  app.addHook("onReady", async () => ensureAdminBootstrap(app.repos));
 
   const health = async () => ({ ok: true });
   app.get("/health", health);
@@ -74,28 +108,35 @@ export function buildApp(opts?: BuildAppOptions): FastifyInstance {
   // Admin routes — moved out of this file into src/routes/admin/*.ts.
   app.register(categoriesRoutes);
   app.register(imageRoutes);
-  app.register(loginRoutes);
+  app.register(authLoginRoutes);
+  app.register(authPasswordRoutes);
+  app.register(customerAuthRoutes);
   app.register(meRoutes);
   app.register(menuRoutes);
   app.register(ordersRoutes);
   app.register(settingsRoutes);
   app.register(staffRoutes);
   app.register(tablesRoutes);
+  app.register(reportRoutes);
 
   app.register(kitchenRoutes);
+  app.register(kotRoutes);
+  app.register(availabilityRoutes);
   app.register(waiterRoutes);
+  app.register(waiterMenuRoutes);
+  app.register(waiterDictateRoutes);
   app.register(waiterTipsRoutes);
   app.register(floorRoutes);
   app.register(counterRoutes);
 
   // Customer-facing public routes.
   app.register(sessionRoutes);
+  app.register(customerSessionRoutes);
   app.register(publicMenuRoutes);
   app.register(orderRoutes);
   app.register(billRoutes);
   app.register(rewardRoutes);
   app.register(waiterCallRoutes);
-  app.register(annaRoutes);
   app.register(voiceRoutes);
 
   app.setErrorHandler((error: FastifyError, request, reply) => {

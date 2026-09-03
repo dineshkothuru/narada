@@ -30,6 +30,11 @@ describe("deriveOrderStatus", () => {
     // [].every(...) is true, so a naive check would call an empty round "served"
     expect(deriveOrderStatus([])).toBe("placed");
   });
+
+  it("ignores cancelled siblings when deriving the ticket", () => {
+    expect(deriveOrderStatus(items("cancelled", "served"))).toBe("served");
+    expect(deriveOrderStatus(items("cancelled"))).toBe("cancelled");
+  });
 });
 
 describe("deriveTableStatus", () => {

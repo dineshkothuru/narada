@@ -12,10 +12,11 @@ const slug = (s: string) =>
 
 export async function getAdminTables(
   repos: Pick<Repos, "tables" | "outlets">,
+  outletId: string,
 ): Promise<AdminTablesResponse> {
   const [tables, outlet] = await Promise.all([
-    repos.tables.listForAdmin(),
-    repos.outlets.findFirst(),
+    repos.tables.listForAdmin(outletId),
+    repos.outlets.findById(outletId),
   ]);
   return {
     tables: tables.map((t) => ({
@@ -33,12 +34,13 @@ export async function getAdminTables(
 export async function createTables(
   repos: Pick<Repos, "tables" | "outlets">,
   input: CreateTablesInput,
+  outletId: string,
 ): Promise<{ ok: true; added: number }> {
-  const outlet = await repos.outlets.findFirst();
+  const outlet = await repos.outlets.findById(outletId);
   if (!outlet) throw notFound("no outlet");
 
   const variant = input.ui_variant === "stories" ? "stories" : "classic";
-  const existing = await repos.tables.listLabelsAndCodes();
+  const existing = await repos.tables.listLabelsAndCodes(outlet.id);
   const takenCodes = new Set(existing.map((t) => t.code));
   const uniqueCode = (base: string) => {
     let code = base || "table";
@@ -97,8 +99,10 @@ export async function createTables(
 export async function patchTable(
   repos: Pick<Repos, "tables">,
   input: PatchTableInput,
+  outletId: string,
 ): Promise<{ ok: true }> {
   if (!input.tableId) throw badRequest("tableId required");
+  if (!(await repos.tables.findById(input.tableId, outletId))) throw notFound("unknown table");
 
   const patch: Record<string, unknown> = {};
   if (input.ui_variant && ["classic", "stories"].includes(input.ui_variant)) {
@@ -112,23 +116,25 @@ export async function patchTable(
   }
   if (Object.keys(patch).length === 0) throw badRequest("nothing to update");
 
-  await repos.tables.update(input.tableId, patch);
+  await repos.tables.update(input.tableId, patch, outletId);
   return { ok: true };
 }
 
 export async function deleteTable(
   repos: Pick<Repos, "tables" | "sessions">,
   id: string,
+  outletId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!id) throw badRequest("id required");
+  if (!(await repos.tables.findById(id, outletId))) throw notFound("unknown table");
 
-  const active = await repos.sessions.findActiveByTableId(id);
+  const active = await repos.sessions.findActiveByTableId(id, outletId);
   if (active) {
     throw conflict("Table has an open tab — settle it first.");
   }
 
   try {
-    await repos.tables.remove(id);
+    await repos.tables.remove(id, outletId);
     return { ok: true };
   } catch {
     throw conflict("Table has order history — it can't be deleted.");

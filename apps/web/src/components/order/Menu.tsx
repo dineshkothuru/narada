@@ -18,6 +18,7 @@ export default function Menu({
   discountPct,
   orderPlaced,
   spinDone,
+  showRewards,
   highlightIds,
   qtyOf,
   sectionRefs,
@@ -36,6 +37,7 @@ export default function Menu({
   discountPct: number;
   orderPlaced: boolean;
   spinDone: boolean;
+  showRewards: boolean;
   highlightIds: string[];
   qtyOf: (itemId: string) => number;
   sectionRefs: RefObject<Record<string, HTMLElement | null>>;
@@ -83,7 +85,7 @@ export default function Menu({
                 </span>
               </button>
             )),
-            ...(!spinDone
+            ...(!spinDone && showRewards
               ? [
                   <button
                     key="spin"

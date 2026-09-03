@@ -9,6 +9,7 @@ const ITEM_MARK: Record<string, { icon: string; cls: string }> = {
   preparing: { icon: "👨‍🍳", cls: "text-sky-600" },
   ready: { icon: "🔔", cls: "font-semibold text-amber-600" },
   served: { icon: "✅", cls: "text-green-600" },
+  cancelled: { icon: "×", cls: "text-slate-400 line-through" },
 };
 
 // Everything a table has ordered and everything it owes, in one floating panel.
@@ -16,18 +17,24 @@ const ITEM_MARK: Record<string, { icon: string; cls: string }> = {
 // counter — it stays available until the tab is paid and closed.
 export default function TableSheet({
   sessionId,
+  tableCode,
   label,
   onClose,
   onShare,
   actions,
+  page = false,
+  onCancelItem,
 }: {
   sessionId: string;
+  tableCode?: string;
   label: string;
   onClose: () => void;
   onShare?: (net: number) => void;
   actions?: ReactNode;
+  page?: boolean;
+  onCancelItem?: (itemId: string, name: string) => void;
 }) {
-  const { data: sheet, isError: error } = useBill(sessionId);
+  const { data: sheet, isError: error } = useBill(sessionId, tableCode);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -46,15 +53,25 @@ export default function TableSheet({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
+      role={page ? undefined : "dialog"}
+      aria-modal={page ? undefined : true}
       aria-label={`${label} order details`}
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-stone-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className={
+        page
+          ? "w-full"
+          : "fixed inset-0 z-[90] flex items-end justify-center bg-stone-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      }
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (!page && e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="animate-[dialogIn_.16s_ease-out] flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-stone-200 sm:rounded-3xl">
+      <div
+        className={
+          page
+            ? "flex w-full flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-slate-200"
+            : "animate-[dialogIn_.16s_ease-out] flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-stone-200 sm:rounded-3xl"
+        }
+      >
         <header className="flex items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">
           <div className="min-w-0">
             <h2 className="font-display text-lg font-semibold text-stone-900">{label}</h2>
@@ -66,13 +83,15 @@ export default function TableSheet({
                 : "Loading…"}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-100 text-sm text-stone-500"
-          >
-            ✕
-          </button>
+          {!page && (
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-100 text-sm text-stone-500"
+            >
+              ✕
+            </button>
+          )}
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -100,8 +119,18 @@ export default function TableSheet({
                       <span className="min-w-0 truncate text-stone-700">
                         {it.qty}× {it.name}
                       </span>
-                      <span className={`shrink-0 text-[11px] ${m.cls}`}>
-                        {m.icon} {it.status}
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className={`text-[11px] ${m.cls}`}>
+                          {m.icon} {it.status}
+                        </span>
+                        {onCancelItem && !["served", "cancelled"].includes(it.status) && (
+                          <button
+                            onClick={() => onCancelItem(it.id, it.name)}
+                            className="text-[10px] font-bold text-slate-500 underline underline-offset-2"
+                          >
+                            Void
+                          </button>
+                        )}
                       </span>
                     </li>
                   );
@@ -156,7 +185,7 @@ export default function TableSheet({
 
         <footer className="flex flex-wrap gap-2 border-t border-stone-200 px-5 py-4">
           <a
-            href={`/bill/${sessionId}`}
+            href={`/bill/${sessionId}${tableCode ? `?tableCode=${encodeURIComponent(tableCode)}` : ""}`}
             target="_blank"
             rel="noreferrer"
             className="rounded-xl bg-stone-100 px-4 py-2.5 text-xs font-bold text-stone-600"
@@ -189,7 +218,12 @@ function Row({ label, value, tone }: { label: string; value: string; tone?: stri
 
 // Opens WhatsApp with the bill link ready to send. The guest's number is
 // optional — without one WhatsApp just asks who to send it to.
-export async function shareBillOnWhatsApp(opts: { sessionId: string; label: string; net: number }) {
+export async function shareBillOnWhatsApp(opts: {
+  sessionId: string;
+  tableCode?: string;
+  label: string;
+  net: number;
+}) {
   const number = await ask.prompt({
     title: `Share ${opts.label}'s bill`,
     message: "Leave it blank to pick the contact in WhatsApp yourself.",
@@ -203,7 +237,7 @@ export async function shareBillOnWhatsApp(opts: { sessionId: string; label: stri
   const digits = number.replace(/\D/g, "");
   // a bare 10-digit Indian mobile needs its country code for wa.me
   const to = digits ? (digits.length === 10 ? `91${digits}` : digits) : "";
-  const link = `${window.location.origin}/bill/${opts.sessionId}`;
+  const link = `${window.location.origin}/bill/${opts.sessionId}${opts.tableCode ? `?tableCode=${encodeURIComponent(opts.tableCode)}` : ""}`;
   const text = `Your bill at ${opts.label} — ${inr(opts.net)}\n${link}`;
   window.open(
     `https://wa.me/${to}?text=${encodeURIComponent(text)}`,

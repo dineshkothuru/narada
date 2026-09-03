@@ -19,8 +19,10 @@ export type Round = {
 export async function sessionRounds(
   repos: Pick<Repos, "orders">,
   sessionId: string,
+  outletId?: string,
 ): Promise<Round[]> {
-  const rows = await repos.orders.listBySessionWithItems(sessionId);
+  if (!outletId) throw new Error("outlet scope required");
+  const rows = await repos.orders.listBySessionWithItems(sessionId, outletId);
   return rows
     .filter((o) => o.status !== "cancelled")
     .map((o) => ({

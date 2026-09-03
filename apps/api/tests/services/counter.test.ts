@@ -57,8 +57,8 @@ function seated(): { data: FakeDb; repos: Repos; sessionId: string } {
 
 describe("counterBoard", () => {
   it("lists the active tabs sorted by unserved then due", async () => {
-    const { repos, sessionId } = seated();
-    const board = await counterBoard(repos);
+    const { repos, sessionId, data } = seated();
+    const board = await counterBoard(repos, data.outlets[0].id as string);
     const row = board.tabs.find((t) => t.sessionId === sessionId);
     expect(row).toMatchObject({ due: 440, unserved: 0, rounds: 1 });
   });
@@ -86,7 +86,7 @@ describe("counterBoard", () => {
       settled_at: null,
     });
 
-    const board = await counterBoard(repos);
+    const board = await counterBoard(repos, data.outlets[0].id as string);
     expect(board.tabs.find((t) => t.sessionId === joinedSession)).toBeUndefined();
     expect(board.tabs.find((t) => t.sessionId === sessionId)?.mergedWith).toEqual(["Table 2"]);
   });
@@ -95,13 +95,13 @@ describe("counterBoard", () => {
 describe("waiveService", () => {
   it("sets the waived flag", async () => {
     const { data, repos, sessionId } = seated();
-    await waiveService(repos, sessionId, true);
+    await waiveService(repos, sessionId, data.outlets[0].id as string, true);
     expect(data.sessions[0].service_waived).toBe(true);
   });
 
   it("defaults to false when waived is omitted", async () => {
     const { data, repos, sessionId } = seated();
-    await waiveService(repos, sessionId);
+    await waiveService(repos, sessionId, data.outlets[0].id as string);
     expect(data.sessions[0].service_waived).toBe(false);
   });
 });
@@ -109,11 +109,16 @@ describe("waiveService", () => {
 describe("counterGenerateBill / counterRecordPayment", () => {
   it("raises a bill and then settles it, same as the settle service", async () => {
     const { data, repos, sessionId } = seated();
-    const bill = await counterGenerateBill(repos, sessionId);
+    const bill = await counterGenerateBill(repos, sessionId, data.outlets[0].id as string);
     expect(bill.ok).toBe(true);
     expect(data.sessions[0].bill_no).toBe(bill.billNo);
 
-    const result = await counterRecordPayment(repos, { sessionId, method: "card" });
+    const result = await counterRecordPayment(
+      repos,
+      { sessionId, method: "card" },
+      data.outlets[0].id as string,
+      "Ravi",
+    );
     expect(result).toMatchObject({ ok: true, closed: true });
     expect(data.sessions[0].status).toBe("closed");
   });

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { askAnna, buildSystemPrompt } from "../../src/services/agent.js";
-import { clearApiKeyCache } from "../../src/services/keys.js";
+import { clearApiKeyCache, getApiKeys } from "../../src/services/keys.js";
 import { fetchMenu } from "../../src/services/menu.js";
 import { seed } from "../helpers/fakeRepos.js";
 
@@ -56,7 +56,14 @@ describe("askAnna", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const menu = await fetchMenu(repos, "t1-demo");
-    const result = await askAnna(repos, menu!, [{ role: "user", text: "hi" }], [], "English");
+    const result = await askAnna(
+      repos,
+      menu!,
+      [{ role: "user", text: "hi" }],
+      [],
+      "English",
+      data.outlets[0].id as string,
+    );
     expect(result.reply).toBe("Namaste!");
     expect(result.actions).toEqual([]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -79,8 +86,38 @@ describe("askAnna", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const menu = await fetchMenu(repos, "t1-demo");
-    const result = await askAnna(repos, menu!, [{ role: "user", text: "hi" }], [], "English");
+    const result = await askAnna(
+      repos,
+      menu!,
+      [{ role: "user", text: "hi" }],
+      [],
+      "English",
+      data.outlets[0].id as string,
+    );
     expect(result.reply).toBe("hi");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps BYOK keys isolated in the cache per outlet", async () => {
+    const { data, repos, ids } = seed();
+    data.outlets[0].gemini_api_key = "outlet-one-gemini";
+    data.outlets[0].sarvam_api_key = "outlet-one-sarvam";
+    data.outlets.push({
+      ...data.outlets[0],
+      id: "outlet-two",
+      name: "Other Garden",
+      slug: "other-garden",
+      gemini_api_key: "outlet-two-gemini",
+      sarvam_api_key: "outlet-two-sarvam",
+    });
+
+    await expect(getApiKeys(repos, ids.outlet)).resolves.toEqual({
+      gemini: "outlet-one-gemini",
+      sarvam: "outlet-one-sarvam",
+    });
+    await expect(getApiKeys(repos, "outlet-two")).resolves.toEqual({
+      gemini: "outlet-two-gemini",
+      sarvam: "outlet-two-sarvam",
+    });
   });
 });

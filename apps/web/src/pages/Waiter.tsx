@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import AdminShell from "@/components/AdminShell";
 import { ask } from "@/components/Dialogs";
 import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
@@ -9,6 +10,7 @@ import {
   useTips,
   useWaiterAction,
   useWaiterTables,
+  useMe,
   type WaiterTable,
 } from "@/api/hooks";
 
@@ -36,43 +38,43 @@ const LANG_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 export default function WaiterPage() {
-  const { data, isError } = useWaiterTables();
+  const navigate = useNavigate();
+  const { data, isError, refetch } = useWaiterTables();
   const tables = data?.tables ?? [];
   const { data: tips } = useTips();
+  const { data: me } = useMe();
+  const displayName = me?.displayName ?? "";
   const action = useWaiterAction();
-  const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
-
-  // remembered per device so a waiter types their name once per shift
-  const [lastAttendant, setLastAttendant] = useState(() => {
-    try {
-      return localStorage.getItem("narada:staff-name") ?? "";
-    } catch {
-      return "";
-    }
-  });
-
+  const floorAction = useFloorAction();
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    try {
-      if (lastAttendant) localStorage.setItem("narada:staff-name", lastAttendant);
-    } catch {
-      // storage unavailable — the name just won't be remembered next visit
-    }
-  }, [lastAttendant]);
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [openTable, setOpenTable] = useState<{
+    id: string;
+    tableCode: string;
+    label: string;
+  } | null>(null);
 
   const calls = tables.filter((t) => t.call);
   // food the kitchen has plated and is waiting for a waiter to carry out
-  const readyRounds = tables.flatMap((t) =>
-    (t.session?.orders ?? [])
-      .filter((o) => o.status === "ready")
-      .map((order) => ({ table: t, order })),
+  const readyItems = tables.flatMap((t) =>
+    (t.session?.orders ?? []).flatMap((order) =>
+      order.items.filter((item) => item.status === "ready").map((item) => ({ table: t, item })),
+    ),
   );
   const active = tables.filter((t) => t.session);
+  const waitingToOrder = active
+    .filter((t) => t.session!.orders.length === 0)
+    .sort((a, b) => Date.parse(a.session!.since) - Date.parse(b.session!.since));
+  const running = active.filter((t) => t.session!.orders.length > 0);
   const toClean = tables.filter((t) => !t.session && t.needsCleaning);
-  // "me" is the name this waiter attends tables under, remembered per device
+  // Attribute waiter work to the authenticated identity returned by /me.
   const myTips =
-    lastAttendant.trim() && tips
-      ? (tips.rows.find((r) => r.attendant === lastAttendant.trim()) ?? {
-          attendant: lastAttendant.trim(),
+    displayName && tips
+      ? (tips.rows.find((r) => r.attendant === displayName) ?? {
+          attendant: displayName,
           tips: 0,
           tables: 0,
         })
@@ -80,11 +82,11 @@ export default function WaiterPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <header className="mb-5 flex max-w-5xl items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Waiter</h1>
-            <p className="text-xs text-stone-500">
+            <h1 className="font-display text-2xl font-semibold text-slate-900">Narada · Waiter</h1>
+            <p className="text-xs text-slate-500">
               Calls, running tabs &amp; payments · refreshes every 5s
               {isError && (
                 <span className="ml-2 font-semibold text-rose-600">Could not refresh</span>
@@ -94,16 +96,16 @@ export default function WaiterPage() {
         </header>
 
         {myTips && (
-          <section className="card-float mb-5 flex max-w-5xl items-center justify-between rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
+          <section className="panel panel-lift mb-5 flex max-w-5xl items-center justify-between p-4">
             <div>
               <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 Your tips today
               </p>
               <p className="text-xs text-stone-500">
-                {lastAttendant} · {myTips.tables} table{myTips.tables === 1 ? "" : "s"} settled
+                {displayName} · {myTips.tables} table{myTips.tables === 1 ? "" : "s"} settled
               </p>
             </div>
-            <span className="font-display text-2xl font-semibold text-green-700">
+            <span className="font-display text-2xl font-semibold text-emerald-700">
               {inr(myTips.tips)}
             </span>
           </section>
@@ -111,38 +113,28 @@ export default function WaiterPage() {
 
         {calls.length > 0 && (
           <section className="mb-5 max-w-5xl">
-            <h2 className="mb-2 text-xs font-bold tracking-widest text-rose-600 uppercase">
-              🔔 Waiter calls ({calls.length})
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Waiter calls ({calls.length})
             </h2>
             <div className="flex flex-col gap-2">
               {calls.map((t) => (
                 <div
                   key={t.call!.id}
-                  className="card-float flex animate-pulse items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-4"
+                  className="tone-rose panel panel-lift flex animate-pulse items-center justify-between p-4"
                 >
-                  <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
+                  <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
                     {t.label}
                     <CallTimer since={t.call!.created_at} />
                   </span>
                   <button
                     onClick={async () => {
-                      const who = await ask.prompt({
-                        title: `Attending ${t.label}`,
-                        message: "You'll be shown as this table's attendant.",
-                        label: "Your name",
-                        defaultValue: lastAttendant,
-                        confirmLabel: "On it",
-                      });
-                      if (who === null) return;
-                      if (who.trim()) setLastAttendant(who.trim());
                       action.mutate({
                         action: "ack_call",
                         callId: t.call!.id,
                         sessionId: t.session?.id,
-                        attendedBy: who,
                       });
                     }}
-                    className="rounded-full bg-stone-900 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                    className="rounded-full bg-white px-5 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
                   >
                     On it ✋
                   </button>
@@ -152,26 +144,26 @@ export default function WaiterPage() {
           </section>
         )}
 
-        {readyRounds.length > 0 && (
+        {readyItems.length > 0 && (
           <section className="mb-5 max-w-5xl">
-            <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-600 uppercase">
-              🔔 Ready to serve ({readyRounds.length})
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Ready to serve ({readyItems.length})
             </h2>
             <div className="flex flex-col gap-2">
-              {readyRounds.map(({ table, order }) => (
+              {readyItems.map(({ table, item }) => (
                 <div
-                  key={order.id}
-                  className="card-float flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4"
+                  key={item.id}
+                  className="tone-amber panel panel-lift flex items-center justify-between gap-3 p-4"
                 >
                   <span className="min-w-0">
-                    <span className="text-sm font-bold text-stone-900">{table.label}</span>
-                    <span className="ml-2 text-xs text-stone-500">
-                      {order.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
+                    <span className="text-sm font-bold text-slate-900">{table.label}</span>
+                    <span className="ml-2 text-xs text-slate-500">
+                      {item.qty}× {item.name}
                     </span>
                   </span>
                   <button
-                    onClick={() => action.mutate({ action: "mark_served", orderId: order.id })}
-                    className="shrink-0 rounded-full bg-amber-500 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                    onClick={() => action.mutate({ action: "mark_item_served", itemId: item.id })}
+                    className="shrink-0 rounded-full bg-white px-5 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
                   >
                     Served ✅
                   </button>
@@ -183,14 +175,14 @@ export default function WaiterPage() {
 
         {toClean.length > 0 && (
           <section className="mb-5 max-w-5xl">
-            <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
-              🧹 Awaiting cleaning ({toClean.length})
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Awaiting cleaning ({toClean.length})
             </h2>
             <div className="flex flex-col gap-2">
               {toClean.map((t) => (
                 <div
                   key={t.tableId}
-                  className="card-float flex items-center justify-between gap-3 rounded-2xl border-l-4 border-stone-400 bg-white p-4"
+                  className="panel panel-lift flex items-center justify-between gap-3 p-4"
                 >
                   <span className="min-w-0">
                     <span className="text-sm font-bold text-stone-900">{t.label}</span>
@@ -200,7 +192,7 @@ export default function WaiterPage() {
                   </span>
                   <button
                     onClick={() => action.mutate({ action: "clear_table", tableId: t.tableId })}
-                    className="shrink-0 rounded-full bg-stone-800 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
+                    className="shrink-0 rounded-full bg-white px-5 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
                   >
                     Table ready ✓
                   </button>
@@ -210,23 +202,45 @@ export default function WaiterPage() {
           </section>
         )}
 
+        {waitingToOrder.length > 0 && (
+          <section className="mb-5 max-w-5xl">
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Waiting to order ({waitingToOrder.length})
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {waitingToOrder.map((t) => (
+                <WaiterCard
+                  key={t.tableId}
+                  table={t}
+                  waitingNow={now}
+                  onClaim={() =>
+                    floorAction.mutate(
+                      { action: "attendant", sessionId: t.session!.id },
+                      { onSettled: () => void refetch() },
+                    )
+                  }
+                  onOpen={() => navigate(`/waiter/table/${encodeURIComponent(t.code)}`)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="max-w-5xl">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-stone-500 uppercase">
-            Open tables ({active.length})
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-slate-500 uppercase">
+            Running tables ({running.length})
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            {active.length === 0 && (
-              <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-stone-400 sm:col-span-2">
-                No open tables
+            {running.length === 0 && (
+              <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-slate-400 sm:col-span-2">
+                No running tables
               </p>
             )}
-            {active.map((t) => (
+            {running.map((t) => (
               <WaiterCard
                 key={t.tableId}
                 table={t}
-                lastAttendant={lastAttendant}
-                onRemember={setLastAttendant}
-                onOpen={() => setOpenTable({ id: t.session!.id, label: t.label })}
+                onOpen={() => navigate(`/waiter/table/${encodeURIComponent(t.code)}`)}
               />
             ))}
           </div>
@@ -238,11 +252,26 @@ export default function WaiterPage() {
         {openTable && (
           <TableSheet
             sessionId={openTable.id}
+            tableCode={openTable.tableCode}
             label={openTable.label}
             onClose={() => setOpenTable(null)}
             onShare={(net) =>
-              shareBillOnWhatsApp({ sessionId: openTable.id, label: openTable.label, net })
+              shareBillOnWhatsApp({
+                sessionId: openTable.id,
+                tableCode: openTable.tableCode,
+                label: openTable.label,
+                net,
+              })
             }
+            onCancelItem={async (itemId, name) => {
+              const yes = await ask.confirm({
+                title: `Void ${name}?`,
+                message: "Unserved food is removed from the bill and recorded.",
+                confirmLabel: "Void item",
+                danger: true,
+              });
+              if (yes) action.mutate({ action: "cancel_item", itemId });
+            }}
           />
         )}
       </main>
@@ -252,27 +281,26 @@ export default function WaiterPage() {
 
 function WaiterCard({
   table: t,
-  lastAttendant,
-  onRemember,
+  waitingNow,
+  onClaim,
   onOpen,
 }: {
   table: WaiterTable;
-  lastAttendant: string;
-  onRemember: (name: string) => void;
+  waitingNow?: number;
+  onClaim?: () => void;
   onOpen: () => void;
 }) {
   const action = useWaiterAction();
-  const floorAction = useFloorAction();
   const s = t.session!;
 
   return (
     <article
-      className={`card-float rounded-2xl bg-white p-4 ${
-        t.call ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : "ring-1 ring-stone-200/80"
+      className={`tone-${t.call ? "rose" : s.status === "settling" ? "amber" : s.status === "billed" ? "sky" : "indigo"} panel panel-lift p-4 ${
+        t.call ? "animate-pulse" : ""
       }`}
     >
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+      <div className="panel-head -mx-4 -mt-4 mb-3 flex items-center justify-between gap-2 px-4 py-3">
+        <span className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
           {t.label}
           {s.langs.map((l) => (
             <span
@@ -284,10 +312,10 @@ function WaiterCard({
             </span>
           ))}
         </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-stone-400">
+        <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
           <span
             className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-              STATUS_CHIP[s.status] ?? "bg-stone-100 text-stone-500"
+              STATUS_CHIP[s.status] ?? "bg-slate-100 text-slate-500"
             }`}
           >
             {STATUS_LABEL[s.status] ?? s.status}
@@ -295,26 +323,28 @@ function WaiterCard({
           open {minutesAgo(s.since, true)}
         </span>
       </div>
-      <button
-        onClick={async () => {
-          const who = await ask.prompt({
-            title: `Attendant for ${t.label}`,
-            message: "Leave it empty to unassign the table.",
-            label: "Waiter's name",
-            defaultValue: s.attendant ?? lastAttendant,
-            confirmLabel: "Assign",
-          });
-          if (who === null) return;
-          if (who.trim()) onRemember(who.trim());
-          floorAction.mutate({ action: "attendant", sessionId: s.id, attendant: who });
-        }}
-        className={`mt-1 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
-          s.attendant ? "bg-violet-100 text-violet-700" : "bg-stone-100 text-stone-400"
-        }`}
-      >
-        {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
-      </button>
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+      {s.attendant && (
+        <span className="mt-1 block w-fit rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-extrabold text-violet-700">
+          👤 {s.attendant}
+        </span>
+      )}
+      {s.orders.length === 0 && (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-violet-50 px-2.5 py-2 text-[11px] font-semibold text-violet-700">
+          <span>
+            {!s.attendant && "NOBODY ASSIGNED · "}Waiting{" "}
+            {waitingNow ? minutesAgo(s.since, true) : "to order"}
+          </span>
+          {!s.attendant ? (
+            <button
+              onClick={onClaim}
+              className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200"
+            >
+              I&apos;ll take it
+            </button>
+          ) : null}
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
         {s.guests ? (
           <span>
             🪑 {s.guests}/{t.capacity} seated
@@ -336,89 +366,110 @@ function WaiterCard({
         <span
           className={`text-sm font-extrabold ${
             s.orders.length === 0
-              ? "text-stone-300"
+              ? "text-slate-300"
               : s.due > 0
                 ? "text-rose-600"
-                : "text-green-600"
+                : "text-emerald-600"
           }`}
         >
           {s.orders.length === 0 ? "—" : s.due > 0 ? `Due ${inr(s.due)}` : "Settled ✓"}
         </span>
+        {s.due <= 0 && (
+          <button
+            onClick={onOpen}
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
+          >
+            Workspace
+          </button>
+        )}
         {s.due > 0 && (
           <div className="flex flex-wrap justify-end gap-1.5">
             <button
               onClick={onOpen}
-              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
             >
               🧾 Details
             </button>
-            <button
-              onClick={() => shareBillOnWhatsApp({ sessionId: s.id, label: t.label, net: s.due })}
-              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-green-700 ring-1 ring-green-200"
-            >
-              Share
-            </button>
-            <button
-              onClick={async () => {
-                const out = await ask.form({
-                  title: `${t.label} · bill ${inr(s.due)}`,
-                  message: "Anything received above the bill is recorded as a tip.",
-                  fields: [
-                    {
-                      name: "amount",
-                      label: "Amount received (₹)",
+            {s.billNo ? (
+              <>
+                <button
+                  onClick={() =>
+                    shareBillOnWhatsApp({
+                      sessionId: s.id,
+                      tableCode: t.code,
+                      label: t.label,
+                      net: s.due,
+                    })
+                  }
+                  className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200"
+                >
+                  Share
+                </button>
+                <button
+                  onClick={async () => {
+                    const out = await ask.form({
+                      title: `${t.label} · bill ${inr(s.due)}`,
+                      message: "Anything received above the bill is recorded as a tip.",
+                      fields: [
+                        {
+                          name: "amount",
+                          label: "Amount received (₹)",
+                          defaultValue: String(s.due),
+                          inputMode: "numeric",
+                          required: true,
+                          hint: `Bill is ${inr(s.due)}`,
+                        },
+                        { name: "utr", label: "UPI reference / UTR", placeholder: "optional" },
+                      ],
+                      confirmLabel: "Record payment",
+                    });
+                    if (out === null) return;
+                    const amount = Number(out.amount);
+                    if (!Number.isFinite(amount) || amount <= 0) return;
+                    action.mutate({
+                      action: "record_payment",
+                      sessionId: s.id,
+                      amount,
+                      method: "upi_intent",
+                      utr: out.utr,
+                    });
+                  }}
+                  className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                >
+                  Paid UPI
+                </button>
+                <button
+                  onClick={async () => {
+                    const kept = await ask.prompt({
+                      title: `${t.label} · bill ${inr(s.due)}`,
+                      message:
+                        "Enter what you kept after handing back change. Anything above the bill is recorded as a tip.",
+                      label: "Cash kept (₹)",
                       defaultValue: String(s.due),
                       inputMode: "numeric",
                       required: true,
-                      hint: `Bill is ${inr(s.due)}`,
-                    },
-                    { name: "utr", label: "UPI reference / UTR", placeholder: "optional" },
-                  ],
-                  confirmLabel: "Record payment",
-                });
-                if (out === null) return;
-                const amount = Number(out.amount);
-                if (!Number.isFinite(amount) || amount <= 0) return;
-                action.mutate({
-                  action: "record_payment",
-                  sessionId: s.id,
-                  amount,
-                  method: "upi_intent",
-                  utr: out.utr,
-                  collectedBy: lastAttendant,
-                });
-              }}
-              className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-            >
-              Paid UPI
-            </button>
-            <button
-              onClick={async () => {
-                const kept = await ask.prompt({
-                  title: `${t.label} · bill ${inr(s.due)}`,
-                  message:
-                    "Enter what you kept after handing back change. Anything above the bill is recorded as a tip.",
-                  label: "Cash kept (₹)",
-                  defaultValue: String(s.due),
-                  inputMode: "numeric",
-                  required: true,
-                  confirmLabel: "Record payment",
-                });
-                if (kept === null) return;
-                const amount = Number(kept);
-                if (!Number.isFinite(amount) || amount <= 0) return;
-                action.mutate({
-                  action: "record_payment",
-                  sessionId: s.id,
-                  amount,
-                  method: "cash",
-                  collectedBy: lastAttendant,
-                });
-              }}
-              className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-            >
-              Paid cash
-            </button>
+                      confirmLabel: "Record payment",
+                    });
+                    if (kept === null) return;
+                    const amount = Number(kept);
+                    if (!Number.isFinite(amount) || amount <= 0) return;
+                    action.mutate({
+                      action: "record_payment",
+                      sessionId: s.id,
+                      amount,
+                      method: "cash",
+                    });
+                  }}
+                  className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                >
+                  Paid cash
+                </button>
+              </>
+            ) : (
+              <span className="rounded-full bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800">
+                Awaiting bill
+              </span>
+            )}
           </div>
         )}
       </div>

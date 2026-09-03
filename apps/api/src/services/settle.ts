@@ -1,7 +1,6 @@
-import { splitPayment } from "@narada/shared";
 import { conflict, notFound } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
-import { computeBill, finalizeBill } from "./billing.js";
+import { finalizeBill } from "./billing.js";
 
 // Port of web/lib/settle.ts. The legacy functions returned {error, status}
 // objects that every caller re-wrapped; here they throw HttpError with the same
@@ -14,18 +13,40 @@ import { computeBill, finalizeBill } from "./billing.js";
 // wherever the guest is — UPI at the table, cash to a waiter, or card at the
 // counter — so any staff member can record a payment against a raised bill.
 
-type SettleRepos = Pick<Repos, "sessions" | "outlets" | "payments" | "tables">;
+type SettleRepos = Pick<Repos, "sessions" | "outlets" | "payments" | "tables" | "audit"> & {
+  waiterCalls?: Pick<Repos["waiterCalls"], "closeOpenByTables">;
+};
 
 // Raised without a tip: nobody knows it yet. Whatever the guest pays above the
 // bill becomes the tip when the payment is recorded.
-export async function generateBill(repos: SettleRepos, sessionId: string) {
-  const session = await repos.sessions.findById(sessionId);
+export async function generateBill(
+  repos: SettleRepos,
+  sessionId: string,
+  outletId: string,
+  actor?: { staffId?: string | null; role?: string; actorName?: string },
+) {
+  const session = await repos.sessions.findById(sessionId, outletId);
   if (!session) throw notFound("unknown session");
+  if (session.status !== "active") throw conflict("session is not active");
   if (session.bill_no) {
     // a double-tap at the counter must not mint a second invoice number
     throw conflict("bill already raised");
   }
-  const bill = await finalizeBill(repos, sessionId, 0, session.outlet_id);
+  const bill = await finalizeBill(repos, sessionId, 0, outletId);
+  try {
+    await repos.audit.create({
+      outlet_id: outletId,
+      staff_id: actor?.staffId ?? null,
+      role: actor?.role ?? "counter",
+      actor_name: actor?.actorName ?? "counter",
+      action: "bill_raised",
+      entity_type: "session",
+      entity_id: sessionId,
+      details: { billNo: bill.billNo, net: bill.net },
+    });
+  } catch {
+    // Bill finalization committed; an audit outage must not cause a retry.
+  }
   return { ok: true as const, billNo: bill.billNo, net: bill.net };
 }
 
@@ -37,8 +58,15 @@ export type PaymentInput = {
   collectedBy?: string | null;
 };
 
-export async function recordPayment(repos: SettleRepos, input: PaymentInput) {
-  const session = await repos.sessions.findById(input.sessionId);
+export async function recordPayment(
+  repos: SettleRepos,
+  input: PaymentInput,
+  outletId: string,
+  displayName?: string,
+  actor?: { staffId?: string | null; role?: string; actorName?: string },
+) {
+  const primaryId = await repos.sessions.findPrimaryId(input.sessionId, outletId);
+  const session = primaryId ? await repos.sessions.findById(primaryId, outletId) : null;
   if (!session) throw notFound("unknown session");
   if (session.status !== "active") throw conflict("already closed");
   if (!session.bill_no) {
@@ -46,57 +74,57 @@ export async function recordPayment(repos: SettleRepos, input: PaymentInput) {
     throw conflict("no bill has been raised for this table yet");
   }
 
-  const before = await computeBill(repos, input.sessionId);
-  const dueBefore = Math.max(0, before.net - before.paid);
-  const amount = typeof input.amount === "number" ? input.amount : dueBefore;
-  const split = splitPayment(dueBefore, amount);
+  const result = await repos.payments.recordConfirmed(
+    {
+      sessionId: primaryId!,
+      amount: input.amount,
+      method: input.method === "cash" ? "cash" : input.method === "card" ? "card" : "upi_intent",
+      utr: input.utr,
+      collector: displayName,
+    },
+    outletId,
+  );
+  if (!result) throw conflict("already closed");
 
-  // paying more than the bill is a tip, and it belongs to whoever served the
-  // table — the frozen invoice grows by exactly that much
-  if (split.tip > 0) {
-    await repos.sessions.update(input.sessionId, {
-      bill_tip: Math.round(before.tip + split.tip),
-      bill_net: Math.round(before.net + split.tip),
-      tip_to: session.tip_to ?? session.attendant ?? null,
+  try {
+    await repos.audit.create({
+      outlet_id: outletId,
+      staff_id: actor?.staffId ?? null,
+      role: actor?.role ?? "counter",
+      actor_name:
+        actor?.actorName?.trim().slice(0, 40) || displayName?.trim().slice(0, 40) || "staff",
+      action: "payment_recorded",
+      entity_type: "session",
+      entity_id: primaryId!,
+      details: { amount: result.amount, tip: result.tip, method: input.method ?? "upi_intent" },
     });
+  } catch {
+    // Payment committed; do not turn a successful collection into a failure.
   }
 
-  await repos.payments.create({
-    session_id: input.sessionId,
-    amount_inr: amount,
-    method: input.method === "cash" ? "cash" : input.method === "card" ? "card" : "upi_intent",
-    status: "confirmed",
-    reference: [
-      session.bill_no,
-      split.tip > 0 ? `incl. tip ₹${split.tip}` : null,
-      input.utr ? `UTR ${input.utr.trim().slice(0, 40)}` : null,
-      input.collectedBy?.trim()
-        ? `collected by ${input.collectedBy.trim().slice(0, 40)}`
-        : "confirmed by staff",
-    ]
-      .filter(Boolean)
-      .join(" · "),
-  });
-
   // part payments are allowed (a table splitting the bill), so the tab only
-  // closes once nothing is left owing
-  const after = await computeBill(repos, input.sessionId);
-  const due = Math.max(0, after.net - after.paid);
-  if (due > 0) return { ok: true as const, due, closed: false as const };
+  // closes once nothing is left owing. The repository has already performed
+  // the lock, payment insert, and primary close atomically.
+  if (!result.closed) return { ok: true as const, due: result.due, closed: false as const };
 
   const closedAt = new Date().toISOString();
-  await repos.sessions.close(input.sessionId, closedAt);
 
   // a merged group bills through its primary, so paying it closes the whole
   // group — otherwise the joined tables would sit "dining" forever
-  const merged = await repos.sessions.listActiveMergedInto(input.sessionId);
+  const merged = await repos.sessions.listActiveMergedInto(primaryId!, outletId);
   if (merged.length > 0) {
-    await repos.sessions.closeMergedInto(input.sessionId, closedAt);
+    await repos.sessions.closeMergedInto(primaryId!, closedAt, outletId);
   }
 
   // the guests are still sitting there and the table needs wiping down — a
   // waiter hands it back once it is actually ready for the next party
-  await repos.tables.setNeedsCleaning([session.table_id, ...merged.map((m) => m.table_id)], true);
+  const tableIds = [result.tableId, ...merged.map((m) => m.table_id)].filter((id): id is string =>
+    Boolean(id),
+  );
+  if (tableIds.length > 0) {
+    await repos.tables.setNeedsCleaning(tableIds, true, outletId);
+    await repos.waiterCalls?.closeOpenByTables(tableIds, "settled", outletId);
+  }
 
-  return { ok: true as const, due: 0, closed: true as const, billNo: session.bill_no };
+  return { ok: true as const, due: 0, closed: true as const, billNo: result.billNo };
 }

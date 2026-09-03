@@ -1,11 +1,13 @@
-import { useParams } from "react-router";
+import { useLocation, useParams } from "react-router";
 import { inr } from "@narada/shared";
 import { useBillReceipt } from "@/api/hooks";
 
 // Printable bill / receipt — 80mm thermal friendly, works for staff and guests.
 export default function BillPage() {
   const { session = "" } = useParams();
-  const { data: bill, isPending, isError } = useBillReceipt(session);
+  const { search } = useLocation();
+  const tableCode = new URLSearchParams(search).get("tableCode") ?? undefined;
+  const { data: bill, isPending, isError } = useBillReceipt(session, tableCode);
 
   if (isPending) {
     return (

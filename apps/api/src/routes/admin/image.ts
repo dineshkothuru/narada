@@ -29,19 +29,23 @@ export default async function imageRoutes(app: FastifyInstance): Promise<void> {
     if (!itemId) throw badRequest("itemId required");
     if (!file) throw badRequest("no file");
 
-    const result = await uploadDishImage(app.repos, {
-      itemId,
-      contentType: file.contentType,
-      size: file.buffer.length,
-      body: file.buffer,
-    });
+    const result = await uploadDishImage(
+      app.repos,
+      {
+        itemId,
+        contentType: file.contentType,
+        size: file.buffer.length,
+        body: file.buffer,
+      },
+      request.staffSession!.outletId,
+    );
     return reply.send(result);
   });
 
   app.delete("/api/admin/image", async (request, reply) => {
     const itemId = String((request.query as Record<string, unknown>)?.itemId ?? "");
     if (!itemId) throw badRequest("itemId required");
-    const result = await clearDishImage(app.repos, itemId);
+    const result = await clearDishImage(app.repos, itemId, request.staffSession!.outletId);
     return reply.send(result);
   });
 }

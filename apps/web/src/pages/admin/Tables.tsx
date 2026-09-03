@@ -146,6 +146,7 @@ export default function AdminTablesPage() {
                 <TableRow
                   key={tb.id}
                   table={tb}
+                  outletSlug={data?.outletSlug}
                   onRename={(label) => patchTable.mutate({ tableId: tb.id, label })}
                   onCapacity={(capacity) => patchTable.mutate({ tableId: tb.id, capacity })}
                   onVariant={(ui_variant) => patchTable.mutate({ tableId: tb.id, ui_variant })}
@@ -172,17 +173,22 @@ export default function AdminTablesPage() {
 
 function TableRow({
   table: tb,
+  outletSlug,
   onRename,
   onCapacity,
   onVariant,
   onRemove,
 }: {
   table: AdminTable;
+  outletSlug?: string;
   onRename: (label: string) => void;
   onCapacity: (capacity: number) => void;
   onVariant: (variant: string) => void;
   onRemove: () => void;
 }) {
+  const href = outletSlug
+    ? `/outlet/${encodeURIComponent(outletSlug)}/table/${encodeURIComponent(tb.code)}`
+    : null;
   return (
     <div className="flex items-center gap-2 py-2.5 text-sm">
       <input
@@ -192,14 +198,20 @@ function TableRow({
         }}
         className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 font-medium text-stone-800 outline-none hover:bg-stone-50 focus:bg-stone-50 focus:ring-2 focus:ring-rose-400"
       />
-      <a
-        href={`/t/${tb.code}`}
-        target="_blank"
-        rel="noreferrer"
-        className="hidden font-mono text-[10px] text-stone-400 underline sm:block"
-      >
-        /t/{tb.code}
-      </a>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="hidden font-mono text-[10px] text-stone-400 underline sm:block"
+        >
+          {href}
+        </a>
+      ) : (
+        <span className="hidden text-[10px] font-semibold text-amber-700 sm:block">
+          Outlet URL unavailable
+        </span>
+      )}
       <input
         type="number"
         min="1"

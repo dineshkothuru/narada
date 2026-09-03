@@ -3,7 +3,7 @@ import { badRequest, HttpError } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
 import { askAnna } from "./agent.js";
 import { getApiKeys } from "./keys.js";
-import { fetchMenu } from "./menu.js";
+import { fetchMenu, fetchOutletMenu } from "./menu.js";
 
 // Port of web/app/api/voice/route.ts. Sarvam STT auto-detects the spoken
 // language; we answer (text + speech) in it.
@@ -17,6 +17,7 @@ export type VoiceInput = {
   cart?: CartLine[];
   messages?: ChatMessage[];
   tableCode?: string;
+  outletSlug?: string;
   language?: string;
 };
 
@@ -70,18 +71,26 @@ type SpeechRepos = Pick<Repos, "outlets" | "tables" | "menuCategories" | "menuIt
 export async function processVoiceTurn(
   repos: SpeechRepos,
   input: VoiceInput,
+  outletId?: string,
 ): Promise<VoiceResult> {
-  const { sarvam: sarvamKey } = await getApiKeys(repos);
-  if (!sarvamKey) {
-    // legacy responds 500 here (misconfiguration, not the caller's fault)
-    throw new HttpError(500, "Sarvam API key not configured (admin settings or env)");
-  }
-
   if (!input.audio && !input.text && !input.greet) {
     throw badRequest("audio, text or greet required");
   }
   if (input.audio && input.audio.length > 4_000_000) {
     throw new HttpError(413, "audio too long");
+  }
+
+  const table = input.tableCode
+    ? outletId
+      ? await repos.tables.findByCodeForOutlet(input.tableCode, outletId)
+      : await repos.tables.findByCode(input.tableCode)
+    : null;
+  const outlet = outletId ? await repos.outlets.findActiveById(outletId) : null;
+  const effectiveOutletId = outlet?.id ?? table?.outlet_id ?? "";
+  const { sarvam: sarvamKey } = await getApiKeys(repos, effectiveOutletId);
+  if (!sarvamKey) {
+    // legacy responds 500 here (misconfiguration, not the caller's fault)
+    throw new HttpError(500, "Sarvam API key not configured (admin settings or env)");
   }
 
   const appLangCode =
@@ -90,7 +99,9 @@ export async function processVoiceTurn(
   let detected = appLangCode;
 
   // menu fetch is independent of STT — overlap them
-  const menuPromise = fetchMenu(repos, input.tableCode || "");
+  const menuPromise = outlet
+    ? fetchOutletMenu(repos, outlet.slug, input.tableCode)
+    : fetchMenu(repos, input.tableCode || "");
 
   if (input.audio) {
     const wavBytes = Buffer.from(input.audio, "base64");
@@ -140,7 +151,9 @@ export async function processVoiceTurn(
   ];
   let anna: AnnaResponse;
   try {
-    anna = await askAnna(repos, menu, allMessages, input.cart ?? [], langName, { voice: true });
+    anna = await askAnna(repos, menu, allMessages, input.cart ?? [], langName, effectiveOutletId, {
+      voice: true,
+    });
   } catch {
     // brain throttled/down: stay conversational instead of erroring the dock
     anna = fallbackReply(langName, Boolean(input.greet));

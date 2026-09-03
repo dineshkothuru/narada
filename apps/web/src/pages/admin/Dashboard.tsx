@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import Collapsible from "@/components/Collapsible";
 import { Input } from "@/components/ui/input";
@@ -8,20 +9,66 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAdminMenu, usePatchSettings } from "@/api/hooks";
+import { ApiError, useAdminMenu, usePatchSettings } from "@/api/hooks";
 
 const inputCls =
   "mt-1 h-auto w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-rose-400";
+const OUTLET_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const normalizeOutletSlug = (value: string) => value.trim().toLowerCase().slice(0, 63);
+
+function validOutletSlug(slug: string): boolean {
+  return slug.length >= 3 && slug.length <= 63 && OUTLET_SLUG_PATTERN.test(slug);
+}
 
 export default function AdminDashboardPage() {
   const { data } = useAdminMenu();
   const outlet = data?.outlet ?? null;
   const items = data?.items ?? [];
   const patch = usePatchSettings();
+  const currentSlug = outlet?.slug ?? "";
+  const [slug, setSlug] = useState(currentSlug);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [slugSaved, setSlugSaved] = useState(false);
+
+  useEffect(() => {
+    setSlug(currentSlug);
+    setSlugSaved(false);
+  }, [currentSlug]);
 
   const save = (body: Record<string, unknown>) => {
     if (!outlet) return;
-    patch.mutate({ outletId: outlet.id, patch: body });
+    patch.mutate({ patch: body });
+  };
+
+  const saveSlug = () => {
+    const normalized = normalizeOutletSlug(slug);
+    setSlug(normalized);
+    setSlugSaved(false);
+    if (!validOutletSlug(normalized)) {
+      setSlugError("Use 3–63 lowercase letters or numbers separated by single hyphens");
+      return;
+    }
+    if (normalized === currentSlug) {
+      setSlugError(null);
+      setSlugSaved(true);
+      return;
+    }
+    setSlugError(null);
+    patch.mutate(
+      { patch: { slug: normalized } },
+      {
+        onSuccess: () => setSlugSaved(true),
+        onError: (error) => {
+          setSlugError(
+            error instanceof ApiError && error.status === 409
+              ? "That outlet URL is already in use"
+              : error instanceof ApiError
+                ? error.message
+                : "Could not save outlet URL",
+          );
+        },
+      },
+    );
   };
 
   return (
@@ -30,14 +77,43 @@ export default function AdminDashboardPage() {
         <div className="flex max-w-5xl flex-col gap-3">
           <header className="mb-1">
             <h1 className="font-display text-2xl font-semibold text-stone-900">Settings</h1>
-            <p className="text-xs text-stone-500">
-              Payment, UPI, GST, service charge, staff PIN and AI keys
-            </p>
+            <p className="text-xs text-stone-500">Payment, UPI, GST, service charge and AI keys</p>
           </header>
 
           {outlet && (
-            <Collapsible title="Settings" hint="payment, UPI, GST, PIN, API keys">
+            <Collapsible title="Settings" hint="payment, UPI, GST, API keys">
               <div className="grid gap-4 sm:grid-cols-3">
+                <label className="text-xs font-semibold text-stone-600 sm:col-span-3">
+                  Outlet URL slug
+                  <Input
+                    aria-label="Outlet URL slug"
+                    value={slug}
+                    onChange={(e) => {
+                      setSlug(normalizeOutletSlug(e.target.value));
+                      setSlugError(null);
+                      setSlugSaved(false);
+                    }}
+                    placeholder="spice-garden"
+                    autoComplete="off"
+                    className={inputCls}
+                  />
+                  <span className="mt-1 block text-[10px] font-normal text-stone-400">
+                    Public URL: /outlet/{slug || "<slug>"}
+                  </span>
+                  <div className="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={saveSlug}
+                      disabled={patch.isPending}
+                      className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                    >
+                      {patch.isPending ? "Saving…" : slugSaved ? "Saved" : "Save URL"}
+                    </button>
+                    {slugError && (
+                      <span className="text-xs font-semibold text-rose-600">{slugError}</span>
+                    )}
+                  </div>
+                </label>
                 <label className="text-xs font-semibold text-stone-600">
                   Payment timing
                   <Select
@@ -65,18 +141,6 @@ export default function AdminDashboardPage() {
                   />
                 </label>
                 <label className="text-xs font-semibold text-stone-600">
-                  Staff PIN
-                  <Input
-                    defaultValue={outlet.admin_pin}
-                    onBlur={(e) => {
-                      if (e.target.value !== outlet.admin_pin && e.target.value.length >= 4) {
-                        save({ admin_pin: e.target.value });
-                      }
-                    }}
-                    className={inputCls}
-                  />
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
                   Service charge %
                   <Input
                     type="number"
@@ -87,7 +151,7 @@ export default function AdminDashboardPage() {
                     onBlur={(e) => {
                       const v = Number(e.target.value);
                       if (v !== outlet.service_charge_pct && v >= 0 && v <= 20) {
-                        save({ service_charge_pct: String(v) });
+                        save({ service_charge_pct: v });
                       }
                     }}
                     className={inputCls}

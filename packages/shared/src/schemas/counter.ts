@@ -13,7 +13,6 @@ export const counterPatchSchema = z.object({
   amount: z.number().optional(),
   method: z.enum(counterPaymentMethods).optional(),
   utr: z.string().optional(),
-  collectedBy: z.string().optional(),
   waived: z.boolean().optional(),
 });
 

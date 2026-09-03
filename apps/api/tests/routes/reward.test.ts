@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../src/app.js";
 import { seed } from "../helpers/fakeRepos.js";
+import { customerCookie } from "../helpers/customerCookie.js";
 
 describe("POST /api/reward", () => {
   it("spins the wheel for a known table", async () => {
@@ -76,9 +77,11 @@ describe("POST /api/reward", () => {
   it("preserves the known missing-comp error body", async () => {
     const { data, repos, ids } = seed();
     const app = buildApp({ repos });
+    const cookies = await customerCookie(app, "demo-spice-garden", "t1-demo");
     await app.inject({
       method: "POST",
       url: "/api/order",
+      cookies,
       payload: { tableCode: "t1-demo", cart: [{ itemId: ids.items[0], qty: 1 }] },
     });
     data.menu_items.splice(2, 1);

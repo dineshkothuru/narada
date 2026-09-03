@@ -44,10 +44,13 @@ export type BillSheet = {
 };
 
 // Polled every 8s while a TableSheet is open, matching the legacy component.
-export function useBill(sessionId: string | null) {
+export function useBill(sessionId: string | null, tableCode?: string) {
   return useQuery({
-    queryKey: queryKeys.bill(sessionId ?? ""),
-    queryFn: () => api<BillSheet>(`/bill?session=${encodeURIComponent(sessionId!)}`),
+    queryKey: queryKeys.bill(sessionId ?? "", tableCode),
+    queryFn: () =>
+      api<BillSheet>(
+        `/bill?session=${encodeURIComponent(sessionId!)}${tableCode ? `&tableCode=${encodeURIComponent(tableCode)}` : ""}`,
+      ),
     enabled: sessionId !== null,
     refetchInterval: 8000,
   });
@@ -56,9 +59,14 @@ export function useBill(sessionId: string | null) {
 // The guest's live preview inside the order sheet. Unlike useBill it carries
 // the tip being previewed and is only asked for while the sheet is open, so it
 // keys on the tip and does not poll on its own.
-export function useCustomerBill(sessionId: string | null, tip: number, enabled: boolean) {
+export function useCustomerBill(
+  sessionId: string | null,
+  serviceType: "dine_in" | "takeaway",
+  tip: number,
+  enabled: boolean,
+) {
   return useQuery({
-    queryKey: queryKeys.customerBill(sessionId ?? "", tip),
+    queryKey: queryKeys.customerBill(sessionId ?? "", serviceType, tip),
     queryFn: () => api<BillSheet>(`/bill?session=${encodeURIComponent(sessionId!)}&tip=${tip}`),
     enabled: enabled && sessionId !== null,
   });
@@ -66,10 +74,13 @@ export function useCustomerBill(sessionId: string | null, tip: number, enabled: 
 
 // One-shot read for the printable /bill/:session page — no polling, and a
 // missing or unknown session should surface as an error, not a retry storm.
-export function useBillReceipt(sessionId: string) {
+export function useBillReceipt(sessionId: string, tableCode?: string) {
   return useQuery({
-    queryKey: queryKeys.bill(sessionId),
-    queryFn: () => api<BillSheet>(`/bill?session=${encodeURIComponent(sessionId)}`),
+    queryKey: queryKeys.bill(sessionId, tableCode),
+    queryFn: () =>
+      api<BillSheet>(
+        `/bill?session=${encodeURIComponent(sessionId)}${tableCode ? `&tableCode=${encodeURIComponent(tableCode)}` : ""}`,
+      ),
     enabled: sessionId.length > 0,
     retry: false,
   });
@@ -80,12 +91,8 @@ export function useBillReceipt(sessionId: string) {
 export function usePatchBill() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: {
-      sessionId: string;
-      tableCode: string;
-      serviceWaived?: boolean;
-      tip?: number;
-    }) => api<BillSheet>("/bill", { method: "PATCH", body: JSON.stringify(body) }),
+    mutationFn: (body: { sessionId: string; serviceWaived?: boolean; tip?: number }) =>
+      api<BillSheet>("/bill", { method: "PATCH", body: JSON.stringify(body) }),
     onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.bill(vars.sessionId) });
     },

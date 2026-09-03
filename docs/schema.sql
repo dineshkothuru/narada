@@ -10,9 +10,11 @@ create table if not exists outlets (
   slug        text not null unique,
   upi_vpa     text,                       -- for upi:// deep-link payments
   currency    text not null default 'INR',
+  tables_enabled boolean not null default false,
   -- admin setting: 'post' = order fires first, pay at the end (default; leaves
   -- room to engage the customer between order and bill); 'pre' = pay to order
   payment_timing text not null default 'post' check (payment_timing in ('pre','post')),
+  active        boolean not null default true,
   created_at  timestamptz not null default now()
 );
 
@@ -49,11 +51,29 @@ create table if not exists menu_items (
   sort_order    int not null default 0
 );
 
+-- Optional customer account. Ordering remains guest-capable; this identity is
+-- only attached to visits created while the account cookie is present.
+create table if not exists customers (
+  id            uuid primary key default gen_random_uuid(),
+  phone         text not null unique
+                check (phone ~ '^\+[0-9]{8,15}$'),
+  first_name    text not null
+                check (first_name = btrim(first_name) and char_length(first_name) between 1 and 60),
+  last_name     text
+                check (last_name is null or (last_name = btrim(last_name) and char_length(last_name) between 1 and 60)),
+  password_hash text not null,
+  active        boolean not null default true,
+  created_at    timestamptz not null default now()
+);
+
 -- A dining session: created on QR scan, holds the running tab for that table visit
 create table if not exists sessions (
   id            uuid primary key default gen_random_uuid(),
-  table_id      uuid not null references tables(id) on delete cascade,
+  table_id      uuid references tables(id) on delete cascade,
   outlet_id     uuid not null references outlets(id) on delete cascade,
+  customer_id   uuid references customers(id) on delete set null,
+  service_type  text not null default 'dine_in'
+                check (service_type in ('dine_in','takeaway')),
   status        text not null default 'active'   -- active | billed | closed
                 check (status in ('active','billed','closed')),
   created_at    timestamptz not null default now(),
@@ -68,8 +88,8 @@ create table if not exists orders (
   status        text not null default 'placed'   -- placed | preparing | served | cancelled
                 check (status in ('placed','preparing','served','cancelled')),
   total_inr     numeric(10,2) not null default 0,
-  placed_via    text not null default 'ui'       -- ui | anna (voice/chat agent)
-                check (placed_via in ('ui','anna')),
+  placed_via    text not null default 'ui'       -- ui | anna | waiter
+                check (placed_via in ('ui','anna','waiter')),
   created_at    timestamptz not null default now()
 );
 
@@ -80,7 +100,11 @@ create table if not exists order_items (
   name         text not null,               -- denormalized: menu edits must not rewrite history
   unit_price   numeric(10,2) not null,
   qty          int not null check (qty > 0),
-  notes        text                          -- "less spicy", "no onion"
+  notes        text,                         -- "less spicy", "no onion"
+  status       text not null default 'queued'
+               check (status in ('queued','preparing','ready','served','cancelled')),
+  cancelled_at timestamptz,
+  cancelled_by text
 );
 
 create table if not exists payments (
@@ -98,23 +122,18 @@ create table if not exists payments (
 create index if not exists idx_menu_items_outlet on menu_items(outlet_id, category_id, sort_order);
 create index if not exists idx_orders_session on orders(session_id);
 create index if not exists idx_sessions_table on sessions(table_id) where status = 'active';
-
--- Row Level Security: customer browser (anon key) may read the menu; everything
--- else goes through the server with the service-role key.
+create index if not exists idx_sessions_outlet on sessions(outlet_id, status, created_at desc);
+-- Row Level Security: the browser uses the API only. Keep RLS enabled and do
+-- not grant anon/authenticated direct table access.
 alter table outlets          enable row level security;
 alter table tables          enable row level security;
 alter table menu_categories enable row level security;
 alter table menu_items      enable row level security;
+alter table customers       enable row level security;
 alter table sessions        enable row level security;
 alter table orders          enable row level security;
 alter table order_items     enable row level security;
 alter table payments        enable row level security;
-
-create policy "public can read outlets"     on outlets     for select using (true);
-create policy "public can read tables"          on tables          for select using (true);
-create policy "public can read menu categories" on menu_categories for select using (true);
-create policy "public can read menu items"      on menu_items      for select using (true);
--- sessions/orders/order_items/payments: no anon policies — service-role only.
 
 -- Kitchen dashboard live updates
 alter publication supabase_realtime add table orders;
@@ -124,9 +143,9 @@ alter publication supabase_realtime add table orders;
 -- ============================================================
 
 alter table outlets
+  add column if not exists tables_enabled boolean not null default false,
   add column if not exists payment_timing text not null default 'post'
     check (payment_timing in ('pre','post')),
-  add column if not exists admin_pin text not null default '0000', -- change on first login
   add column if not exists gemini_api_key text,
   add column if not exists sarvam_api_key text,
   add column if not exists comp_item_id uuid references menu_items(id);
@@ -143,9 +162,16 @@ alter table menu_items
   add column if not exists emoji text;
 
 alter table sessions
+  add column if not exists service_type text not null default 'dine_in'
+    check (service_type in ('dine_in','takeaway')),
   add column if not exists discount_pct int not null default 0
     check (discount_pct between 0 and 50),
   add column if not exists comp_awarded boolean not null default false;
+
+alter table sessions drop constraint if exists sessions_service_type_table_check;
+alter table sessions add constraint sessions_service_type_table_check
+  check ((service_type = 'dine_in' and table_id is not null)
+      or (service_type = 'takeaway' and table_id is null));
 
 alter table orders add column if not exists placed_by text;
 
@@ -165,14 +191,16 @@ create index if not exists idx_waiter_calls_open on waiter_calls(table_id) where
 create table if not exists staff (
   id            uuid primary key default gen_random_uuid(),
   outlet_id     uuid not null references outlets(id) on delete cascade,
-  name          text not null,
+  username      text not null check (username = lower(username) and username ~ '^[a-z0-9._-]{3,32}$'),
+  first_name    text not null check (first_name = btrim(first_name) and char_length(first_name) between 1 and 60),
+  last_name     text check (last_name is null or (last_name = btrim(last_name) and char_length(last_name) between 1 and 60)),
   role          text not null check (role in ('admin','kitchen','waiter','reception','cashier')),
-  pin           text not null,
+  password_hash text not null,
   active        boolean not null default true,
   created_at    timestamptz not null default now()
 );
 alter table staff enable row level security;
-create unique index if not exists idx_staff_pin on staff(outlet_id, pin);
+create unique index if not exists idx_staff_username on staff(outlet_id, username);
 
 -- one active session per table (order/reward races resolve on this)
 create unique index if not exists uniq_active_session_per_table
@@ -234,15 +262,36 @@ alter table orders add constraint orders_status_check
 
 alter table order_items drop constraint if exists order_items_status_check;
 alter table order_items add constraint order_items_status_check
-  check (status in ('queued','preparing','ready','served'));
+  check (status in ('queued','preparing','ready','served','cancelled'));
 
--- customer role must not read credentials or keys
-revoke select on table outlets from anon;
-grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
-  on table outlets to anon;
-revoke select on table outlets from authenticated;
-grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
-  on table outlets to authenticated;
+alter table orders drop constraint if exists orders_placed_via_check;
+alter table orders add constraint orders_placed_via_check
+  check (placed_via in ('ui','anna','waiter'));
+
+alter table order_items
+  add column if not exists cancelled_at timestamptz,
+  add column if not exists cancelled_by text;
+
+-- Audit events are outlet-owned so a staff member can never inspect another
+-- outlet's operational history through a shared database connection.
+create table if not exists audit_log (
+  id          uuid primary key default gen_random_uuid(),
+  outlet_id   uuid not null references outlets(id) on delete cascade,
+  staff_id    uuid references staff(id) on delete set null,
+  role        text,
+  actor_name  text,
+  action      text not null,
+  entity_type text not null,
+  entity_id   uuid,
+  details     jsonb,
+  created_at  timestamptz not null default now()
+);
+alter table audit_log enable row level security;
+create index if not exists idx_audit_log_outlet_created
+  on audit_log(outlet_id, created_at desc);
+
+-- No anon/authenticated grants: all application reads and writes go through
+-- the API's privileged database connection.
 
 -- Dish photos live in a public Supabase Storage bucket named "menu";
 -- menu_items.image_url points at the public object URL. Create it once with:

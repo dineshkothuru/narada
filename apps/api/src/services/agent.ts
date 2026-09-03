@@ -1,7 +1,6 @@
-import type { AnnaInput, AnnaResponse, CartLine, ChatMessage, MenuPayload } from "@narada/shared";
+import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "@narada/shared";
 import type { Repos } from "../repositories/index.js";
 import { getApiKeys } from "./keys.js";
-import { fetchMenu } from "./menu.js";
 
 // Port of web/lib/anna.ts askAnna. Talks to Gemini with a menu-grounded
 // system prompt; the model answers with strict JSON matching AnnaResponse.
@@ -70,9 +69,10 @@ export async function askAnna(
   messages: ChatMessage[],
   cart: CartLine[],
   language: string,
+  outletId: string,
   opts?: { voice?: boolean },
 ): Promise<AnnaResponse> {
-  const { gemini: apiKey } = await getApiKeys(repos);
+  const { gemini: apiKey } = await getApiKeys(repos, outletId);
   if (!apiKey) throw new Error("Gemini API key not configured (admin settings or env)");
 
   const contents = messages.slice(-12).map((m) => ({
@@ -121,25 +121,4 @@ export async function askAnna(
   }
   if (!Array.isArray(parsed.actions)) parsed.actions = [];
   return parsed;
-}
-
-export async function askAnnaForTable(
-  repos: Pick<Repos, "tables" | "outlets" | "menuCategories" | "menuItems">,
-  input: AnnaInput,
-): Promise<AnnaResponse> {
-  const menu = await fetchMenu(repos, input.tableCode || "");
-  const effectiveMenu = menu ?? {
-    outlet: { name: "Narada", tagline: "", upiVpa: "", paymentTiming: "post" as const },
-    tableLabel: input.tableCode || "",
-    uiVariant: "classic" as const,
-    categories: [],
-    items: [],
-  };
-  return askAnna(
-    repos,
-    effectiveMenu,
-    input.messages,
-    input.cart ?? [],
-    input.language || "English",
-  );
 }

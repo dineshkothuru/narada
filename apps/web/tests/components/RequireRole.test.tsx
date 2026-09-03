@@ -32,7 +32,7 @@ function renderAt(
               </RequireRole>
             }
           />
-          <Route path="/admin/login" element={<p>Login screen</p>} />
+          <Route path="/" element={<p>Home screen</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -52,20 +52,20 @@ describe("RequireRole", () => {
     fetchMock.mockReset();
   });
 
-  it("redirects to login on a 401 (logged out)", async () => {
+  it("redirects home on a 401 (logged out)", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ role: null }, 401));
     renderAt("/kitchen", ["admin", "kitchen"]);
-    await waitFor(() => expect(screen.getByText("Login screen")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Home screen")).toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/admin/me",
       expect.objectContaining({ credentials: "include" }),
     );
   });
 
-  it("redirects to login when the role isn't allowed for this route", async () => {
+  it("redirects home when the role isn't allowed for this route", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ role: "waiter" }));
     renderAt("/kitchen", ["admin", "kitchen"]);
-    await waitFor(() => expect(screen.getByText("Login screen")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Home screen")).toBeInTheDocument());
   });
 
   it("renders the child when the role is allowed", async () => {

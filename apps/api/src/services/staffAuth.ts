@@ -1,36 +1,72 @@
-import { timingSafeEqual } from "node:crypto";
-import { type StaffRole, isStaffRole } from "../plugins/auth.js";
+import { passwordSchema, type OutletIdentity, type StaffIdentity } from "@narada/shared";
+import { type StaffRole, isStaffRole, staffToken } from "../plugins/auth.js";
+import { hashPassword, verifyPassword } from "../lib/password.js";
 import type { Repos } from "../repositories/index.js";
-import { badRequest } from "../lib/http.js";
+import { HttpError } from "../lib/http.js";
 
-// Port of web/app/api/admin/login/route.ts. PIN -> role lookup across staff
-// and the outlet's admin_pin, compared in-process (constant time) instead of
-// filtering by pin in the query, which would leak timing and log the secret.
-function pinsMatch(a: string, b: string): boolean {
-  const ba = Buffer.from(a.padEnd(64, "\0"));
-  const bb = Buffer.from(b.padEnd(64, "\0"));
-  return a.length === b.length && timingSafeEqual(ba, bb);
-}
+const DUMMY_PASSWORD_HASH =
+  "scrypt$v=1$N=16384,r=8,p=5$aZd_uRPcpqGPxiRMOk2CCw$3ktJ2aAOVXnO3u4R-zEKxbQpvpH23VnBnrsfUHhDUdE";
 
-export type LoginResult = { role: StaffRole; name: string };
+export type LoginResult = {
+  role: StaffRole;
+  token: string;
+  staff: StaffIdentity;
+  outlet: OutletIdentity;
+};
+
+const identity = (row: {
+  id: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  role: string;
+}): StaffIdentity | null => {
+  if (!row.username || !row.first_name || !isStaffRole(row.role)) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    displayName: [row.first_name, row.last_name].filter(Boolean).join(" "),
+    role: row.role,
+  };
+};
 
 export async function login(
   repos: Pick<Repos, "staff" | "outlets">,
-  pin: string,
+  outletId: string,
+  username: string,
+  password: string,
 ): Promise<LoginResult | null> {
-  if (!pin) throw badRequest("pin required");
+  const validPassword = passwordSchema.safeParse(password).success;
+  const outlet = await repos.outlets.findActiveById(outletId);
+  const normalized = username.trim().toLowerCase();
+  const account = outlet ? await repos.staff.findActiveByUsername(outlet.id, normalized) : null;
+  const passwordOk = await verifyPassword(account?.password_hash ?? DUMMY_PASSWORD_HASH, password);
+  const staff = account && passwordOk ? identity(account) : null;
+  if (!validPassword || !outlet || !staff) return null;
+  return {
+    role: staff.role as StaffRole,
+    token: staffToken(staff.id, outlet.id, staff.role as StaffRole),
+    staff,
+    outlet: { id: outlet.id, name: outlet.name, slug: outlet.slug },
+  };
+}
 
-  const [staff, outlet] = await Promise.all([
-    repos.staff.listActiveWithPins(),
-    repos.outlets.findFirst(),
-  ]);
-
-  const match = staff.find((s) => isStaffRole(s.role) && pinsMatch(String(s.pin), pin));
-  if (match) return { role: match.role as StaffRole, name: match.name };
-
-  if (outlet && pinsMatch(String(outlet.admin_pin), pin)) {
-    return { role: "admin", name: "Owner" };
+export async function changePassword(
+  repos: Pick<Repos, "staff">,
+  session: { staffId: string },
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true }> {
+  const row = await repos.staff.findById(session.staffId);
+  const currentOk = await verifyPassword(
+    row?.password_hash ?? DUMMY_PASSWORD_HASH,
+    currentPassword,
+  );
+  if (!row || !currentOk || !passwordSchema.safeParse(newPassword).success) {
+    throw new HttpError(401, "invalid credentials");
   }
-
-  return null;
+  await repos.staff.update(row.id, { password_hash: await hashPassword(newPassword) });
+  return { ok: true };
 }

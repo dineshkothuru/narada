@@ -1,8 +1,7 @@
 import { useState } from "react";
 import AdminShell from "@/components/AdminShell";
-import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
 import { ask } from "@/components/Dialogs";
-import { inr, minutesAgo } from "@narada/shared";
+import { minutesAgo } from "@narada/shared";
 import CallTimer from "@/components/CallTimer";
 import { useFloor, useFloorAction, type FloorTable } from "@/api/hooks";
 
@@ -50,7 +49,6 @@ export default function FloorPage() {
   const tables = data?.tables ?? [];
   const stats = data?.stats ?? null;
   const floorAction = useFloorAction();
-  const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
   const [mergeFrom, setMergeFrom] = useState<FloorTable | null>(null);
 
   const seat = async (t: FloorTable) => {
@@ -70,12 +68,12 @@ export default function FloorPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="font-display text-2xl font-semibold text-stone-900">Narada · Floor</h1>
-            <p className="text-xs text-stone-500">
-              Live table status, capacity and merges · refreshes every 5s
+            <h1 className="font-display text-2xl font-semibold text-slate-900">Narada · Floor</h1>
+            <p className="text-xs text-slate-500">
+              Seat, release, clean and merge tables · refreshes every 5s
             </p>
           </div>{" "}
         </header>
@@ -145,19 +143,17 @@ export default function FloorPage() {
             return (
               <article
                 key={t.id}
-                className={`rounded-2xl card-float bg-white p-4 ring-2 ${
-                  t.calling ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : st.ring
-                }`}
+                className={`tone-${t.calling ? "rose" : t.status === "free" ? "emerald" : t.status === "cleaning" ? "slate" : "indigo"} panel panel-lift ${t.calling ? "animate-pulse" : ""}`}
               >
-                <div className="flex items-start justify-between">
+                <div className="panel-head flex items-start justify-between gap-2 px-4 py-3">
                   <div>
-                    <h2 className="flex items-center gap-1.5 text-sm font-bold text-stone-900">
+                    <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
                       {t.label}
                       {t.langs.map((l) => (
                         <span
                           key={l}
                           title="language this table ordered in"
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-slate-200 text-slate-700"}`}
                         >
                           {LANG_BADGE[l]?.label ?? l.toUpperCase()}
                         </span>
@@ -168,7 +164,7 @@ export default function FloorPage() {
                         </span>
                       )}
                     </h2>
-                    <p className="text-[11px] text-stone-400">
+                    <p className="text-[11px] text-slate-400">
                       {t.capacity} seats
                       {t.zone ? ` · ${t.zone}` : ""}
                       {t.guests ? ` · ${t.guests} guests` : ""}
@@ -184,131 +180,91 @@ export default function FloorPage() {
                   </div>
                 </div>
 
-                {t.mergedWith.length > 0 && (
-                  <p className="mt-1 text-[11px] font-semibold text-stone-500">
-                    🔗 with {t.mergedWith.join(", ")}
-                  </p>
-                )}
-
-                {t.status === "cleaning" ? (
-                  <>
-                    <p className="mt-2 text-[11px] text-stone-500">
-                      Bill settled · waiting for the table to be cleared and wiped
+                <div className="p-4">
+                  {t.mergedWith.length > 0 && (
+                    <p className="mb-1 text-[11px] font-semibold text-slate-500">
+                      Merged with {t.mergedWith.join(", ")}
                     </p>
-                    <button
-                      onClick={() => floorAction.mutate({ action: "clear_table", tableId: t.id })}
-                      className="mt-3 w-full rounded-xl bg-stone-800 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
-                    >
-                      ✓ Table ready
-                    </button>
-                  </>
-                ) : t.status === "free" ? (
-                  <button
-                    onClick={() => seat(t)}
-                    className="mt-3 w-full rounded-xl bg-green-600 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
-                  >
-                    Seat guests
-                  </button>
-                ) : (
-                  <>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-600">
-                      <span>{minutesAgo(t.since!, true)}</span>
+                  )}
+
+                  {t.status === "seated" && t.rounds === 0 ? (
+                    <>
+                      <p className="mt-2 text-[11px] text-slate-500">
+                        Seated {minutesAgo(t.since!, true)} · nothing ordered yet
+                      </p>
                       <button
                         onClick={async () => {
-                          const who = await ask.prompt({
-                            title: `Attendant for ${t.label}`,
-                            message: "Leave it empty to unassign the table.",
-                            label: "Waiter's name",
-                            defaultValue: t.attendant ?? "",
-                            confirmLabel: "Assign",
+                          const yes = await ask.confirm({
+                            title: `Release ${t.label}?`,
+                            message: "They never ordered. The table goes back to free.",
+                            confirmLabel: "Release it",
                           });
-                          if (who === null) return;
-                          floorAction.mutate({
-                            action: "attendant",
-                            sessionId: t.sessionId!,
-                            attendant: who,
-                          });
+                          if (yes)
+                            floorAction.mutate({ action: "release", sessionId: t.sessionId! });
                         }}
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                          t.attendant
-                            ? "bg-violet-100 text-violet-700"
-                            : "bg-stone-100 text-stone-400"
-                        }`}
+                        className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
                       >
-                        {t.attendant ? `👤 ${t.attendant}` : "+ attendant"}
+                        Release
                       </button>
+                    </>
+                  ) : t.status === "cleaning" ? (
+                    <>
+                      <p className="mt-2 text-[11px] text-slate-500">
+                        Bill settled · clear and wipe before seating anyone
+                      </p>
                       <button
-                        onClick={() => setOpenTable({ id: t.sessionId!, label: t.label })}
-                        className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-extrabold text-stone-600"
+                        onClick={() => floorAction.mutate({ action: "clear_table", tableId: t.id })}
+                        className="mt-3 w-full rounded-full bg-white py-2.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-[0.98]"
                       >
-                        {t.served}/{t.rounds} served · details
+                        ✓ Table ready
                       </button>
-                      {t.due > 0 && (
-                        <span className="font-bold text-rose-600">due {inr(t.due)}</span>
-                      )}
-                    </div>
-                    <div className="mt-3 flex gap-1.5">
-                      <a
-                        href={`/t/${t.code}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
-                      >
-                        Menu
-                      </a>
-                      {t.sessionId && (
-                        <a
-                          href={`/bill/${t.sessionId}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex-1 rounded-xl bg-stone-100 py-2 text-center text-[11px] font-bold text-stone-600"
-                        >
-                          Bill
-                        </a>
-                      )}
-                      {t.isMerged ? (
-                        <button
-                          onClick={() =>
-                            floorAction.mutate({ action: "unmerge", sessionId: t.sessionId! })
-                          }
-                          className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
-                        >
-                          Unmerge
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setMergeFrom(t)}
-                          className="flex-1 rounded-xl bg-stone-900 py-2 text-[11px] font-bold text-white"
-                        >
-                          Merge
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
+                    </>
+                  ) : t.status === "free" ? (
+                    <button
+                      onClick={() => seat(t)}
+                      className="mt-3 w-full rounded-full bg-white py-2.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-[0.98]"
+                    >
+                      Seat guests
+                    </button>
+                  ) : (
+                    <>
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
+                        <span>{minutesAgo(t.since!, true)}</span>
+                        <span>
+                          {t.served}/{t.rounds} served
+                        </span>
+                      </div>
+                      <div className="mt-3 flex gap-1.5">
+                        {t.isMerged ? (
+                          <button
+                            onClick={() =>
+                              floorAction.mutate({ action: "unmerge", sessionId: t.sessionId! })
+                            }
+                            className="flex-1 rounded-full bg-white py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-300"
+                          >
+                            Unmerge
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setMergeFrom(t)}
+                            className="flex-1 rounded-full bg-white py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-300"
+                          >
+                            Merge
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </article>
             );
           })}
         </div>
 
         {freeTables.length > 0 && (
-          <p className="mt-5 max-w-5xl text-center text-[11px] text-stone-400">
+          <p className="mt-5 max-w-5xl text-center text-[11px] text-slate-400">
             Free right now: {freeTables.map((t) => `${t.label} (${t.capacity})`).join(" · ")}
           </p>
-        )}
-        {openTable && (
-          <TableSheet
-            sessionId={openTable.id}
-            label={openTable.label}
-            onClose={() => setOpenTable(null)}
-            onShare={(net) =>
-              shareBillOnWhatsApp({
-                sessionId: openTable.id,
-                label: openTable.label,
-                net,
-              })
-            }
-          />
         )}
       </main>
     </AdminShell>

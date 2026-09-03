@@ -15,12 +15,30 @@ export type KitchenOrder = {
   orderNo?: string;
   status: "placed" | "preparing" | "ready" | "served";
   total_inr: number;
-  placed_via: "ui" | "anna";
+  placed_via: "ui" | "anna" | "waiter";
   lang: string | null;
   created_at: string;
   session: { table: { label: string } | null } | null;
   items: KitchenItem[];
 };
+
+export type KitchenKot = {
+  id: string;
+  tableLabel: string;
+  placed_by: string | null;
+  status: string;
+  total_inr: number;
+  items: { id: string; name: string; qty: number; status: string; notes?: string | null }[];
+};
+
+export function useKitchenKot(orderId: string) {
+  return useQuery({
+    queryKey: ["kitchen", "kot", orderId] as const,
+    queryFn: () => api<KitchenKot>(`/kitchen/kot/${encodeURIComponent(orderId)}`),
+    enabled: orderId.length > 0,
+    retry: false,
+  });
+}
 
 // Polls every 5s while the tab is visible, matching the old page's
 // setInterval + visibilitychange behaviour.

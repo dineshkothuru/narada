@@ -52,9 +52,9 @@ function renderTable(menu = MENU) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={["/t/t1-demo"]}>
+      <MemoryRouter initialEntries={["/outlet/spice-garden/table/t1-demo"]}>
         <Routes>
-          <Route path="/t/:code" element={<TablePage />} />
+          <Route path="/outlet/:slug/table/:tableCode" element={<TablePage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -68,8 +68,10 @@ describe("TablePage", () => {
     // jsdom has no scrollIntoView, and the order experience calls it
     Element.prototype.scrollIntoView = vi.fn();
     fetchMock.mockImplementation((url: string) => {
-      if (url.startsWith("/api/menu")) return Promise.resolve(jsonResponse(currentMenu));
-      if (url.startsWith("/api/session")) {
+      if (url.startsWith("/api/outlet/spice-garden/menu")) {
+        return Promise.resolve(jsonResponse(currentMenu));
+      }
+      if (url.startsWith("/api/outlet/spice-garden/table/t1-demo/session")) {
         return Promise.resolve(jsonResponse({ sessionId: null }));
       }
       return Promise.resolve(jsonResponse({}, 404));
@@ -92,7 +94,7 @@ describe("TablePage", () => {
     expect(screen.queryByText("Table 1 · Dine-in")).not.toBeInTheDocument();
     expect(screen.getAllByText("Masala Dosa").length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/menu?table=t1-demo",
+      "/api/outlet/spice-garden/menu?tableCode=t1-demo",
       expect.objectContaining({ credentials: "include" }),
     );
   });
@@ -103,7 +105,7 @@ describe("TablePage", () => {
     await screen.findByText("Spice Garden");
     await vi.waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        "/api/session?table=t1-demo",
+        "/api/outlet/spice-garden/table/t1-demo/session",
         expect.objectContaining({ credentials: "include" }),
       ),
     );
@@ -118,8 +120,10 @@ describe("TablePage", () => {
 
   it("shows the KOT immediately after placing an order", async () => {
     fetchMock.mockImplementation((url: string) => {
-      if (url.startsWith("/api/menu")) return Promise.resolve(jsonResponse(MENU));
-      if (url.startsWith("/api/session")) return Promise.resolve(jsonResponse({ sessionId: null }));
+      if (url.startsWith("/api/outlet/spice-garden/menu"))
+        return Promise.resolve(jsonResponse(MENU));
+      if (url.startsWith("/api/outlet/spice-garden/table/t1-demo/session"))
+        return Promise.resolve(jsonResponse({ sessionId: null }));
       if (url === "/api/order") {
         return Promise.resolve(
           jsonResponse({
@@ -128,6 +132,27 @@ describe("TablePage", () => {
             total: 120,
             discountPct: 0,
             sessionId: "session-1",
+          }),
+        );
+      }
+      if (url.startsWith("/api/bill?session=session-1")) {
+        return Promise.resolve(
+          jsonResponse({
+            ...{
+              billNo: null,
+              lines: [],
+              gross: 120,
+              discountPct: 0,
+              discount: 0,
+              gst: 0,
+              serviceChargePct: 0,
+              serviceWaived: false,
+              service: 0,
+              tip: 0,
+              net: 120,
+              paid: 0,
+              rounds: [],
+            },
           }),
         );
       }
@@ -141,12 +166,46 @@ describe("TablePage", () => {
     await user.click(screen.getByRole("button", { name: /Place order/ }));
 
     expect((await screen.findAllByText("KOT #11111111")).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole("link", { name: /View \/ print bill/ })).toHaveAttribute(
+      "href",
+      "/bill/session-1",
+    );
   });
 
-  it("shows the recovered session KOT in Stories mode", async () => {
+  it("restores the visible order banner from a resumed session", async () => {
     fetchMock.mockImplementation((url: string) => {
-      if (url.startsWith("/api/menu")) return Promise.resolve(jsonResponse(STORIES_MENU));
-      if (url.startsWith("/api/session"))
+      if (url.startsWith("/api/outlet/spice-garden/menu"))
+        return Promise.resolve(jsonResponse(MENU));
+      if (url.startsWith("/api/outlet/spice-garden/table/t1-demo/session"))
+        return Promise.resolve(jsonResponse({ sessionId: "session-1" }));
+      if (url === "/api/order?session=session-1")
+        return Promise.resolve(
+          jsonResponse({
+            rounds: [
+              {
+                id: "11111111-1111-4111-8111-111111111111",
+                orderNo: "11111111",
+                status: "preparing",
+                total_inr: 120,
+                items: [{ name: "Masala Dosa", qty: 1, status: "preparing" }],
+              },
+            ],
+            discountPct: 0,
+            sessionStatus: "active",
+          }),
+        );
+      return Promise.resolve(jsonResponse({}, 404));
+    });
+
+    renderTable();
+    expect(await screen.findByText("KOT #11111111")).toBeInTheDocument();
+  });
+
+  it("renders the outlet-scoped table in Stories mode", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.startsWith("/api/outlet/spice-garden/menu"))
+        return Promise.resolve(jsonResponse(STORIES_MENU));
+      if (url.startsWith("/api/outlet/spice-garden/table/t1-demo/session"))
         return Promise.resolve(jsonResponse({ sessionId: "session-1" }));
       if (url.startsWith("/api/order?session=")) {
         return Promise.resolve(
@@ -170,6 +229,6 @@ describe("TablePage", () => {
 
     renderTable(STORIES_MENU);
 
-    expect((await screen.findAllByText("KOT #11111111")).length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByText("✨ Stories")).toBeInTheDocument();
   });
 });

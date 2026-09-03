@@ -30,9 +30,9 @@ export type AdminItem = {
 export type AdminOutlet = {
   id: string;
   name: string;
+  slug?: string | null;
   upi_vpa: string | null;
   payment_timing: "pre" | "post";
-  admin_pin: string;
   gemini_api_key: string | null;
   sarvam_api_key: string | null;
   comp_item_id: string | null;
@@ -150,9 +150,12 @@ export function useClearItemImage() {
 export function usePatchSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ outletId, patch }: { outletId: string; patch: Record<string, unknown> }) =>
-      api("/admin/settings", { method: "PATCH", body: JSON.stringify({ outletId, ...patch }) }),
-    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.adminMenu }),
+    mutationFn: ({ patch }: { patch: Record<string, unknown> }) =>
+      api("/admin/settings", { method: "PATCH", body: JSON.stringify(patch) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.adminMenu });
+      qc.invalidateQueries({ queryKey: queryKeys.adminTables });
+    },
   });
 }
 
@@ -160,10 +163,13 @@ export function usePatchSettings() {
 
 export type StaffRow = {
   id: string;
-  name: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string | null;
   role: "admin" | "kitchen" | "waiter" | "reception" | "cashier";
-  pin: string;
   active: boolean;
+  needsSetup: boolean;
 };
 
 export function useAdminStaff() {
@@ -176,8 +182,13 @@ export function useAdminStaff() {
 export function useAddStaff() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; role: string; pin: string }) =>
-      api<{ ok: true }>("/admin/staff", { method: "POST", body: JSON.stringify(body) }),
+    mutationFn: (body: {
+      username: string;
+      firstName: string;
+      lastName?: string | null;
+      role: string;
+      password: string;
+    }) => api<{ ok: true }>("/admin/staff", { method: "POST", body: JSON.stringify(body) }),
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.adminStaff }),
   });
 }
@@ -185,8 +196,14 @@ export function useAddStaff() {
 export function usePatchStaff() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ staffId, active }: { staffId: string; active: boolean }) =>
-      api("/admin/staff", { method: "PATCH", body: JSON.stringify({ staffId, active }) }),
+    mutationFn: (body: {
+      staffId: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string | null;
+      password?: string;
+      active?: boolean;
+    }) => api("/admin/staff", { method: "PATCH", body: JSON.stringify(body) }),
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.adminStaff }),
   });
 }
@@ -213,7 +230,8 @@ export type AdminTable = {
 export function useAdminTables() {
   return useQuery({
     queryKey: queryKeys.adminTables,
-    queryFn: () => api<{ tables: AdminTable[]; outletName: string }>("/admin/tables"),
+    queryFn: () =>
+      api<{ tables: AdminTable[]; outletName: string; outletSlug?: string }>("/admin/tables"),
   });
 }
 
@@ -303,5 +321,29 @@ export function useAdminOrders(range: "today" | "week" | "all") {
       ),
     refetchInterval: () => (document.hidden ? false : 15000),
     refetchIntervalInBackground: false,
+  });
+}
+
+export type AdminReport = {
+  day: string;
+  bills: number;
+  covers: number;
+  gross: number;
+  discount: number;
+  gst: number;
+  service: number;
+  tips: number;
+  net: number;
+  averageBill: number;
+  byMethod: { method: string; count: number; amount: number }[];
+  collected: number;
+  variance: number;
+};
+
+export function useAdminReport(day: string) {
+  return useQuery({
+    queryKey: queryKeys.adminReport(day),
+    queryFn: () => api<AdminReport>(`/admin/report?day=${encodeURIComponent(day)}`),
+    enabled: day.length > 0,
   });
 }

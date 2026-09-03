@@ -1,7 +1,7 @@
 // The two state machines the staff screens run on. Both were inline in their
 // API routes, where the only way to exercise them was to place a real order.
 
-export type OrderStatus = "placed" | "preparing" | "ready" | "served";
+export type OrderStatus = "placed" | "preparing" | "ready" | "served" | "cancelled";
 export type TableStatus =
   "free" | "cleaning" | "seated" | "dining" | "settling" | "billed" | "paid";
 
@@ -9,10 +9,11 @@ export type TableStatus =
 // means the round is served, every dish at least ready means it can go out,
 // and any dish touched at all means the kitchen has started.
 export function deriveOrderStatus(items: { status: string }[]): OrderStatus {
-  if (items.length === 0) return "placed";
-  if (items.every((s) => s.status === "served")) return "served";
-  if (items.every((s) => s.status === "served" || s.status === "ready")) return "ready";
-  if (items.some((s) => s.status !== "queued")) return "preparing";
+  const live = items.filter((s) => s.status !== "cancelled");
+  if (live.length === 0) return items.length === 0 ? "placed" : "cancelled";
+  if (live.every((s) => s.status === "served")) return "served";
+  if (live.every((s) => s.status === "served" || s.status === "ready")) return "ready";
+  if (live.some((s) => s.status !== "queued")) return "preparing";
   return "placed";
 }
 

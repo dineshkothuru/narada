@@ -22,6 +22,7 @@ export const voiceSchema = z
     cart: z.array(cartLineSchema).optional(),
     messages: z.array(chatMessageSchema).optional(),
     tableCode: z.string().optional(),
+    outletSlug: z.string().optional(),
     language: z.string().optional(),
   })
   .refine((v) => Boolean(v.audio || v.text || v.greet), {

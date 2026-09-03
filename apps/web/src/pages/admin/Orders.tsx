@@ -2,6 +2,7 @@ import { useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@narada/shared";
 import { useAdminOrders, type AdminOrder } from "@/api/hooks";
+import { Metric, Panel } from "@/components/Panel";
 
 const RANGES = [
   { key: "today", label: "Today" },
@@ -12,6 +13,7 @@ const RANGES = [
 const STATUS_STYLE: Record<string, string> = {
   placed: "bg-rose-100 text-rose-700",
   preparing: "bg-sky-100 text-sky-700",
+  ready: "bg-amber-100 text-amber-700",
   served: "bg-green-100 text-green-700",
   cancelled: "bg-stone-200 text-stone-500",
 };
@@ -30,11 +32,11 @@ export default function AdminOrdersPage() {
 
   return (
     <AdminShell>
-      <main className="min-h-dvh bg-[#eeebe8] p-4 sm:p-6">
+      <main className="console min-h-dvh p-4 sm:p-6">
         <header className="mb-5 flex max-w-5xl flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="font-display text-2xl font-semibold text-stone-900">Orders</h1>
-            <p className="text-xs text-stone-500">
+            <h1 className="font-display text-2xl font-semibold text-slate-900">Orders</h1>
+            <p className="text-xs text-slate-500">
               Every round, its table, kitchen status and payment · refreshes every 15s
             </p>
           </div>
@@ -47,8 +49,8 @@ export default function AdminOrdersPage() {
               onClick={() => setRange(r.key)}
               className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                 range === r.key
-                  ? "bg-stone-900 text-white"
-                  : "bg-white text-stone-600 ring-1 ring-stone-200"
+                  ? "bg-slate-900 text-white"
+                  : "bg-white text-slate-600 ring-1 ring-slate-200"
               }`}
             >
               {r.label}
@@ -58,77 +60,49 @@ export default function AdminOrdersPage() {
 
         {stats && (
           <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              {
-                label: "Sales (after discounts)",
-                value: inr(stats.netExpected),
-                tone: "text-stone-900",
-              },
-              { label: "Collected", value: inr(stats.collected), tone: "text-green-600" },
-              { label: "Outstanding", value: inr(stats.outstanding), tone: "text-rose-600" },
-              { label: "Tables served", value: String(stats.tables), tone: "text-stone-900" },
-            ].map((c) => (
-              <div
-                key={c.label}
-                className="card-float rounded-2xl bg-white p-4 ring-1 ring-stone-200/80"
-              >
-                <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                  {c.label}
-                </p>
-                <p className={`font-display mt-1 text-2xl font-semibold ${c.tone}`}>{c.value}</p>
-              </div>
-            ))}
-            <div className="card-float rounded-2xl bg-white p-4 ring-1 ring-stone-200/80 sm:col-span-2">
-              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                Top dishes
-              </p>
+            <Metric tone="indigo" label="Sales after discounts" value={inr(stats.netExpected)} />
+            <Metric tone="emerald" label="Collected" value={inr(stats.collected)} />
+            <Metric tone="rose" label="Outstanding" value={inr(stats.outstanding)} />
+            <Metric tone="slate" label="Tables served" value={String(stats.tables)} />
+            <Panel tone="slate" title="Top dishes" className="sm:col-span-2">
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {stats.topDishes.length === 0 && (
-                  <span className="text-xs text-stone-400">No orders yet</span>
+                  <span className="text-xs text-slate-400">No orders yet</span>
                 )}
                 {stats.topDishes.map((d) => (
                   <span
                     key={d.name}
-                    className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-semibold text-stone-700"
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
                   >
                     {d.name} · {d.qty}
                   </span>
                 ))}
               </div>
-            </div>
-            <div className="card-float rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
-              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                Avg per table
-              </p>
-              <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
-            </div>
-            <div className="card-float rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
-              <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                🎙️ Voice orders
-              </p>
-              <p className="font-display mt-1 text-2xl font-semibold">
-                {stats.byVoice}
-                <span className="ml-1 text-sm font-medium text-stone-400">/ {stats.orders}</span>
-              </p>
-            </div>
+            </Panel>
+            <Metric tone="slate" label="Avg per table" value={inr(stats.avgTable)} />
+            <Metric
+              tone="violet"
+              label="Voice orders"
+              value={`${stats.byVoice} / ${stats.orders}`}
+            />
           </section>
         )}
 
-        <section className="card-float max-w-5xl overflow-hidden rounded-3xl bg-white ring-1 ring-stone-200/80">
+        <section className="panel max-w-5xl overflow-hidden">
           {orders.length === 0 && (
-            <p className="py-10 text-center text-sm text-stone-400">No orders in this range</p>
+            <p className="py-10 text-center text-sm text-slate-400">No orders in this range</p>
           )}
           {orders.map((o) => {
             const paid = paidFor(o);
             const isOpen = open === o.id;
             return (
-              <div key={o.id} className="border-b border-stone-100 last:border-0">
+              <div key={o.id} className="border-b border-slate-100 last:border-0">
                 <button
                   onClick={() => setOpen(isOpen ? null : o.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-stone-50"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
                 >
-                  <span className="w-20 shrink-0 text-sm font-bold text-stone-900">
-                    {o.session?.table?.label ?? "—"}
+                  <span className="w-20 shrink-0 text-sm font-bold text-slate-900">
+                    {o.session?.table?.label ?? "Takeaway"}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs text-stone-500">
                     {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}

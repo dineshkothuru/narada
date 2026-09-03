@@ -5,6 +5,7 @@ import { queryKeys } from "../keys";
 export type CounterTab = {
   sessionId: string;
   tableId: string;
+  code: string;
   label: string;
   mergedWith: string[];
   since: string;
@@ -41,7 +42,6 @@ export type CounterAction =
       amount: number;
       method: "upi_intent" | "cash" | "card";
       utr?: string;
-      collectedBy?: string;
     };
 
 export function useCounterAction() {

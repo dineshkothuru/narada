@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+.pnpm-store
+.env
+*.local
+.next
+dist
+coverage
+.tmp
+.worktrees

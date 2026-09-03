@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router";
 import type { ReactNode } from "react";
-import CallTimer from "./CallTimer";
 import CallAlertBar, { type OpenCall } from "./CallAlertBar";
 import { useFloor, useLogout, useMe } from "@/api/hooks";
 import { ROLE_LABEL, type StaffRole } from "@/lib/roles";
@@ -59,6 +58,7 @@ const GROUPS: { label: string; links: NavLink[] }[] = [
     label: "Outlet",
     links: [
       { href: "/admin/orders", label: "Orders", icon: "orders", roles: ["admin"] },
+      { href: "/admin/report", label: "Day close", icon: "orders", roles: ["admin"] },
       { href: "/admin/menu", label: "Menu", icon: "menu", roles: ["admin"] },
       { href: "/admin/tables", label: "Tables & QR", icon: "tables", roles: ["admin"] },
     ],
@@ -72,14 +72,16 @@ const GROUPS: { label: string; links: NavLink[] }[] = [
   },
 ];
 
-// Shell for every staff screen: an always-open left rail plus a live call
-// watchlist, so an unattended table is visible from anywhere in the back office.
+// Shell for every staff screen: the alert bar stays global, while calls are
+// handled on the waiter surface instead of being duplicated in the rail.
 export default function AdminShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { data: me } = useMe();
   const role = me?.role ?? null;
-  const watchesCalls = !role || (role !== "kitchen" && role !== "cashier");
-  const { data: floor } = useFloor();
+  const canUseFloor =
+    role === "admin" || role === "reception" || role === "waiter" || role === "cashier";
+  const watchesCalls = role === "admin" || role === "reception" || role === "waiter";
+  const { data: floor } = useFloor(canUseFloor);
   const logoutMutation = useLogout();
 
   const calls: OpenCall[] = watchesCalls
@@ -95,7 +97,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await logoutMutation.mutateAsync();
-    window.location.replace("/admin/login");
+    window.location.replace("/");
   };
 
   const visible = (l: NavLink) => !role || l.roles.includes(role);
@@ -107,19 +109,22 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
   return (
-    <div className="flex min-h-dvh bg-[#eeebe8] print:block print:bg-white">
+    <div className="console flex min-h-dvh print:block print:bg-white">
       {/* laptop / tablet: the rail is always open — no hamburger to hunt for */}
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-stone-200 bg-white md:flex print:hidden">
-        <div className="flex h-16 items-center gap-2 border-b border-stone-200 px-5">
+      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-slate-200/70 bg-white/80 backdrop-blur md:flex print:hidden">
+        <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-5">
           <span className="text-xl">🪈</span>
           <div className="min-w-0">
-            <span className="font-display block leading-tight font-semibold text-stone-900">
+            <span className="font-display block leading-tight font-semibold text-slate-900">
               Narada
             </span>
             {role && (
-              <span className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+              <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
                 {ROLE_LABEL[role]}
               </span>
+            )}
+            {me?.displayName && (
+              <span className="block truncate text-[11px] text-slate-500">{me.displayName}</span>
             )}
           </div>
         </div>
@@ -127,7 +132,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           {groups.map((g) => (
             <div key={g.label} className="mb-4">
-              <div className="px-3 pb-1 text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+              <div className="px-3 pb-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
                 {g.label}
               </div>
               {g.links.map((l) => {
@@ -138,8 +143,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                     to={l.href}
                     className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       active
-                        ? "bg-stone-900 text-white shadow-sm"
-                        : "text-stone-600 hover:bg-stone-100"
+                        ? "bg-indigo-50 font-semibold text-indigo-700 ring-1 ring-indigo-100"
+                        : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
                     {ICONS[l.icon]}
@@ -149,36 +154,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               })}
             </div>
           ))}
-
-          {watchesCalls && (
-            <div className="mt-2 rounded-xl bg-stone-50 p-3 ring-1 ring-stone-200">
-              <p className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-                Waiter calls
-              </p>
-              {calls.length === 0 ? (
-                <p className="mt-1.5 text-[11px] text-stone-400">All attended ✓</p>
-              ) : (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  {calls.map((c) => (
-                    <Link
-                      key={c.id}
-                      to="/waiter"
-                      className="flex items-center justify-between gap-2 rounded-lg bg-rose-50 px-2 py-1.5 text-[11px] font-bold text-rose-700 ring-1 ring-rose-200"
-                    >
-                      <span className="truncate">{c.label}</span>
-                      <CallTimer since={c.since} compact />
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </nav>
 
-        <div className="border-t border-stone-200 p-3">
+        <div className="border-t border-slate-200 p-3">
           <button
             onClick={logout}
-            className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-stone-100"
+            className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-slate-100"
           >
             Log out
           </button>
@@ -187,11 +168,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
       <div className="min-w-0 flex-1">
         {/* phone: the same links as a scrolling rail, still always visible */}
-        <div className="sticky top-0 z-20 border-b border-stone-200 bg-white md:hidden print:hidden">
+        <div className="sticky top-0 z-20 border-b border-slate-200 bg-white md:hidden print:hidden">
           <div className="flex items-center gap-2 px-3 pt-2">
-            <span className="font-display text-sm font-semibold text-stone-900">🪈 Narada</span>
+            <span className="font-display text-sm font-semibold text-slate-900">🪈 Narada</span>
             {role && (
-              <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-stone-500 uppercase">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 uppercase">
                 {ROLE_LABEL[role]}
               </span>
             )}
@@ -208,8 +189,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                   to={l.href}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                     active
-                      ? "bg-stone-900 text-white"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
                   {ICONS[l.icon]}

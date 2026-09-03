@@ -1,24 +1,27 @@
 import type { Repos } from "../repositories/index.js";
-import { badRequest, notFound } from "../lib/http.js";
-import type {
-  AdminOrderRow,
-  AdminOrdersResponse,
-  CreateCategoryInput,
-  PatchSettingsInput,
+import { badRequest, conflict, notFound } from "../lib/http.js";
+import {
+  outletSlugSchema,
+  type AdminOrderRow,
+  type AdminOrdersResponse,
+  type CreateCategoryInput,
+  type PatchSettingsInput,
 } from "@narada/shared";
+import { OutletSlugConflictError } from "../repositories/outlets.js";
 
 // Port of web/app/api/admin/categories/route.ts.
 export async function createCategory(
   repos: Pick<Repos, "outlets" | "menuCategories">,
   input: CreateCategoryInput,
+  outletId: string,
 ): Promise<{ ok: true; id: string }> {
   const name = input.name.trim();
   if (!name) throw badRequest("name required");
 
-  const outlet = await repos.outlets.findFirst();
+  const outlet = await repos.outlets.findById(outletId);
   if (!outlet) throw notFound("no outlet");
 
-  const maxSort = await repos.menuCategories.maxSortOrder();
+  const maxSort = await repos.menuCategories.maxSortOrder(outlet.id);
   const created = await repos.menuCategories.create({
     outlet_id: outlet.id,
     name: name.slice(0, 60),
@@ -35,13 +38,16 @@ export async function createCategory(
 export async function deleteCategory(
   repos: Pick<Repos, "menuCategories" | "menuItems">,
   id: string,
+  outletId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   if (!id) throw badRequest("id required");
+  const category = await repos.menuCategories.findOutletId(id, outletId);
+  if (!category) throw notFound("unknown category");
   try {
-    await repos.menuCategories.remove(id);
+    await repos.menuCategories.remove(id, outletId);
     return { ok: true };
   } catch {
-    await repos.menuItems.hideByCategory(id);
+    await repos.menuItems.hideByCategory(id, outletId);
     return {
       ok: false,
       reason: "Section has dishes with past orders — its dishes were marked unavailable instead.",
@@ -54,6 +60,7 @@ export async function deleteCategory(
 export async function listAdminOrders(
   repos: Pick<Repos, "orders">,
   range: "today" | "week" | "all" | undefined,
+  outletId: string,
 ): Promise<AdminOrdersResponse> {
   let since: string | null = null;
   if (range === "week") {
@@ -64,7 +71,7 @@ export async function listAdminOrders(
     since = d.toISOString();
   }
 
-  const rows = await repos.orders.listForAdmin(since);
+  const rows = await repos.orders.listForAdmin(since, 300, outletId);
   const orders: AdminOrderRow[] = rows.map((o) => ({
     id: o.id,
     status: o.status,
@@ -150,20 +157,25 @@ export async function listAdminOrders(
 // route exactly — an unrecognised or malformed field is silently dropped, not
 // a 400, matching legacy behaviour.
 export async function updateSettings(
-  repos: Pick<Repos, "outlets">,
+  repos: Pick<Repos, "outlets" | "menuItems">,
   input: PatchSettingsInput,
+  outletId: string,
 ): Promise<{ ok: true }> {
-  if (!input.outletId) throw badRequest("outletId required");
+  if (!(await repos.outlets.findById(outletId))) throw notFound("unknown outlet");
 
   const patch: Record<string, unknown> = {};
+  let slug: string | undefined;
+  if (input.slug !== undefined) {
+    const parsedSlug = outletSlugSchema.safeParse(input.slug);
+    if (!parsedSlug.success) throw badRequest("invalid outlet slug");
+    slug = parsedSlug.data;
+    patch.slug = slug;
+  }
   if (input.payment_timing === "pre" || input.payment_timing === "post") {
     patch.payment_timing = input.payment_timing;
   }
   if (typeof input.upi_vpa === "string" && input.upi_vpa.includes("@")) {
     patch.upi_vpa = input.upi_vpa;
-  }
-  if (typeof input.admin_pin === "string" && input.admin_pin.length >= 4) {
-    patch.admin_pin = input.admin_pin;
   }
   if (
     typeof input.service_charge_pct === "number" &&
@@ -186,6 +198,21 @@ export async function updateSettings(
   }
   if (Object.keys(patch).length === 0) throw badRequest("nothing to update");
 
-  await repos.outlets.update(input.outletId, patch);
+  if (typeof input.comp_item_id === "string" && input.comp_item_id) {
+    const item = await repos.menuItems.findById(input.comp_item_id, outletId);
+    if (!item) throw notFound("unknown dish");
+  }
+
+  try {
+    await repos.outlets.update(outletId, patch);
+  } catch (error) {
+    if (
+      slug !== undefined &&
+      (error instanceof OutletSlugConflictError || (error as { code?: string })?.code === "23505")
+    ) {
+      throw conflict("outlet slug already in use");
+    }
+    throw error;
+  }
   return { ok: true };
 }

@@ -30,6 +30,7 @@ export type UploadInput = {
 export async function uploadDishImage(
   repos: Pick<Repos, "menuItems">,
   input: UploadInput,
+  outletId: string,
 ): Promise<{ ok: true; imageUrl: string }> {
   if (!input.itemId) throw badRequest("itemId required");
 
@@ -37,7 +38,7 @@ export async function uploadDishImage(
   if (!ext) throw new HttpError(415, "use a JPG, PNG, WebP or AVIF image");
   if (input.size > MAX_BYTES) throw new HttpError(413, "image must be under 4MB");
 
-  const item = await repos.menuItems.findById(input.itemId);
+  const item = await repos.menuItems.findById(input.itemId, outletId);
   if (!item) throw notFound("unknown dish");
 
   const url = env.SUPABASE_URL;
@@ -63,7 +64,7 @@ export async function uploadDishImage(
   }
 
   const imageUrl = `${url}/storage/v1/object/public/${BUCKET}/${path}`;
-  await repos.menuItems.setImageUrl(input.itemId, imageUrl);
+  await repos.menuItems.setImageUrl(input.itemId, imageUrl, outletId);
   return { ok: true, imageUrl };
 }
 
@@ -71,8 +72,10 @@ export async function uploadDishImage(
 export async function clearDishImage(
   repos: Pick<Repos, "menuItems">,
   itemId: string,
+  outletId: string,
 ): Promise<{ ok: true }> {
   if (!itemId) throw badRequest("itemId required");
-  await repos.menuItems.setImageUrl(itemId, null);
+  if (!(await repos.menuItems.findById(itemId, outletId))) throw notFound("unknown dish");
+  await repos.menuItems.setImageUrl(itemId, null, outletId);
   return { ok: true };
 }

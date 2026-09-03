@@ -1,20 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../../src/app.js";
-import { ADMIN_COOKIE, roleToken } from "../../../src/plugins/auth.js";
 import { seed } from "../../helpers/fakeRepos.js";
-
-async function adminCookie() {
-  return { [ADMIN_COOKIE]: await roleToken("admin") };
-}
+import { staffCookie } from "../../helpers/staffCookie.js";
 
 describe("POST /api/admin/categories", () => {
   it("creates a category", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/categories",
-      cookies: await adminCookie(),
+      cookies: staffCookie(data, "admin"),
       payload: { name: "Desserts", emoji: "🍰" },
     });
     expect(res.statusCode).toBe(200);
@@ -22,12 +18,12 @@ describe("POST /api/admin/categories", () => {
   });
 
   it("400s on a missing name", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/categories",
-      cookies: await adminCookie(),
+      cookies: staffCookie(data, "admin"),
       payload: {},
     });
     expect(res.statusCode).toBe(400);
@@ -47,24 +43,24 @@ describe("POST /api/admin/categories", () => {
 
 describe("DELETE /api/admin/categories", () => {
   it("deletes a category with no order history", async () => {
-    const { repos, ids } = seed();
+    const { data, repos, ids } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "DELETE",
       url: `/api/admin/categories?id=${ids.category}`,
-      cookies: await adminCookie(),
+      cookies: staffCookie(data, "admin"),
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true });
   });
 
   it("400s without an id", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "DELETE",
       url: "/api/admin/categories",
-      cookies: await adminCookie(),
+      cookies: staffCookie(data, "admin"),
     });
     expect(res.statusCode).toBe(400);
   });

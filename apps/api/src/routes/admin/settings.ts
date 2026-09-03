@@ -9,9 +9,9 @@ export default async function settingsRoutes(app: FastifyInstance): Promise<void
     if (!parsed.success) {
       return reply
         .status(400)
-        .send({ error: parsed.error.issues[0]?.message ?? "outletId required" });
+        .send({ error: parsed.error.issues[0]?.message ?? "invalid settings" });
     }
-    const result = await updateSettings(app.repos, parsed.data);
+    const result = await updateSettings(app.repos, parsed.data, request.staffSession!.outletId);
     return reply.send(result);
   });
 }

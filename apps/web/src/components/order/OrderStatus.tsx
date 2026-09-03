@@ -1,4 +1,6 @@
 import { inr, type STRINGS } from "@narada/shared";
+import { ask } from "@/components/Dialogs";
+import { useCancelOrderItem } from "@/api/hooks";
 import type { OrderRound } from "@/api/hooks";
 
 type Strings = (typeof STRINGS)["en"];
@@ -123,6 +125,7 @@ export function RoundList({
   myOrderIds: string[];
   t: Strings;
 }) {
+  const cancel = useCancelOrderItem();
   return (
     <div className="mt-4 w-full space-y-2">
       {rounds.map((r, i) => (
@@ -164,8 +167,26 @@ export function RoundList({
                     {it.qty}× {it.name}
                   </span>
                 </span>
-                <span className="ml-2 shrink-0 text-stone-500">
+                <span className="ml-2 flex shrink-0 items-center gap-2 text-stone-500">
                   {statusLabelFor(it.status ?? r.status, t)}
+                  {it.id && (it.status ?? r.status) === "queued" && (
+                    <button
+                      onClick={async () => {
+                        const itemId = it.id;
+                        if (!itemId) return;
+                        const yes = await ask.confirm({
+                          title: `Remove ${it.name}?`,
+                          message: "Queued items can still be removed.",
+                          confirmLabel: "Remove item",
+                          danger: true,
+                        });
+                        if (yes) cancel.mutate(itemId);
+                      }}
+                      className="text-[10px] font-bold underline underline-offset-2"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </span>
               </div>
             ))}

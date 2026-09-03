@@ -29,6 +29,7 @@ describe("AdminTablesPage", () => {
               { id: "t1", label: "Table 1", code: "table-1", ui_variant: "classic", capacity: 4 },
             ],
             outletName: "Narada",
+            outletSlug: "spice-garden",
           }),
         );
       }
@@ -60,6 +61,9 @@ describe("AdminTablesPage", () => {
     const toggle = toggles.find((el) => el.closest("button[aria-expanded]"));
     fireEvent.click(toggle!.closest("button")!);
     expect(await screen.findByDisplayValue("Table 1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "/outlet/spice-garden/table/table-1" }),
+    ).toHaveAttribute("href", "/outlet/spice-garden/table/table-1");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/admin/tables",
       expect.objectContaining({ credentials: "include" }),

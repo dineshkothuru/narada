@@ -1,8 +1,19 @@
 import type { FastifyInstance } from "fastify";
 
-// Who is logged in — drives which nav items and screens the UI offers.
-// The auth plugin has already rejected an absent or expired cookie with 401.
-// Moved out of app.ts (foundation put it there inline); behaviour unchanged.
 export default async function meRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/api/admin/me", async (request) => ({ role: request.staffRole }));
+  app.get("/api/admin/me", async (request, reply) => {
+    if (!request.staffSession) return reply.status(401).send({ error: "unauthorized" });
+    const { staff, outlet, role } = request.staffSession;
+    return {
+      role,
+      staff: { ...staff, role },
+      outlet,
+      staffId: staff.id,
+      outletId: outlet.id,
+      username: staff.username,
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      displayName: staff.displayName,
+    };
+  });
 }

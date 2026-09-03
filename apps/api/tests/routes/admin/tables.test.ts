@@ -1,17 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../../src/app.js";
-import { ADMIN_COOKIE, roleToken } from "../../../src/plugins/auth.js";
 import { seed } from "../../helpers/fakeRepos.js";
+import { staffCookie } from "../../helpers/staffCookie.js";
 
-async function adminCookie() {
-  return { [ADMIN_COOKIE]: await roleToken("admin") };
-}
+const adminCookie = (data: Parameters<typeof staffCookie>[0]) => staffCookie(data, "admin");
 
 describe("GET /api/admin/tables", () => {
   it("lists tables with the outlet name", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
-    const res = await app.inject({ url: "/api/admin/tables", cookies: await adminCookie() });
+    const res = await app.inject({ url: "/api/admin/tables", cookies: adminCookie(data) });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.tables.length).toBe(2);
@@ -21,12 +19,12 @@ describe("GET /api/admin/tables", () => {
 
 describe("POST /api/admin/tables", () => {
   it("creates a batch of tables", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/tables",
-      cookies: await adminCookie(),
+      cookies: adminCookie(data),
       payload: { count: 3 },
     });
     expect(res.statusCode).toBe(200);
@@ -34,12 +32,12 @@ describe("POST /api/admin/tables", () => {
   });
 
   it("400s without label or count", async () => {
-    const { repos } = seed();
+    const { data, repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "POST",
       url: "/api/admin/tables",
-      cookies: await adminCookie(),
+      cookies: adminCookie(data),
       payload: {},
     });
     expect(res.statusCode).toBe(400);
@@ -48,12 +46,12 @@ describe("POST /api/admin/tables", () => {
 
 describe("PATCH /api/admin/tables", () => {
   it("updates a table", async () => {
-    const { repos, ids } = seed();
+    const { data, repos, ids } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/admin/tables",
-      cookies: await adminCookie(),
+      cookies: adminCookie(data),
       payload: { tableId: ids.tableA, capacity: 8 },
     });
     expect(res.statusCode).toBe(200);
@@ -76,18 +74,18 @@ describe("DELETE /api/admin/tables", () => {
     const res = await app.inject({
       method: "DELETE",
       url: `/api/admin/tables?id=${ids.tableA}`,
-      cookies: await adminCookie(),
+      cookies: adminCookie(data),
     });
     expect(res.statusCode).toBe(409);
   });
 
   it("removes a table with no active session", async () => {
-    const { repos, ids } = seed();
+    const { data, repos, ids } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "DELETE",
       url: `/api/admin/tables?id=${ids.tableB}`,
-      cookies: await adminCookie(),
+      cookies: adminCookie(data),
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true });

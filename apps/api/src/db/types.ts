@@ -20,9 +20,10 @@ export interface OutletsTable {
   slug: string;
   upi_vpa: string | null;
   currency: Generated<string>;
+  tables_enabled: Generated<boolean>;
   payment_timing: Generated<string>; // 'pre' | 'post'
+  active: Generated<boolean>;
   created_at: Generated<string>;
-  admin_pin: Generated<string>;
   gemini_api_key: string | null;
   sarvam_api_key: string | null;
   comp_item_id: string | null;
@@ -78,8 +79,10 @@ export interface MenuItemsTable {
 
 export interface SessionsTable {
   id: Generated<string>;
-  table_id: string;
+  table_id: string | null;
   outlet_id: string;
+  customer_id: Generated<string | null>;
+  service_type: Generated<string>; // dine_in | takeaway
   status: Generated<string>; // active | billed | closed
   created_at: Generated<string>;
   closed_at: string | null;
@@ -120,8 +123,10 @@ export interface OrderItemsTable {
   unit_price: Numeric;
   qty: number;
   notes: string | null;
-  status: Generated<string>; // queued | preparing | ready | served
+  status: Generated<string>; // queued | preparing | ready | served | cancelled
   gst_pct: Generated<number>; // LIVE — frozen from the menu item
+  cancelled_at: string | null;
+  cancelled_by: string | null;
 }
 
 export interface PaymentsTable {
@@ -147,10 +152,35 @@ export interface WaiterCallsTable {
 export interface StaffTable {
   id: Generated<string>;
   outlet_id: string;
-  name: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
   role: string; // admin | kitchen | waiter | reception | cashier
-  pin: string;
+  password_hash: string | null;
   active: Generated<boolean>;
+  created_at: Generated<string>;
+}
+
+export interface CustomersTable {
+  id: Generated<string>;
+  phone: string;
+  first_name: string;
+  last_name: string | null;
+  password_hash: string;
+  active: Generated<boolean>;
+  created_at: Generated<string>;
+}
+
+export interface AuditLogTable {
+  id: Generated<string>;
+  outlet_id: string;
+  staff_id: string | null;
+  role: string | null;
+  actor_name: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  details: unknown;
   created_at: Generated<string>;
 }
 
@@ -165,4 +195,6 @@ export interface DB {
   payments: PaymentsTable;
   waiter_calls: WaiterCallsTable;
   staff: StaffTable;
+  customers: CustomersTable;
+  audit_log: AuditLogTable;
 }

@@ -5,8 +5,8 @@ import { kitchenOrders, updateItemStatus, updateOrderStatus } from "../services/
 // Port of web/app/api/kitchen/route.ts. Role gating (admin + kitchen) is
 // already applied by the auth plugin for the /api/kitchen prefix.
 export default async function kitchenRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/api/kitchen", async () => {
-    const orders = await kitchenOrders(app.repos);
+  app.get("/api/kitchen", async (request) => {
+    const orders = await kitchenOrders(app.repos, 60, request.staffSession!.outletId);
     return { orders };
   });
 
@@ -21,7 +21,7 @@ export default async function kitchenRoutes(app: FastifyInstance): Promise<void>
     // already rejected anything outside the enum, so the 400 below is the
     // "itemId without itemStatus" case only.
     if (itemId && itemStatus) {
-      return updateItemStatus(app.repos, itemId, itemStatus);
+      return updateItemStatus(app.repos, itemId, itemStatus, request.staffSession!.outletId);
     }
     if (itemId || itemStatus) {
       return reply.status(400).send({ error: "invalid item status" });
@@ -30,6 +30,6 @@ export default async function kitchenRoutes(app: FastifyInstance): Promise<void>
     if (!orderId || !status) {
       return reply.status(400).send({ error: "orderId and valid status required" });
     }
-    return updateOrderStatus(app.repos, orderId, status);
+    return updateOrderStatus(app.repos, orderId, status, request.staffSession!.outletId);
   });
 }

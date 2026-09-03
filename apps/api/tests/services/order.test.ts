@@ -103,15 +103,17 @@ describe("placeOrder", () => {
 
 describe("getSessionOrders", () => {
   it("returns rounds with their items and the session discount/status", async () => {
-    const { repos, ids } = seed();
+    const { data, repos, ids } = seed();
     const placed = await placeOrder(repos, {
       tableCode: "t1-demo",
       cart: [{ itemId: ids.items[0], qty: 2 }],
     });
-    const view = await getSessionOrders(repos, placed.sessionId);
+    const view = await getSessionOrders(repos, placed.sessionId, undefined, ids.outlet);
     expect(view.rounds).toHaveLength(1);
     expect(view.rounds[0].orderNo).toBe(orderToken(view.rounds[0].id));
-    expect(view.rounds[0].items).toEqual([{ name: "Paneer Tikka", qty: 2, status: "queued" }]);
+    expect(view.rounds[0].items).toEqual([
+      { id: data.order_items[0].id, name: "Paneer Tikka", qty: 2, status: "queued" },
+    ]);
     expect(view.discountPct).toBe(0);
     expect(view.sessionStatus).toBe("active");
   });
@@ -123,7 +125,7 @@ describe("getSessionOrders", () => {
       cart: [{ itemId: ids.items[0], qty: 1 }],
     });
     data.orders[0].status = "cancelled";
-    const view = await getSessionOrders(repos, placed.sessionId);
+    const view = await getSessionOrders(repos, placed.sessionId, undefined, ids.outlet);
     expect(view.rounds).toHaveLength(0);
   });
 });
@@ -135,13 +137,15 @@ describe("getOrderStatus", () => {
       tableCode: "t1-demo",
       cart: [{ itemId: ids.items[0], qty: 1 }],
     });
-    expect(await getOrderStatus(repos, placed.orderId)).toEqual({ status: "placed" });
+    expect(await getOrderStatus(repos, placed.orderId, undefined, ids.outlet)).toEqual({
+      status: "placed",
+    });
   });
 
   it("rejects an unknown order id with a 404", async () => {
-    const { repos } = seed();
+    const { repos, ids } = seed();
     await expect(
-      getOrderStatus(repos, "99999999-9999-9999-9999-999999999999"),
+      getOrderStatus(repos, "99999999-9999-9999-9999-999999999999", undefined, ids.outlet),
     ).rejects.toMatchObject({ statusCode: 404, message: "not found" });
   });
 });

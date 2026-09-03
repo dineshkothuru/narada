@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../../src/app.js";
-import { ADMIN_COOKIE, roleToken } from "../../src/plugins/auth.js";
 import { seed, type FakeDb } from "../helpers/fakeRepos.js";
 import type { Repos } from "../../src/repositories/index.js";
-
-const cookieFor = async (role: "kitchen" | "waiter" | "admin" | "cashier" | "reception") =>
-  `${ADMIN_COOKIE}=${await roleToken(role)}`;
+import { staffHeader } from "../helpers/staffCookie.js";
 
 function seated(): { data: FakeDb; repos: Repos; sessionId: string } {
   const { data, repos, ids } = seed();
@@ -56,11 +53,11 @@ function seated(): { data: FakeDb; repos: Repos; sessionId: string } {
 
 describe("GET /api/counter", () => {
   it("200s for cashier and lists tabs", async () => {
-    const { repos, sessionId } = seated();
+    const { data, repos, sessionId } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       url: "/api/counter",
-      headers: { cookie: await cookieFor("cashier") },
+      headers: { cookie: staffHeader(data, "cashier") },
     });
     expect(res.statusCode).toBe(200);
     expect(
@@ -69,11 +66,11 @@ describe("GET /api/counter", () => {
   });
 
   it("403s a role counter excludes", async () => {
-    const { repos } = seated();
+    const { data, repos } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       url: "/api/counter",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
     });
     expect(res.statusCode).toBe(403);
   });
@@ -87,7 +84,7 @@ describe("PATCH /api/counter", () => {
     const raise = await app.inject({
       method: "PATCH",
       url: "/api/counter",
-      headers: { cookie: await cookieFor("cashier") },
+      headers: { cookie: staffHeader(data, "cashier") },
       payload: { action: "generate_bill", sessionId },
     });
     expect(raise.statusCode).toBe(200);
@@ -96,27 +93,34 @@ describe("PATCH /api/counter", () => {
     const pay = await app.inject({
       method: "PATCH",
       url: "/api/counter",
-      headers: { cookie: await cookieFor("cashier") },
-      payload: { action: "record_payment", sessionId, method: "card" },
+      headers: { cookie: staffHeader(data, "cashier") },
+      payload: {
+        action: "record_payment",
+        sessionId,
+        method: "card",
+        collectedBy: "attacker-controlled name",
+      },
     });
     expect(pay.statusCode).toBe(200);
     expect(pay.json()).toMatchObject({ ok: true, closed: true });
     expect(data.sessions.find((s) => s.id === sessionId)?.status).toBe("closed");
+    expect(data.payments[0]?.reference).toContain("collected by Demo Cashier");
+    expect(data.payments[0]?.reference).not.toContain("attacker-controlled name");
   });
 
   it("409s raising a bill twice", async () => {
-    const { repos, sessionId } = seated();
+    const { data, repos, sessionId } = seated();
     const app = buildApp({ repos });
     await app.inject({
       method: "PATCH",
       url: "/api/counter",
-      headers: { cookie: await cookieFor("cashier") },
+      headers: { cookie: staffHeader(data, "cashier") },
       payload: { action: "generate_bill", sessionId },
     });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/counter",
-      headers: { cookie: await cookieFor("cashier") },
+      headers: { cookie: staffHeader(data, "cashier") },
       payload: { action: "generate_bill", sessionId },
     });
     expect(res.statusCode).toBe(409);
@@ -124,12 +128,12 @@ describe("PATCH /api/counter", () => {
   });
 
   it("400s an unknown action", async () => {
-    const { repos } = seated();
+    const { data, repos } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/counter",
-      headers: { cookie: await cookieFor("cashier") },
+      headers: { cookie: staffHeader(data, "cashier") },
       payload: { action: "bogus" },
     });
     expect(res.statusCode).toBe(400);
@@ -137,12 +141,12 @@ describe("PATCH /api/counter", () => {
   });
 
   it("403s a role counter excludes", async () => {
-    const { repos, sessionId } = seated();
+    const { data, repos, sessionId } = seated();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "PATCH",
       url: "/api/counter",
-      headers: { cookie: await cookieFor("waiter") },
+      headers: { cookie: staffHeader(data, "waiter") },
       payload: { action: "generate_bill", sessionId },
     });
     expect(res.statusCode).toBe(403);

@@ -1,36 +1,49 @@
 import { z } from "zod";
+import { firstNameSchema, lastNameSchema, passwordSchema, usernameSchema } from "./adminLogin.js";
 
-// POST /api/admin/staff
+export const staffRoleSchema = z.enum(["admin", "kitchen", "waiter", "reception", "cashier"]);
 export const createStaffSchema = z.object({
-  name: z.string().min(1, "name, role and a PIN of 4+ characters required"),
-  role: z.string().min(1, "name, role and a PIN of 4+ characters required"),
-  pin: z.string().min(4, "name, role and a PIN of 4+ characters required"),
+  username: usernameSchema,
+  firstName: firstNameSchema,
+  lastName: lastNameSchema,
+  role: staffRoleSchema,
+  password: passwordSchema,
 });
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 
-// PATCH /api/admin/staff
-export const patchStaffSchema = z.object({
-  staffId: z.string().min(1, "staffId and active required"),
-  active: z.boolean(),
-});
+export const patchStaffSchema = z
+  .object({
+    staffId: z.string().uuid("staffId required"),
+    username: usernameSchema.optional(),
+    firstName: firstNameSchema.optional(),
+    lastName: lastNameSchema.nullable().optional(),
+    role: staffRoleSchema.optional(),
+    password: passwordSchema.optional(),
+    active: z.boolean().optional(),
+  })
+  .refine(
+    (value) => Object.keys(value).some((key) => key !== "staffId"),
+    "at least one staff field required",
+  );
 export type PatchStaffInput = z.infer<typeof patchStaffSchema>;
 
-// DELETE /api/admin/staff?id=<id>
-export const deleteStaffQuerySchema = z.object({
-  id: z.string().min(1, "id required"),
-});
+export const deleteStaffQuerySchema = z
+  .object({ staffId: z.string().uuid().optional(), id: z.string().uuid().optional() })
+  .refine((value) => Boolean(value.staffId ?? value.id), "staffId required");
 export type DeleteStaffQuery = z.infer<typeof deleteStaffQuerySchema>;
 
 export type StaffRow = {
   id: string;
-  name: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string;
   role: string;
-  pin: string;
   active: boolean;
   created_at: string;
+  needsSetup: boolean;
 };
-
 export type StaffListResponse = { staff: StaffRow[] };
-export type CreateStaffResponse = { ok: true };
-export type PatchStaffResponse = { ok: true };
+export type CreateStaffResponse = { ok: true; staff: StaffRow };
+export type PatchStaffResponse = { ok: true; staff: StaffRow };
 export type DeleteStaffResponse = { ok: true };

@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { tableQrUrl } from "../../src/lib/qr";
 
 describe("tableQrUrl", () => {
-  it("builds a /t/:code link off the given origin", () => {
-    expect(tableQrUrl("https://narada.app", "table-3")).toBe("https://narada.app/t/table-3");
+  it("builds an outlet-scoped table link", () => {
+    expect(tableQrUrl("https://narada.app", "spice-garden", "table-3")).toBe(
+      "https://narada.app/outlet/spice-garden/table/table-3",
+    );
   });
 
-  it("does not double up slashes when the origin has a trailing path", () => {
-    expect(tableQrUrl("http://localhost:5173", "bar-1")).toBe("http://localhost:5173/t/bar-1");
+  it("encodes outlet and table segments", () => {
+    expect(tableQrUrl("http://localhost:5173/", "spice garden", "bar/1")).toBe(
+      "http://localhost:5173/outlet/spice%20garden/table/bar%2F1",
+    );
   });
 });

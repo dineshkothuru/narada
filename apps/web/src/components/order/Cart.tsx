@@ -38,6 +38,9 @@ export default function Cart({
   preOrderUpiHref,
   compItem,
   gameOpen,
+  canPlayGame,
+  sessionReady,
+  orderError,
   onOpenGame,
   onGameComplete,
   onChangeQty,
@@ -68,6 +71,9 @@ export default function Cart({
   preOrderUpiHref: string;
   compItem: string | null;
   gameOpen: boolean;
+  canPlayGame: boolean;
+  sessionReady: boolean;
+  orderError: string | null;
   onOpenGame: () => void;
   onGameComplete: () => void;
   onChangeQty: (itemId: string, delta: number) => void;
@@ -110,7 +116,7 @@ export default function Cart({
               )
             )}
 
-            {!compItem && !gameOpen && (
+            {canPlayGame && !compItem && !gameOpen && (
               <button
                 onClick={onOpenGame}
                 className="mt-5 w-full rounded-2xl bg-stone-900 px-5 py-4 text-left shadow-lg transition active:scale-[0.98]"
@@ -120,7 +126,7 @@ export default function Cart({
               </button>
             )}
 
-            {!compItem && gameOpen && (
+            {canPlayGame && !compItem && gameOpen && (
               <div className="animate-pop mt-5 w-full">
                 <MemoryGame
                   strings={{
@@ -250,6 +256,11 @@ export default function Cart({
           <>
             <h2 className="font-display text-2xl font-semibold text-stone-900">{t.yourOrder}</h2>
             <p className="text-xs text-stone-400">{t.payNote}</p>
+            {orderError && (
+              <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+                {orderError}
+              </p>
+            )}
             {cart.length === 0 ? (
               <p className="py-10 text-center text-sm text-stone-400">{t.emptyCart}</p>
             ) : (
@@ -317,16 +328,23 @@ export default function Cart({
                 />
                 {paymentTiming === "pre" ? (
                   <a
-                    href={preOrderUpiHref}
-                    onClick={onPlaceOrder}
-                    className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
+                    href={sessionReady ? preOrderUpiHref : undefined}
+                    onClick={(event) => {
+                      if (!sessionReady) {
+                        event.preventDefault();
+                        return;
+                      }
+                      onPlaceOrder();
+                    }}
+                    aria-disabled={!sessionReady}
+                    className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-center text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98] aria-disabled:pointer-events-none aria-disabled:opacity-60"
                   >
                     {t.payToOrder} · {inr(applyDiscount(total, discountPct))}
                   </a>
                 ) : (
                   <button
                     onClick={onPlaceOrder}
-                    disabled={placing}
+                    disabled={placing || !sessionReady}
                     className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98] disabled:opacity-60"
                   >
                     {placing ? "…" : `${t.placeOrder} · ${inr(total)}`}

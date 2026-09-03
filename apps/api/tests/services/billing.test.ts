@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeBill, finalizeBill } from "../../src/services/billing.js";
+import { billDatePart, computeBill, finalizeBill } from "../../src/services/billing.js";
 import { seed } from "../helpers/fakeRepos.js";
 
 // A round of two dishes at different GST slabs, so the per-item rate actually
@@ -65,9 +65,14 @@ function tableWithOrder(discountPct = 0) {
 }
 
 describe("computeBill", () => {
+  it("uses the Indian business date at the midnight boundary", () => {
+    expect(billDatePart(new Date("2025-12-31T18:30:00.000Z"))).toBe("20260101");
+    expect(billDatePart(new Date("2025-12-31T18:29:59.999Z"))).toBe("20251231");
+  });
+
   it("totals a round with two GST slabs and the outlet service charge", async () => {
-    const { repos, sessionId } = tableWithOrder();
-    const bill = await computeBill(repos, sessionId);
+    const { repos, sessionId, ids } = tableWithOrder();
+    const bill = await computeBill(repos, sessionId, undefined, ids.outlet);
 
     expect(bill.gross).toBe(400);
     expect(bill.discount).toBe(0);
@@ -84,8 +89,8 @@ describe("computeBill", () => {
   });
 
   it("spreads a discount across the lines before taxing them", async () => {
-    const { repos, sessionId } = tableWithOrder(10);
-    const bill = await computeBill(repos, sessionId);
+    const { repos, sessionId, ids } = tableWithOrder(10);
+    const bill = await computeBill(repos, sessionId, undefined, ids.outlet);
     expect(bill.discount).toBe(40);
     expect(bill.taxable).toBe(360);
     // both slabs shrink by the same factor
@@ -94,9 +99,9 @@ describe("computeBill", () => {
   });
 
   it("waives the service charge when the guest asks", async () => {
-    const { data, repos, sessionId } = tableWithOrder();
+    const { data, repos, sessionId, ids } = tableWithOrder();
     data.sessions[0].service_waived = true;
-    const bill = await computeBill(repos, sessionId);
+    const bill = await computeBill(repos, sessionId, undefined, ids.outlet);
     expect(bill.service).toBe(0);
     expect(bill.serviceWaived).toBe(true);
   });
@@ -130,23 +135,32 @@ describe("computeBill", () => {
       { id: "p2", session_id: sessionId, amount_inr: 50, status: "pending", method: "upi_intent" },
     );
 
-    const bill = await computeBill(repos, sessionId);
+    const bill = await computeBill(repos, sessionId, undefined, ids.outlet);
     expect(bill.gross).toBe(400);
     expect(bill.paid).toBe(100);
   });
 
+  it("excludes cancelled items from an otherwise live round", async () => {
+    const { data, repos, sessionId, ids } = tableWithOrder();
+    data.order_items.find((item) => item.name === "Paneer Tikka")!.status = "cancelled";
+    const bill = await computeBill(repos, sessionId, undefined, ids.outlet);
+    expect(bill.gross).toBe(120);
+  });
+
   it("rejects an unknown session with a 404", async () => {
-    const { repos } = seed();
-    await expect(computeBill(repos, "99999999-9999-9999-9999-999999999999")).rejects.toMatchObject({
+    const { repos, ids } = seed();
+    await expect(
+      computeBill(repos, "99999999-9999-9999-9999-999999999999", undefined, ids.outlet),
+    ).rejects.toMatchObject({
       statusCode: 404,
       message: "unknown session",
     });
   });
 
   it("adds the tip after tax and never taxes it", async () => {
-    const { repos, sessionId } = tableWithOrder();
-    const withTip = await computeBill(repos, sessionId, 50);
-    const withoutTip = await computeBill(repos, sessionId, 0);
+    const { repos, sessionId, ids } = tableWithOrder();
+    const withTip = await computeBill(repos, sessionId, 50, ids.outlet);
+    const withoutTip = await computeBill(repos, sessionId, 0, ids.outlet);
     expect(withTip.tip).toBe(50);
     expect(withTip.gst).toBe(withoutTip.gst);
     expect(withTip.net).toBe(withoutTip.net + 50);
