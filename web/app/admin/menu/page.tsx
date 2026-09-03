@@ -12,7 +12,7 @@ const INTENSITY: Record<"food" | "drink", { label: string; options: string[] }> 
 };
 
 export default function Page() {
-  const { categories, items, editing, setEditing, addingTo, setAddingTo, addingSection, setAddingSection, patchItem, toggleTag, deleteItem, addItem, addSection, deleteSection, inputCls } = useAdminData();
+  const { categories, items, uploadImage, clearImage, editing, setEditing, addingTo, setAddingTo, addingSection, setAddingSection, patchItem, toggleTag, deleteItem, addItem, addSection, deleteSection, inputCls } = useAdminData();
 
   return (
     <AdminShell>
@@ -93,6 +93,21 @@ export default function Page() {
                 {list.map((item) => (
                   <div key={item.id} className="py-2.5">
                     <div className="flex items-center gap-3">
+                      {item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.image_url}
+                          alt=""
+                          className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-stone-200"
+                        />
+                      ) : (
+                        <span
+                          title="No photo — the customer menu shows this emoji"
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-stone-100 text-base"
+                        >
+                          {item.emoji ?? "🍽️"}
+                        </span>
+                      )}
                       <span
                         className={`min-w-0 flex-1 truncate text-sm font-medium ${
                           item.is_available ? "text-stone-800" : "text-stone-400 line-through"
@@ -103,7 +118,7 @@ export default function Page() {
                       <button
                         onClick={() => toggleTag(item, "chef-special")}
                         title="Chef's Special — shows in the top carousel"
-                        className={`text-base transition active:scale-90 ${
+                        className={`hidden text-base transition active:scale-90 sm:inline ${
                           item.tags.includes("chef-special") ? "" : "opacity-25 grayscale"
                         }`}
                       >
@@ -112,7 +127,7 @@ export default function Page() {
                       <button
                         onClick={() => toggleTag(item, "bestseller")}
                         title="Bestseller — badge + carousel"
-                        className={`text-base transition active:scale-90 ${
+                        className={`hidden text-base transition active:scale-90 sm:inline ${
                           item.tags.includes("bestseller") ? "" : "opacity-25 grayscale"
                         }`}
                       >
@@ -132,7 +147,7 @@ export default function Page() {
                               patchItem(item.id, { price_inr: v });
                             }
                           }}
-                          className="w-16 rounded-lg bg-stone-100 px-2 py-1 text-right text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400"
+                          className="w-14 rounded-lg bg-stone-100 px-1.5 py-1 text-right text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400 sm:w-16 sm:px-2"
                         />
                       </span>
                       <button
@@ -215,6 +230,63 @@ export default function Page() {
                             <option value="28">28%</option>
                           </select>
                         </label>
+                        <div className="rounded-2xl bg-white p-3 ring-1 ring-stone-200 sm:col-span-3">
+                          <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                            Photo
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-3">
+                            {item.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="h-20 w-28 rounded-xl object-cover ring-1 ring-stone-200"
+                              />
+                            ) : (
+                              <div className="grid h-20 w-28 place-items-center rounded-xl bg-stone-100 text-2xl">
+                                {item.emoji ?? "🍽️"}
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-1.5">
+                              <label className="cursor-pointer rounded-xl bg-stone-900 px-4 py-2 text-center text-xs font-bold text-white">
+                                {item.image_url ? "Replace photo" : "Upload photo"}
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/avif"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    e.target.value = "";
+                                    if (f) uploadImage(item.id, f);
+                                  }}
+                                />
+                              </label>
+                              {item.image_url && (
+                                <button
+                                  onClick={() => clearImage(item.id)}
+                                  className="rounded-xl bg-stone-100 px-4 py-2 text-xs font-bold text-stone-500"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                              <p className="max-w-48 text-[10px] leading-snug text-stone-400">
+                                JPG, PNG or WebP under 4MB. Without one the customer menu
+                                falls back to the emoji.
+                              </p>
+                            </div>
+                          </div>
+                          <input
+                            defaultValue={item.image_url ?? ""}
+                            placeholder="…or paste an image URL"
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v !== (item.image_url ?? "")) {
+                                patchItem(item.id, { image_url: v || null });
+                              }
+                            }}
+                            className={inputCls}
+                          />
+                        </div>
                         <input
                           defaultValue={item.allergens.join(", ")}
                           placeholder="Allergens (comma separated: dairy, nuts…)"

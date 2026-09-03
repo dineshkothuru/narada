@@ -6,7 +6,7 @@ export async function GET() {
     const [cats, items, restaurants] = await Promise.all([
       sbFetch<unknown[]>(`menu_categories?select=id,name,emoji,kind&order=sort_order`),
       sbFetch<unknown[]>(
-        `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens,gst_pct&order=sort_order`,
+        `menu_items?select=id,category_id,name,description,price_inr,is_veg,is_available,tags,spice_level,allergens,gst_pct,image_url,emoji&order=sort_order`,
       ),
       sbFetch<unknown[]>(
         `restaurants?select=id,name,upi_vpa,payment_timing,admin_pin,gemini_api_key,sarvam_api_key,comp_item_id,service_charge_pct,gstin&limit=1`,
