@@ -166,7 +166,14 @@ export default function WaiterPage() {
           {active.map((t) => {
             const s = t.session!;
             return (
-              <article key={t.tableId} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/60">
+              <article
+                key={t.tableId}
+                className={`rounded-2xl bg-white p-4 shadow-sm ${
+                  t.call
+                    ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
+                    : "ring-1 ring-stone-200/60"
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-stone-900">{t.label}</span>
                   <span className="text-[11px] text-stone-400">

@@ -170,8 +170,8 @@ export default function FloorPage() {
           return (
             <article
               key={t.id}
-              className={`rounded-2xl bg-white p-4 shadow-sm ring-2 ${st.ring} ${
-                t.calling ? "animate-pulse" : ""
+              className={`rounded-2xl bg-white p-4 shadow-sm ring-2 ${
+                t.calling ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : st.ring
               }`}
             >
               <div className="flex items-start justify-between">
