@@ -32,3 +32,28 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+// For multipart bodies (file uploads): the browser must set its own
+// Content-Type with the multipart boundary, so this skips the JSON header
+// the base client always adds.
+export async function apiUpload<T>(path: string, body: FormData): Promise<T> {
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    credentials: "include",
+    body,
+  });
+
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const errBody = (await res.json()) as { error?: string };
+      if (errBody.error) message = errBody.error;
+    } catch {
+      // response had no JSON body
+    }
+    throw new ApiError(res.status, message);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}

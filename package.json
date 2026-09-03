@@ -10,7 +10,7 @@
     "dev": "npm run dev -w web",
     "dev:api": "npm run dev -w @narada/api",
     "dev:web": "npm run dev -w @narada/web",
-    "lint": "eslint . && npm run lint -w web",
+    "lint": "eslint . && npm run lint -w web && npm run lint -w @narada/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "format": "prettier --write .",
@@ -39,6 +39,7 @@
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json,css,md}": "prettier --write",
     "web/**/*.{ts,tsx}": "npm run lint -w web --",
-    "{apps,packages}/**/*.{ts,tsx}": "eslint --fix"
+    "apps/web/**/*.{ts,tsx}": "eslint --config apps/web/eslint.config.js --fix",
+    "{apps/api,packages}/**/*.{ts,tsx}": "eslint --fix"
   }
 }
