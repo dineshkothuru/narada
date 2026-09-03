@@ -4,7 +4,16 @@ import Home from "@/pages/Home";
 import AdminLoginPage from "@/pages/admin/Login";
 import KitchenPage from "@/pages/Kitchen";
 import FloorPage from "@/pages/Floor";
-import ComingSoon from "@/components/ComingSoon";
+import WaiterPage from "@/pages/Waiter";
+import CounterPage from "@/pages/Counter";
+import AdminDashboardPage from "@/pages/admin/Dashboard";
+import AdminMenuPage from "@/pages/admin/Menu";
+import AdminOrdersPage from "@/pages/admin/Orders";
+import AdminQrPage from "@/pages/admin/Qr";
+import AdminTablesPage from "@/pages/admin/Tables";
+import AdminUsersPage from "@/pages/admin/Users";
+import TablePage from "@/pages/Table";
+import BillPage from "@/pages/Bill";
 import RequireRole from "@/components/RequireRole";
 
 export default function App() {
@@ -12,8 +21,8 @@ export default function App() {
     <Routes>
       <Route element={<RootLayout />}>
         <Route index element={<Home />} />
-        <Route path="t/:code" element={<ComingSoon name="Table menu" />} />
-        <Route path="bill/:session" element={<ComingSoon name="Bill" />} />
+        <Route path="t/:code" element={<TablePage />} />
+        <Route path="bill/:session" element={<BillPage />} />
 
         <Route path="admin/login" element={<AdminLoginPage />} />
 
@@ -21,7 +30,15 @@ export default function App() {
           path="admin"
           element={
             <RequireRole roles={["admin"]}>
-              <ComingSoon name="Admin" />
+              <AdminDashboardPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="admin/menu"
+          element={
+            <RequireRole roles={["admin"]}>
+              <AdminMenuPage />
             </RequireRole>
           }
         />
@@ -29,7 +46,7 @@ export default function App() {
           path="admin/orders"
           element={
             <RequireRole roles={["admin"]}>
-              <ComingSoon name="Orders" />
+              <AdminOrdersPage />
             </RequireRole>
           }
         />
@@ -37,7 +54,7 @@ export default function App() {
           path="admin/qr"
           element={
             <RequireRole roles={["admin"]}>
-              <ComingSoon name="QR codes" />
+              <AdminQrPage />
             </RequireRole>
           }
         />
@@ -45,7 +62,7 @@ export default function App() {
           path="admin/tables"
           element={
             <RequireRole roles={["admin"]}>
-              <ComingSoon name="Tables" />
+              <AdminTablesPage />
             </RequireRole>
           }
         />
@@ -53,7 +70,7 @@ export default function App() {
           path="admin/users"
           element={
             <RequireRole roles={["admin"]}>
-              <ComingSoon name="Users" />
+              <AdminUsersPage />
             </RequireRole>
           }
         />
@@ -70,7 +87,7 @@ export default function App() {
           path="waiter"
           element={
             <RequireRole roles={["admin", "waiter"]}>
-              <ComingSoon name="Waiter" />
+              <WaiterPage />
             </RequireRole>
           }
         />
@@ -86,7 +103,7 @@ export default function App() {
           path="counter"
           element={
             <RequireRole roles={["admin", "cashier"]}>
-              <ComingSoon name="Counter" />
+              <CounterPage />
             </RequireRole>
           }
         />
