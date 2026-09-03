@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { ask } from "@/components/Dialogs";
 
 type WaiterTable = {
   tableId: string;
@@ -141,7 +142,7 @@ export default function WaiterPage() {
         </div>      </header>
 
       {myTips && (
-        <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+        <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
           <div>
             <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
               Your tips today
@@ -165,18 +166,21 @@ export default function WaiterPage() {
             {calls.map((t) => (
               <div
                 key={t.call!.id}
-                className="flex animate-pulse items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-4 shadow-sm"
+                className="flex animate-pulse items-center justify-between rounded-2xl card-float border-l-4 border-rose-500 bg-white p-4"
               >
                 <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
                   {t.label}
                   <CallTimer since={t.call!.created_at} />
                 </span>
                 <button
-                  onClick={() => {
-                    const who = prompt(
-                      `Attending ${t.label} — your name (shown as this table's attendant):`,
-                      lastAttendant,
-                    );
+                  onClick={async () => {
+                    const who = await ask.prompt({
+                      title: `Attending ${t.label}`,
+                      message: "You'll be shown as this table's attendant.",
+                      label: "Your name",
+                      defaultValue: lastAttendant,
+                      confirmLabel: "On it",
+                    });
                     if (who === null) return;
                     if (who.trim()) setLastAttendant(who.trim());
                     act({
@@ -205,7 +209,7 @@ export default function WaiterPage() {
             {readyRounds.map(({ table, order }) => (
               <div
                 key={order.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4 shadow-sm"
+                className="flex items-center justify-between gap-3 rounded-2xl card-float border-l-4 border-amber-500 bg-white p-4"
               >
                 <span className="min-w-0">
                   <span className="text-sm font-bold text-stone-900">{table.label}</span>
@@ -234,7 +238,7 @@ export default function WaiterPage() {
             {toClean.map((t) => (
               <div
                 key={t.tableId}
-                className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-stone-400 bg-white p-4 shadow-sm"
+                className="flex items-center justify-between gap-3 rounded-2xl card-float border-l-4 border-stone-400 bg-white p-4"
               >
                 <span className="min-w-0">
                   <span className="text-sm font-bold text-stone-900">{t.label}</span>
@@ -269,7 +273,7 @@ export default function WaiterPage() {
             return (
               <article
                 key={t.tableId}
-                className={`rounded-2xl bg-white p-4 shadow-sm ${
+                className={`card-float rounded-2xl bg-white p-4 ${
                   t.call
                     ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
                     : "ring-1 ring-stone-200/80"
@@ -293,11 +297,14 @@ export default function WaiterPage() {
                   </span>
                 </div>
                 <button
-                  onClick={() => {
-                    const who = prompt(
-                      `Who is serving ${t.label}?`,
-                      s.attendant ?? lastAttendant,
-                    );
+                  onClick={async () => {
+                    const who = await ask.prompt({
+                      title: `Attendant for ${t.label}`,
+                      message: "Leave it empty to unassign the table.",
+                      label: "Waiter's name",
+                      defaultValue: s.attendant ?? lastAttendant,
+                      confirmLabel: "Assign",
+                    });
                     if (who === null) return;
                     if (who.trim()) setLastAttendant(who.trim());
                     fetch("/api/floor", {
@@ -349,11 +356,15 @@ export default function WaiterPage() {
                         🧾 Bill
                       </a>
                       <button
-                        onClick={() => {
-                          const utr = prompt(
-                            `UPI reference / UTR for ${t.label} (${inr(s.due)}) — paste from your UPI app, or leave blank:`,
-                            "",
-                          );
+                        onClick={async () => {
+                          const utr = await ask.prompt({
+                            title: `${t.label} paid ${inr(s.due)}`,
+                            message:
+                              "Paste the reference from your UPI app, or leave it blank.",
+                            label: "UPI reference / UTR",
+                            placeholder: "optional",
+                            confirmLabel: "Mark paid",
+                          });
                           if (utr === null) return;
                           act({
                             action: "mark_paid",

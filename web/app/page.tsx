@@ -31,7 +31,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="w-full max-w-xs rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div className="card-float w-full max-w-xs rounded-3xl border border-stone-200 bg-white p-5">
         <p className="text-xs font-medium tracking-widest text-stone-400 uppercase">
           Customer — {RESTAURANT.name}
         </p>
@@ -54,7 +54,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="w-full max-w-xs rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div className="card-float w-full max-w-xs rounded-3xl border border-stone-200 bg-white p-5">
         <p className="text-xs font-medium tracking-widest text-stone-400 uppercase">
           Staff · PIN required
         </p>

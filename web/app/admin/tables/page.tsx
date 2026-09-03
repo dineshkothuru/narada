@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AdminShell from "@/components/AdminShell";
+import { ask } from "@/components/Dialogs";
 import Collapsible from "@/components/Collapsible";
 import { useAdminData } from "../useAdminData";
 
@@ -202,7 +203,13 @@ export default function Page() {
               </select>
               <button
                 onClick={async () => {
-                  if (!confirm(`Remove ${tb.label}?`)) return;
+                  const yes = await ask.confirm({
+                    title: `Remove ${tb.label}?`,
+                    message: "Its QR code stops working. Past orders are kept.",
+                    confirmLabel: "Remove table",
+                    danger: true,
+                  });
+                  if (!yes) return;
                   const res = await fetch(`/api/admin/tables?id=${tb.id}`, {
                     method: "DELETE",
                   });

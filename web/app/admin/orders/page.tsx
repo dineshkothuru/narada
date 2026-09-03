@@ -114,14 +114,14 @@ export default function AdminOrdersPage() {
             { label: "Outstanding", value: inr(stats.outstanding), tone: "text-rose-600" },
             { label: "Tables served", value: String(stats.tables), tone: "text-stone-900" },
           ].map((c) => (
-            <div key={c.label} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+            <div key={c.label} className="rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
               <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 {c.label}
               </p>
               <p className={`font-display mt-1 text-2xl font-semibold ${c.tone}`}>{c.value}</p>
             </div>
           ))}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80 sm:col-span-2">
+          <div className="rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80 sm:col-span-2">
             <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
               Top dishes
             </p>
@@ -139,13 +139,13 @@ export default function AdminOrdersPage() {
               ))}
             </div>
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+          <div className="rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
             <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
               Avg per table
             </p>
             <p className="font-display mt-1 text-2xl font-semibold">{inr(stats.avgTable)}</p>
           </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+          <div className="rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
             <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
               🎙️ Voice orders
             </p>
@@ -159,7 +159,7 @@ export default function AdminOrdersPage() {
         </section>
       )}
 
-      <section className="max-w-5xl overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-stone-200/80">
+      <section className="max-w-5xl overflow-hidden rounded-3xl card-float bg-white ring-1 ring-stone-200/80">
         {orders.length === 0 && (
           <p className="py-10 text-center text-sm text-stone-400">No orders in this range</p>
         )}

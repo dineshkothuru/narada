@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { ask } from "@/components/Dialogs";
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
@@ -109,8 +110,15 @@ export default function FloorPage() {
     load();
   };
 
-  const seat = (t: FloorTable) => {
-    const n = prompt(`Seat how many guests at ${t.label}? (capacity ${t.capacity})`, String(t.capacity));
+  const seat = async (t: FloorTable) => {
+    const n = await ask.prompt({
+      title: `Seat guests at ${t.label}`,
+      message: `This table seats ${t.capacity}.`,
+      label: "How many guests",
+      defaultValue: String(t.capacity),
+      inputMode: "numeric",
+      confirmLabel: "Seat them",
+    });
     if (n === null) return;
     act({ action: "seat", tableId: t.id, guests: Number(n) });
   };
@@ -185,7 +193,7 @@ export default function FloorPage() {
           return (
             <article
               key={t.id}
-              className={`rounded-2xl bg-white p-4 shadow-sm ring-2 ${
+              className={`rounded-2xl card-float bg-white p-4 ring-2 ${
                 t.calling ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200" : st.ring
               }`}
             >
@@ -252,8 +260,14 @@ export default function FloorPage() {
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-600">
                     <span>{minutesAgo(t.since!, true)}</span>
                     <button
-                      onClick={() => {
-                        const who = prompt(`Who is serving ${t.label}?`, t.attendant ?? "");
+                      onClick={async () => {
+                        const who = await ask.prompt({
+                          title: `Attendant for ${t.label}`,
+                          message: "Leave it empty to unassign the table.",
+                          label: "Waiter's name",
+                          defaultValue: t.attendant ?? "",
+                          confirmLabel: "Assign",
+                        });
                         if (who === null) return;
                         act({ action: "attendant", sessionId: t.sessionId, attendant: who });
                       }}
@@ -324,7 +338,7 @@ export default function FloorPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+    <div className="rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
       <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">{label}</p>
       <p className={`font-display mt-1 text-2xl font-semibold ${tone ?? "text-stone-900"}`}>
         {value}

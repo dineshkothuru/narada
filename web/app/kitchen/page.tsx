@@ -149,7 +149,7 @@ export default function KitchenPage() {
                 {list.map((o) => (
                   <article
                     key={o.id}
-                    className={`rounded-2xl border-l-4 bg-white p-4 shadow-sm ${col.accent}`}
+                    className={`card-float rounded-2xl border-l-4 bg-white p-4 ${col.accent}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-stone-900">
