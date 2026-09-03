@@ -1,27 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { splitPayment } from "../../src/lib/settle-math.js";
 import { clearDishImage, uploadDishImage } from "../../src/services/storage.js";
 import { seed } from "../helpers/fakeRepos.js";
-
-describe("splitPayment", () => {
-  it("puts everything towards the bill when the guest pays at or under it", () => {
-    expect(splitPayment(440, 440)).toEqual({ towardsBill: 440, tip: 0 });
-    expect(splitPayment(440, 200)).toEqual({ towardsBill: 200, tip: 0 });
-  });
-
-  it("credits the round-up as a tip", () => {
-    expect(splitPayment(440, 500)).toEqual({ towardsBill: 440, tip: 60 });
-  });
-
-  it("rounds to whole rupees and never goes negative", () => {
-    expect(splitPayment(439.6, 500.4)).toEqual({ towardsBill: 440, tip: 60 });
-    expect(splitPayment(-10, -5)).toEqual({ towardsBill: 0, tip: 0 });
-  });
-
-  it("treats a payment on a fully settled bill as all tip", () => {
-    expect(splitPayment(0, 100)).toEqual({ towardsBill: 0, tip: 100 });
-  });
-});
 
 describe("dish images", () => {
   const originalFetch = globalThis.fetch;

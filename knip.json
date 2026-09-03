@@ -10,18 +10,12 @@
         "entry": ["middleware.ts"]
       }
     },
-    "apps/api": {
-      "entry": ["src/lib/http.ts", "src/lib/ratelimit.ts", "src/services/*.ts"],
-      "ignoreDependencies": ["zod"]
-    },
+    "apps/api": {},
     "apps/web": {
       "vite": {},
-      "ignoreDependencies": ["lucide-react"]
+      "ignore": ["src/components/ui/**"]
     },
-    "packages/shared": {
-      "ignore": ["src/schemas/**"],
-      "ignoreDependencies": ["zod"]
-    }
+    "packages/shared": {}
   },
   "ignoreExportsUsedInFile": true
 }

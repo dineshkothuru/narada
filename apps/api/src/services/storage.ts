@@ -76,5 +76,3 @@ export async function clearDishImage(
   await repos.menuItems.setImageUrl(itemId, null);
   return { ok: true };
 }
-
-export const IMAGE_LIMITS = { maxBytes: MAX_BYTES, types: TYPES, bucket: BUCKET };

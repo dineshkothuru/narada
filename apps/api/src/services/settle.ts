@@ -1,5 +1,5 @@
+import { splitPayment } from "@narada/shared";
 import { conflict, notFound } from "../lib/http.js";
-import { splitPayment } from "../lib/settle-math.js";
 import type { Repos } from "../repositories/index.js";
 import { computeBill, finalizeBill } from "./billing.js";
 
