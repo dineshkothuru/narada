@@ -180,23 +180,29 @@ export default function OrderPad({
         {embedded && error && (
           <p className="text-xs font-semibold text-rose-600">{error}</p>
         )}
-        <div className="flex items-center gap-2">
-          {/* the mic is Narada's own affordance and looks the same wherever it
-              appears — the guest's floating orb and this are the same button */}
-          <button
-            onClick={listen}
-            className={`rounded-full bg-rose-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-600/30 transition active:scale-95 ${
-              listening ? "animate-pulse" : ""
-            }`}
-          >
-            {listening ? "⏹ Stop" : "🎙️ Speak the order"}
-          </button>
+        <div className={`flex items-center gap-2 ${embedded ? "w-full" : ""}`}>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search the menu…"
-            className="w-44 rounded-full bg-white px-4 py-2.5 text-xs font-semibold ring-1 ring-slate-200 outline-none focus:ring-2 focus:ring-indigo-400"
+            className={`rounded-full bg-white px-4 py-2.5 text-xs font-semibold ring-1 ring-slate-200 outline-none focus:ring-2 focus:ring-indigo-400 ${
+              embedded ? "flex-1" : "w-44"
+            }`}
           />
+          {/* speaking is one way to add a dish among several, so it sits beside
+              the search as an icon rather than announcing itself */}
+          <button
+            onClick={listen}
+            aria-label={listening ? "Stop listening" : "Speak the order"}
+            title={listening ? "Stop listening" : "Speak the order"}
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-base transition active:scale-95 ${
+              listening
+                ? "animate-pulse bg-rose-600 text-white"
+                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            {listening ? "⏹" : "🎙️"}
+          </button>
         </div>
       </header>
 
@@ -217,7 +223,9 @@ export default function OrderPad({
         <button
           onClick={() => setCat(null)}
           className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-            cat === null ? "bg-indigo-600 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200"
+            cat === null
+              ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+              : "bg-white text-slate-600 ring-1 ring-slate-200"
           }`}
         >
           Everything
@@ -228,7 +236,7 @@ export default function OrderPad({
             onClick={() => setCat(c.id === cat ? null : c.id)}
             className={`rounded-full px-3 py-1.5 text-xs font-bold ${
               cat === c.id
-                ? "bg-indigo-600 text-white"
+                ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
                 : "bg-white text-slate-600 ring-1 ring-slate-200"
             }`}
           >
@@ -245,7 +253,7 @@ export default function OrderPad({
               key={i.id}
               className={`panel flex items-center gap-3 p-3 ${
                 i.isAvailable ? "" : "opacity-50"
-              } ${qty > 0 ? "ring-2 ring-indigo-400" : ""}`}
+              } ${qty > 0 ? "ring-2 ring-indigo-200" : ""}`}
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-base">
                 {i.emoji}
@@ -275,7 +283,7 @@ export default function OrderPad({
                     <button
                       onClick={() => add(i.id, 1)}
                       aria-label={`one more ${i.name}`}
-                      className="grid h-8 w-8 place-items-center rounded-full bg-indigo-600 text-sm font-bold text-white"
+                      className="grid h-8 w-8 place-items-center rounded-full bg-slate-900 text-sm font-bold text-white"
                     >
                       +
                     </button>
@@ -345,7 +353,7 @@ export default function OrderPad({
             <button
               onClick={place}
               disabled={placing}
-              className="shrink-0 rounded-full bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-60"
+              className="shrink-0 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-60"
             >
               {placing ? "Sending…" : `Send ${count} to kitchen`}
             </button>
