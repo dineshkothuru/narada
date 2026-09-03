@@ -1,7 +1,8 @@
 import "server-only";
+import { env } from "./env";
 
-const URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const URL = env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SERVICE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Service-role REST access — server only; RLS keeps these tables closed to the browser.
 export async function sbFetch<T>(

@@ -34,7 +34,7 @@ export type Bill = {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-type SessionRow = {
+export type SessionRow = {
   id: string;
   status: string;
   discount_pct: number;
@@ -51,24 +51,16 @@ type SessionRow = {
   payments: { amount_inr: number; status: string }[];
 };
 
+export type RestaurantRow = { name: string; service_charge_pct: number; gstin: string | null };
+
 // Single source of truth for what a table owes. GST is charged per item on the
 // post-discount value (Indian practice); service charge is optional and always
 // waivable on request; tip is added after tax, never taxed.
-export async function computeBill(sessionId: string, tipOverride?: number): Promise<Bill> {
-  const [sessions, restaurants] = await Promise.all([
-    sbFetch<SessionRow[]>(
-      `sessions?select=id,status,discount_pct,service_waived,bill_no,bill_tip,settled_at,restaurant_id,` +
-        `table:tables(label),orders(status,items:order_items(name,qty,unit_price,gst_pct)),` +
-        `payments(amount_inr,status)&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
-    ),
-    sbFetch<{ name: string; service_charge_pct: number; gstin: string | null }[]>(
-      `restaurants?select=name,service_charge_pct,gstin&limit=1`,
-    ),
-  ]);
-  if (sessions.length === 0) throw new Error("unknown session");
-  const s = sessions[0];
-  const rest = restaurants[0];
-
+export function computeBillTotals(
+  s: SessionRow,
+  rest: RestaurantRow | undefined,
+  tipOverride?: number,
+): Bill {
   const lines: BillLine[] = [];
   for (const o of s.orders.filter((o) => o.status !== "cancelled")) {
     for (const it of o.items) {
@@ -138,6 +130,21 @@ export async function computeBill(sessionId: string, tipOverride?: number): Prom
     settledAt: s.settled_at,
     status: s.status,
   };
+}
+
+export async function computeBill(sessionId: string, tipOverride?: number): Promise<Bill> {
+  const [sessions, restaurants] = await Promise.all([
+    sbFetch<SessionRow[]>(
+      `sessions?select=id,status,discount_pct,service_waived,bill_no,bill_tip,settled_at,restaurant_id,` +
+        `table:tables(label),orders(status,items:order_items(name,qty,unit_price,gst_pct)),` +
+        `payments(amount_inr,status)&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
+    ),
+    sbFetch<RestaurantRow[]>(`restaurants?select=name,service_charge_pct,gstin&limit=1`),
+  ]);
+  if (sessions.length === 0) throw new Error("unknown session");
+  const s = sessions[0];
+  const rest = restaurants[0];
+  return computeBillTotals(s, rest, tipOverride);
 }
 
 // Mint an immutable bill number and freeze the totals at payment time.

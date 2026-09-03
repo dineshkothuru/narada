@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { lookupTable, getOrCreateSession } from "@/lib/table-session";
 import { rateLimit } from "@/lib/ratelimit";
+import { sanitizeCartLines, validItemIds } from "@/lib/cart";
 import type { CartLine } from "@/lib/types";
 
 type ItemRow = { id: string; name: string; price_inr: number; gst_pct: number };
@@ -23,9 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "tableCode and cart required" }, { status: 400 });
     }
 
-    // itemIds are client input — only well-formed uuids may enter the filter
-    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const ids = [...new Set(cart.map((l) => l.itemId))].filter((id) => UUID.test(id));
+    const ids = validItemIds(cart);
     if (ids.length === 0) {
       return NextResponse.json({ error: "no valid items" }, { status: 400 });
     }
@@ -40,9 +39,7 @@ export async function POST(req: NextRequest) {
       sbFetch<ItemRow[]>(`menu_items?select=id,name,price_inr,gst_pct&id=in.(${ids.join(",")})`),
     ]);
     const byId = new Map(items.map((i) => [i.id, i]));
-    const lines = cart
-      .map((l) => ({ ...l, qty: Math.floor(Number(l.qty)) }))
-      .filter((l) => byId.has(l.itemId) && l.qty > 0 && l.qty <= 50);
+    const lines = sanitizeCartLines(cart, new Set(byId.keys()));
     if (lines.length === 0) {
       return NextResponse.json({ error: "no valid items" }, { status: 400 });
     }

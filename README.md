@@ -39,6 +39,7 @@ npm install
    SUPABASE_URL=https://<your-project>.supabase.co
    SUPABASE_ANON_KEY=<publishable/anon key>
    SUPABASE_SERVICE_ROLE_KEY=<secret/service_role key>
+   SESSION_SECRET=<long random string, e.g. `openssl rand -hex 32` — signs staff login cookies>
    GEMINI_API_KEY=<optional — can be set later in /admin>
    SARVAM_API_KEY=<optional — can be set later in /admin>
    ```

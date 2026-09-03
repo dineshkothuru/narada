@@ -2,6 +2,8 @@
 // restaurant owner's admin_pin acts as the built-in admin). The cookie carries
 // "role.hmac" — middleware recomputes the HMAC and gates paths by role.
 // Replace with Supabase Auth when multi-tenant hosting arrives.
+import { env } from "./env";
+
 export const ADMIN_COOKIE = "narada_admin";
 
 export type StaffRole = "admin" | "kitchen" | "waiter" | "reception";
@@ -20,7 +22,7 @@ export const ROLE_ACCESS: Record<string, StaffRole[]> = {
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
 
 async function hmac(payload: string): Promise<string> {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || "narada-dev";
+  const secret = env.SESSION_SECRET;
   const data = new TextEncoder().encode(`narada-staff:${payload}:${secret}`);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest))

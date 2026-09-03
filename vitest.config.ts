@@ -7,6 +7,11 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["web/**/*.test.ts", "apps/**/*.test.ts", "packages/**/*.test.ts"],
+    env: {
+      SUPABASE_URL: "http://localhost.test",
+      SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
+      SESSION_SECRET: "test-session-secret",
+    },
   },
   resolve: {
     alias: {
