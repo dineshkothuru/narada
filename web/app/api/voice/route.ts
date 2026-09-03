@@ -9,6 +9,39 @@ export const maxDuration = 60;
 
 const SARVAM = "https://api.sarvam.ai";
 
+// spoken fallback when Gemini is unavailable — Sarvam TTS still voices it,
+// so the mic keeps "working" even while the brain is rate-limited
+function fallbackReply(langName: string, greet: boolean) {
+  const texts: Record<string, { greet: string; busy: string; chips: string[] }> = {
+    Hindi: {
+      greet:
+        "नमस्ते! मैं नारद हूँ। मेन्यू देखिए और जो पसंद आए बताइए — मैं अभी थोड़ा व्यस्त हूँ, पर आपका ऑर्डर स्क्रीन से ले सकता हूँ।",
+      busy: "माफ़ कीजिए, मैं अभी सोच नहीं पा रहा — मेन्यू से चुनिए या वेटर को बुलाइए।",
+      chips: ["मेन्यू देखें", "🔔 वेटर बुलाएँ"],
+    },
+    Telugu: {
+      greet:
+        "నమస్తే! నేను నారద. మెనూ చూడండి, నచ్చింది చెప్పండి — ప్రస్తుతం కాస్త బిజీగా ఉన్నాను, కానీ స్క్రీన్ నుంచి ఆర్డర్ చేయవచ్చు.",
+      busy: "క్షమించండి, ప్రస్తుతం ఆలోచించలేకపోతున్నాను — మెనూ నుంచి ఎంచుకోండి లేదా వెయిటర్‌ను పిలవండి.",
+      chips: ["మెనూ చూడండి", "🔔 వెయిటర్"],
+    },
+    English: {
+      greet:
+        "Namaste! I'm Narada. Browse the menu and tap what you like — I'm a little busy right now, but your screen can take the order.",
+      busy: "Sorry, I'm having trouble thinking right now — please pick from the menu or call the waiter.",
+      chips: ["Browse menu", "🔔 Call waiter"],
+    },
+  };
+  const t = texts[langName] ?? texts.English;
+  return {
+    reply: greet ? t.greet : t.busy,
+    actions: [],
+    suggestCheckout: false,
+    showItems: [],
+    quickReplies: [],
+  };
+}
+
 // Sarvam STT auto-detects the spoken language; we answer (text + speech) in it.
 export async function POST(req: NextRequest) {
   if (!rateLimit(req, "voice", 20)) {
@@ -93,7 +126,13 @@ export async function POST(req: NextRequest) {
       ...(messages ?? []),
       { role: "user", text: transcript },
     ];
-    const anna = await askAnna(menu, allMessages, cart ?? [], langName, { voice: true });
+    let anna;
+    try {
+      anna = await askAnna(menu, allMessages, cart ?? [], langName, { voice: true });
+    } catch {
+      // brain throttled/down: stay conversational instead of erroring the dock
+      anna = fallbackReply(langName, Boolean(greet));
+    }
 
     // speak the reply in the same language the customer spoke
     const ttsLang = ["en-IN", "hi-IN", "te-IN", "ta-IN", "kn-IN", "ml-IN", "mr-IN", "bn-IN", "gu-IN", "pa-IN", "od-IN"].includes(detected)

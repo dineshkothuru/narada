@@ -416,9 +416,19 @@ export default function OrderExperience({
       const data = (await res.json()) as AnnaResponse & {
         transcript: string;
         audio: string | null;
+        detectedLanguage?: string;
         showItems: string[];
         quickReplies: string[];
       };
+      // the customer spoke — render the whole UI in that language
+      const spoken = data.detectedLanguage?.startsWith("hi")
+        ? "hi"
+        : data.detectedLanguage?.startsWith("te")
+          ? "te"
+          : data.detectedLanguage?.startsWith("en")
+            ? "en"
+            : null;
+      if (spoken && spoken !== langRef.current) setLang(spoken);
       setMessages((m) => [
         ...m,
         ...(data.transcript
@@ -1352,6 +1362,16 @@ export default function OrderExperience({
           onClose={() => setStoriesOpen(false)}
           showSpin={!spinDone && !orderPlaced}
           onOpenSpin={() => setWheelOpen(true)}
+          highlightId={highlightIds[0] ?? null}
+          orderBanner={
+            orderPlaced && rounds.length > 0
+              ? {
+                  label: allServed ? t.allServed : statusLabel,
+                  dotClass: allServed ? "bg-green-400" : statusDotFor(orderStatus),
+                  payText: t.payUpi.replace("{amount}", inr(payable)),
+                }
+              : null
+          }
           jumpRef={storyJumpRef}
         />
       )}
@@ -1421,6 +1441,7 @@ export default function OrderExperience({
       {/* Voice conversation overlay */}
       {voiceOpen && (
         <VoiceMode
+          minimal={storiesOpen}
           onGreet={() => voiceTurn({ greet: true })}
           onTurn={(wav) => voiceTurn({ audio: wav })}
           onTextTurn={(text) => voiceTurn({ text })}

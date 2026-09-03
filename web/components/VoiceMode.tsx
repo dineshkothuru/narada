@@ -22,6 +22,7 @@ export default function VoiceMode({
   onTextTurn,
   onClose,
   onSwitchToChat,
+  minimal = false,
   strings,
 }: {
   onGreet: () => Promise<VoiceTurnResult>;
@@ -29,6 +30,7 @@ export default function VoiceMode({
   onTextTurn: (text: string) => Promise<VoiceTurnResult>;
   onClose: () => void;
   onSwitchToChat?: () => void;
+  minimal?: boolean;
   strings: {
     listening: string;
     thinking: string;
@@ -224,6 +226,96 @@ export default function VoiceMode({
       : status === "thinking"
         ? strings.thinking
         : strings.speaking;
+
+  if (minimal) {
+    return (
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 mx-auto flex max-w-md flex-col items-center gap-2 px-4">
+        {error && (
+          <button
+            onClick={() => {
+              setError(null);
+              startListening();
+            }}
+            className="pointer-events-auto rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-900 shadow-xl"
+          >
+            ⚠️ {error.slice(0, 60)} — tap to retry
+          </button>
+        )}
+        {chips.length > 0 && !error && (
+          <div className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto">
+            {chips.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => sendText(chip)}
+                disabled={status === "thinking"}
+                className="animate-pop shrink-0 rounded-full bg-black/60 px-4 py-2 text-xs font-bold whitespace-nowrap text-white ring-1 ring-white/30 backdrop-blur transition active:scale-95 disabled:opacity-40"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="pointer-events-auto flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => {
+              if (status === "listening" && recorderRef.current?.state === "recording") {
+                recorderRef.current.stop();
+              }
+            }}
+            aria-label="narada voice orb"
+            className="relative grid h-24 w-24 place-items-center rounded-full"
+          >
+            <span
+              className={`absolute inset-0 rounded-full transition-transform duration-150 ${
+                status === "listening"
+                  ? "bg-rose-600/35"
+                  : status === "speaking"
+                    ? "animate-pulse bg-sky-500/35"
+                    : "bg-stone-500/35"
+              }`}
+              style={
+                status === "listening" ? { transform: `scale(${1 + level * 0.55})` } : undefined
+              }
+            />
+            <span
+              className={`relative grid h-18 w-18 place-items-center rounded-full text-3xl shadow-2xl ${
+                status === "listening"
+                  ? "bg-rose-600 shadow-rose-600/50"
+                  : status === "speaking"
+                    ? "bg-sky-600 shadow-sky-600/50"
+                    : "bg-stone-800"
+              }`}
+              style={{ height: "4.5rem", width: "4.5rem" }}
+            >
+              {status === "thinking" ? (
+                <span className="flex gap-1">
+                  <span className="typing-dot h-2 w-2 rounded-full bg-white" />
+                  <span className="typing-dot h-2 w-2 rounded-full bg-white" />
+                  <span className="typing-dot h-2 w-2 rounded-full bg-white" />
+                </span>
+              ) : (
+                "🎙️"
+              )}
+            </span>
+          </button>
+          <p className="text-xs font-bold text-white [text-shadow:0_1px_6px_rgba(0,0,0,.9)]">
+            {status === "listening"
+              ? strings.listening
+              : status === "thinking"
+                ? strings.thinking
+                : strings.speaking}
+          </p>
+          <button
+            onClick={end}
+            aria-label={strings.endVoice}
+            className="mt-0.5 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur transition active:scale-95"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md px-3 pb-3">

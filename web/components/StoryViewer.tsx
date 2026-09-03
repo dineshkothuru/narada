@@ -22,6 +22,8 @@ export default function StoryViewer({
   onClose,
   showSpin,
   onOpenSpin,
+  highlightId,
+  orderBanner,
   jumpRef,
 }: {
   categories: MenuCategory[];
@@ -44,6 +46,8 @@ export default function StoryViewer({
   onClose: () => void;
   showSpin: boolean;
   onOpenSpin: () => void;
+  highlightId: string | null;
+  orderBanner: { label: string; dotClass: string; payText: string } | null;
   jumpRef: React.MutableRefObject<((itemId: string) => void) | null>;
 }) {
   const dishes = useMemo(
@@ -64,12 +68,15 @@ export default function StoryViewer({
   const catPos = catDishes.findIndex((d) => d.id === current?.id);
 
   const jumpTo = (itemId: string) => {
+    const el = containerRef.current;
     const i = dishes.findIndex((d) => d.id === itemId);
-    if (i < 0) return;
+    if (i < 0 || !el) return;
     setTilesOpen(false);
-    containerRef.current?.scrollTo({
-      top: i * (containerRef.current?.clientHeight ?? 0),
-      behavior: "smooth",
+    // adjacent dish: gentle slide; anything farther: show it directly
+    const from = Math.round(el.scrollTop / el.clientHeight);
+    el.scrollTo({
+      top: i * el.clientHeight,
+      behavior: Math.abs(i - from) <= 1 ? "smooth" : "auto",
     });
   };
 
@@ -116,8 +123,16 @@ export default function StoryViewer({
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
+              {item.id === highlightId && (
+                <>
+                  <div className="pointer-events-none absolute inset-2 z-10 rounded-3xl ring-4 ring-rose-500/80" />
+                  <span className="animate-pop absolute top-16 left-1/2 z-10 -translate-x-1/2 rounded-full bg-rose-600 px-4 py-1.5 text-xs font-extrabold text-white shadow-xl">
+                    🎙️ Narada ✨
+                  </span>
+                </>
+              )}
 
-              <div className="absolute right-4 bottom-40 flex flex-col items-center gap-4">
+              <div className="absolute right-4 bottom-44 z-20 flex flex-col items-center gap-4">
                 <button
                   onClick={onOpenVoice}
                   className="grid h-12 w-12 place-items-center rounded-full bg-black/45 text-xl backdrop-blur"
@@ -136,7 +151,7 @@ export default function StoryViewer({
                 )}
               </div>
 
-              <div className="absolute right-0 bottom-0 left-0 p-5 pb-8 text-white">
+              <div className="absolute right-0 bottom-0 left-0 z-10 p-5 pb-8 text-white">
                 <p className="mb-3 max-w-[85%] rounded-r-2xl rounded-bl-2xl border border-white/15 bg-black/50 px-3.5 py-2.5 text-[13px] leading-snug text-stone-100 backdrop-blur">
                   🎙️ {item.description[lang]}
                 </p>
@@ -182,6 +197,20 @@ export default function StoryViewer({
             />
           ))}
         </div>
+        {orderBanner && (
+          <button
+            onClick={onOpenCart}
+            className="pointer-events-auto mb-2 flex w-full items-center justify-between rounded-2xl bg-black/55 px-4 py-2.5 backdrop-blur"
+          >
+            <span className="flex items-center gap-2 text-xs font-bold text-white">
+              <span className={`h-2 w-2 animate-pulse rounded-full ${orderBanner.dotClass}`} />
+              {orderBanner.label}
+            </span>
+            <span className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
+              {orderBanner.payText} ›
+            </span>
+          </button>
+        )}
         <div className="pointer-events-auto flex items-center justify-between">
           <button
             onClick={() => {
