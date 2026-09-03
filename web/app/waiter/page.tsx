@@ -2,16 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { ask } from "@/components/Dialogs";
+import TableSheet, { shareBillOnWhatsApp } from "@/components/TableSheet";
 
 type WaiterTable = {
   tableId: string;
   label: string;
   code: string;
+  capacity: number;
   call: { id: string; created_at: string } | null;
   needsCleaning: boolean;
   session: {
     id: string;
     since: string;
+    guests: number | null;
+    status: "seated" | "dining" | "settling" | "billed" | "paid" | "free" | "cleaning";
     orders: {
       id: string;
       status: string;
@@ -23,6 +28,7 @@ type WaiterTable = {
     paid: number;
     attendant: string | null;
     langs: string[];
+    billNo: string | null;
     discountPct: number;
     gst: number;
     service: number;
@@ -33,6 +39,23 @@ type WaiterTable = {
 
 import { inr, minutesAgo } from "@/lib/format";
 import CallTimer from "@/components/CallTimer";
+// what the host did is visible to the waiter straight away, before any food
+// has been ordered
+const STATUS_LABEL: Record<string, string> = {
+  seated: "Seated · yet to order",
+  dining: "Dining",
+  settling: "Needs a bill",
+  billed: "Billed · awaiting payment",
+  paid: "Paid",
+};
+const STATUS_CHIP: Record<string, string> = {
+  seated: "bg-violet-100 text-violet-700",
+  dining: "bg-sky-100 text-sky-700",
+  settling: "bg-amber-100 text-amber-800",
+  billed: "bg-sky-100 text-sky-800",
+  paid: "bg-green-100 text-green-700",
+};
+
 const LANG_BADGE: Record<string, { label: string; cls: string }> = {
   en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
   hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
@@ -42,6 +65,7 @@ const LANG_BADGE: Record<string, { label: string; cls: string }> = {
 export default function WaiterPage() {
   const [tables, setTables] = useState<WaiterTable[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [openTable, setOpenTable] = useState<{ id: string; label: string } | null>(null);
   const [tips, setTips] = useState<{
     rows: { attendant: string; tips: number; tables: number }[];
   } | null>(null);
@@ -141,7 +165,7 @@ export default function WaiterPage() {
         </header>
 
         {myTips && (
-          <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200/80">
+          <section className="mb-5 flex max-w-5xl items-center justify-between rounded-2xl card-float bg-white p-4 ring-1 ring-stone-200/80">
             <div>
               <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 Your tips today
@@ -165,18 +189,21 @@ export default function WaiterPage() {
               {calls.map((t) => (
                 <div
                   key={t.call!.id}
-                  className="flex animate-pulse items-center justify-between rounded-2xl border-l-4 border-rose-500 bg-white p-4 shadow-sm"
+                  className="flex animate-pulse items-center justify-between rounded-2xl card-float border-l-4 border-rose-500 bg-white p-4"
                 >
                   <span className="flex items-center gap-2 text-sm font-bold text-stone-900">
                     {t.label}
                     <CallTimer since={t.call!.created_at} />
                   </span>
                   <button
-                    onClick={() => {
-                      const who = prompt(
-                        `Attending ${t.label} — your name (shown as this table's attendant):`,
-                        lastAttendant,
-                      );
+                    onClick={async () => {
+                      const who = await ask.prompt({
+                        title: `Attending ${t.label}`,
+                        message: "You'll be shown as this table's attendant.",
+                        label: "Your name",
+                        defaultValue: lastAttendant,
+                        confirmLabel: "On it",
+                      });
                       if (who === null) return;
                       if (who.trim()) setLastAttendant(who.trim());
                       act({
@@ -205,7 +232,7 @@ export default function WaiterPage() {
               {readyRounds.map(({ table, order }) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-amber-500 bg-white p-4 shadow-sm"
+                  className="flex items-center justify-between gap-3 rounded-2xl card-float border-l-4 border-amber-500 bg-white p-4"
                 >
                   <span className="min-w-0">
                     <span className="text-sm font-bold text-stone-900">{table.label}</span>
@@ -234,7 +261,7 @@ export default function WaiterPage() {
               {toClean.map((t) => (
                 <div
                   key={t.tableId}
-                  className="flex items-center justify-between gap-3 rounded-2xl border-l-4 border-stone-400 bg-white p-4 shadow-sm"
+                  className="flex items-center justify-between gap-3 rounded-2xl card-float border-l-4 border-stone-400 bg-white p-4"
                 >
                   <span className="min-w-0">
                     <span className="text-sm font-bold text-stone-900">{t.label}</span>
@@ -269,7 +296,7 @@ export default function WaiterPage() {
               return (
                 <article
                   key={t.tableId}
-                  className={`rounded-2xl bg-white p-4 shadow-sm ${
+                  className={`card-float rounded-2xl bg-white p-4 ${
                     t.call
                       ? "animate-pulse ring-4 ring-rose-500 shadow-rose-200"
                       : "ring-1 ring-stone-200/80"
@@ -288,16 +315,26 @@ export default function WaiterPage() {
                         </span>
                       ))}
                     </span>
-                    <span className="text-[11px] text-stone-400">
+                    <span className="flex items-center gap-1.5 text-[11px] text-stone-400">
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
+                          STATUS_CHIP[s.status] ?? "bg-stone-100 text-stone-500"
+                        }`}
+                      >
+                        {STATUS_LABEL[s.status] ?? s.status}
+                      </span>
                       open {minutesAgo(s.since, true)}
                     </span>
                   </div>
                   <button
-                    onClick={() => {
-                      const who = prompt(
-                        `Who is serving ${t.label}?`,
-                        s.attendant ?? lastAttendant,
-                      );
+                    onClick={async () => {
+                      const who = await ask.prompt({
+                        title: `Attendant for ${t.label}`,
+                        message: "Leave it empty to unassign the table.",
+                        label: "Waiter's name",
+                        defaultValue: s.attendant ?? lastAttendant,
+                        confirmLabel: "Assign",
+                      });
                       if (who === null) return;
                       if (who.trim()) setLastAttendant(who.trim());
                       fetch("/api/floor", {
@@ -316,9 +353,16 @@ export default function WaiterPage() {
                   >
                     {s.attendant ? `👤 ${s.attendant}` : "+ assign attendant"}
                   </button>
-                  <div className="mt-2 flex gap-4 text-xs text-stone-600">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+                    {s.guests ? (
+                      <span>
+                        🪑 {s.guests}/{t.capacity} seated
+                      </span>
+                    ) : null}
                     <span>
-                      {s.orders.length} order{s.orders.length !== 1 ? "s" : ""}
+                      {s.orders.length === 0
+                        ? "nothing ordered yet"
+                        : `${s.orders.length} order${s.orders.length !== 1 ? "s" : ""}`}
                     </span>
                     <span>billed {inr(s.ordered)}</span>
                     {s.discountPct > 0 && (
@@ -338,46 +382,79 @@ export default function WaiterPage() {
                       {s.due > 0 ? `Due ${inr(s.due)}` : "Settled ✓"}
                     </span>
                     {s.due > 0 && (
-                      <div className="flex gap-1.5">
-                        <a
-                          href={`/bill/${s.id}`}
-                          target="_blank"
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        <button
+                          onClick={() => setOpenTable({ id: s.id, label: t.label })}
                           className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
                         >
-                          🧾 Bill
-                        </a>
-                        <button
-                          onClick={() => {
-                            const utr = prompt(
-                              `UPI reference / UTR for ${t.label} (${inr(s.due)}) — paste from your UPI app, or leave blank:`,
-                              "",
-                            );
-                            if (utr === null) return;
-                            act({
-                              action: "mark_paid",
-                              sessionId: s.id,
-                              amount: s.due,
-                              method: "upi_intent",
-                              utr,
-                            });
-                          }}
-                          className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-                        >
-                          Paid UPI
+                          🧾 Details
                         </button>
-                        <button
-                          onClick={() =>
-                            act({
-                              action: "mark_paid",
-                              sessionId: s.id,
-                              amount: s.due,
-                              method: "cash",
-                            })
-                          }
-                          className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-                        >
-                          Paid cash
-                        </button>
+                        {!s.billNo ? (
+                          // the counter raises the bill; a waiter can only carry
+                          // it and take the money against it
+                          <span className="rounded-full bg-stone-100 px-3 py-1.5 text-[11px] font-bold text-stone-400">
+                            Awaiting bill from counter
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() =>
+                                shareBillOnWhatsApp({
+                                  sessionId: s.id,
+                                  label: t.label,
+                                  net: s.due,
+                                })
+                              }
+                              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-green-700 ring-1 ring-green-200"
+                            >
+                              Share
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const utr = await ask.prompt({
+                                  title: `${t.label} paid ${inr(s.due)}`,
+                                  message:
+                                    "Paste the reference from the guest's UPI app, or leave it blank.",
+                                  label: "UPI reference / UTR",
+                                  placeholder: "optional",
+                                  confirmLabel: "Record payment",
+                                });
+                                if (utr === null) return;
+                                act({
+                                  action: "record_payment",
+                                  sessionId: s.id,
+                                  amount: s.due,
+                                  method: "upi_intent",
+                                  utr,
+                                  collectedBy: lastAttendant,
+                                });
+                              }}
+                              className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                            >
+                              Paid UPI
+                            </button>
+                            <button
+                              onClick={async () => {
+                                const yes = await ask.confirm({
+                                  title: `Took ${inr(s.due)} in cash?`,
+                                  message: `This closes ${t.label}'s tab.`,
+                                  confirmLabel: "Yes, recorded",
+                                });
+                                if (!yes) return;
+                                act({
+                                  action: "record_payment",
+                                  sessionId: s.id,
+                                  amount: s.due,
+                                  method: "cash",
+                                  collectedBy: lastAttendant,
+                                });
+                              }}
+                              className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
+                            >
+                              Paid cash
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -389,6 +466,21 @@ export default function WaiterPage() {
             Marking paid records the payment and closes the table&apos;s tab.
           </p>
         </section>
+
+        {openTable && (
+          <TableSheet
+            sessionId={openTable.id}
+            label={openTable.label}
+            onClose={() => setOpenTable(null)}
+            onShare={(net) =>
+              shareBillOnWhatsApp({
+                sessionId: openTable.id,
+                label: openTable.label,
+                net,
+              })
+            }
+          />
+        )}
       </main>
     </AdminShell>
   );

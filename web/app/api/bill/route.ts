@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
 import { computeBill } from "@/lib/billing";
 import { lookupTable } from "@/lib/table-session";
+import { sessionRounds } from "@/lib/session-detail";
 import { rateLimit } from "@/lib/ratelimit";
 
 // Customer-facing bill preview: itemised, GST, service charge, tip.
@@ -12,8 +13,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "session required" }, { status: 400 });
   }
   try {
-    const bill = await computeBill(sessionId, Number.isFinite(tip) ? tip : 0);
-    return NextResponse.json(bill);
+    // the rounds ride along so a staff member can see what was ordered and how
+    // far each dish has got, not just the totals
+    const [bill, rounds] = await Promise.all([
+      computeBill(sessionId, Number.isFinite(tip) ? tip : 0),
+      sessionRounds(sessionId),
+    ]);
+    return NextResponse.json({ ...bill, rounds });
   } catch (e) {
     console.error("bill:", e);
     return NextResponse.json({ error: "failed" }, { status: 500 });

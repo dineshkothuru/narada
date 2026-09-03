@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import CallTimer from "./CallTimer";
 import CallAlertBar, { type OpenCall } from "./CallAlertBar";
 
-type Role = "admin" | "kitchen" | "waiter" | "reception";
+type Role = "admin" | "kitchen" | "waiter" | "reception" | "cashier";
 
 const I = (p: string) => (
   <svg
@@ -34,6 +34,7 @@ const ICONS: Record<string, React.ReactNode> = {
   menu: I("M7 3v9a3 3 0 0 0 6 0V3|M10 12v9|M18 3v18|M18 3a3 3 0 0 1 0 6h-1"),
   tables: I("M4 10h16|M12 10v10|M7 20l5-4 5 4|M6 4h12l2 6H4z"),
   users: I("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 7a4 4 0 1 0 0 .01|M19 8v6|M22 11h-6"),
+  counter: I("M3 10h18|M5 10V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4|M5 10v10h14V10|M9 14h6|M9 17h6"),
   settings: I(
     "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z|M19.4 13.5a7.7 7.7 0 0 0 0-3l2-1.5-2-3.4-2.3 1a7.7 7.7 0 0 0-2.6-1.5L14 2h-4l-.5 2.6A7.7 7.7 0 0 0 6.9 6.1l-2.3-1-2 3.4 2 1.5a7.7 7.7 0 0 0 0 3l-2 1.5 2 3.4 2.3-1a7.7 7.7 0 0 0 2.6 1.5L10 22h4l.5-2.6a7.7 7.7 0 0 0 2.6-1.5l2.3 1 2-3.4z",
   ),
@@ -46,9 +47,15 @@ const GROUPS: { label: string; links: NavLink[] }[] = [
   {
     label: "Service",
     links: [
-      { href: "/floor", label: "Floor", icon: "floor", roles: ["admin", "reception", "waiter"] },
+      {
+        href: "/floor",
+        label: "Floor",
+        icon: "floor",
+        roles: ["admin", "reception", "waiter", "cashier"],
+      },
       { href: "/waiter", label: "Waiter", icon: "waiter", roles: ["admin", "waiter"] },
       { href: "/kitchen", label: "Kitchen", icon: "kitchen", roles: ["admin", "kitchen"] },
+      { href: "/counter", label: "Counter", icon: "counter", roles: ["admin", "cashier"] },
     ],
   },
   {
@@ -73,6 +80,7 @@ const ROLE_LABEL: Record<Role, string> = {
   kitchen: "Kitchen",
   waiter: "Waiter",
   reception: "Reception",
+  cashier: "Counter",
 };
 
 // Shell for every staff screen: an always-open left rail plus a live call
@@ -141,7 +149,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const flat = groups.flatMap((g) => g.links);
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
-  const watchesCalls = !role || role !== "kitchen";
+  const watchesCalls = !role || (role !== "kitchen" && role !== "cashier");
 
   return (
     <div className="flex min-h-dvh bg-[#eeebe8] print:block print:bg-white">

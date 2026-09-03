@@ -42,7 +42,7 @@ function LoginForm() {
   return (
     <form
       onSubmit={submit}
-      className="w-full max-w-xs rounded-3xl bg-white p-6 shadow-sm ring-1 ring-stone-200"
+      className="card-float w-full max-w-xs rounded-3xl bg-white p-6 ring-1 ring-stone-200"
     >
       <p className="text-4xl">🪈</p>
       <h1 className="font-display mt-2 text-2xl font-semibold text-stone-900">Narada Staff</h1>

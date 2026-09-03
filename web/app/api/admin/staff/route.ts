@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
+import { isStaffRole } from "@/lib/admin-auth";
 
 export async function GET() {
   try {
@@ -20,12 +21,7 @@ export async function POST(req: NextRequest) {
       role?: string;
       pin?: string;
     };
-    if (
-      !name?.trim() ||
-      !["admin", "kitchen", "waiter", "reception"].includes(role ?? "") ||
-      !pin ||
-      pin.length < 4
-    ) {
+    if (!name?.trim() || !isStaffRole(role) || !pin || pin.length < 4) {
       return NextResponse.json(
         { error: "name, role and a PIN of 4+ characters required" },
         { status: 400 },

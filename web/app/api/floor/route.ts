@@ -19,6 +19,7 @@ type SessionRow = {
   guests: number | null;
   merged_into: string | null;
   attendant: string | null;
+  bill_no: string | null;
   orders: { id: string; status: string; total_inr: number; lang: string | null }[];
 };
 
@@ -28,7 +29,7 @@ export async function GET() {
     const [tables, sessions, calls] = await Promise.all([
       sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,zone,needs_cleaning&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,guests,merged_into,attendant,orders(id,status,total_inr,lang)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,guests,merged_into,attendant,bill_no,orders(id,status,total_inr,lang)&status=eq.active`,
       ),
       sbFetch<{ id: string; table_id: string; created_at: string }[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -87,6 +88,7 @@ export async function GET() {
             rounds,
             pending,
             due,
+            billRaised: Boolean(session?.bill_no),
           }),
           sessionId: session?.id ?? null,
           isMerged: Boolean(session?.merged_into),
@@ -102,6 +104,7 @@ export async function GET() {
             : [],
           due,
           attendant: session?.attendant ?? null,
+          billNo: session?.bill_no ?? null,
           calling: callByTable.has(t.id),
           callId: callByTable.get(t.id)?.id ?? null,
           callSince: callByTable.get(t.id)?.created_at ?? null,
@@ -123,6 +126,7 @@ export async function GET() {
         seated: rows.filter((r) => r.status === "seated").length,
         dining: rows.filter((r) => r.status === "dining").length,
         settling: rows.filter((r) => r.status === "settling").length,
+        billed: rows.filter((r) => r.status === "billed").length,
         paid: rows.filter((r) => r.status === "paid").length,
         seats,
         seatsBusy,

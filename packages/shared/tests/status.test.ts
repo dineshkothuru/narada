@@ -40,6 +40,7 @@ describe("deriveTableStatus", () => {
       rounds: 0,
       pending: 0,
       due: 0,
+      billRaised: false,
       ...over,
     });
 
@@ -63,8 +64,23 @@ describe("deriveTableStatus", () => {
     expect(t({ rounds: 3, pending: 1, due: 900 })).toBe("dining");
   });
 
-  it("is ready to settle once everything is served and money is owed", () => {
+  it("needs a bill once everything is served and money is owed", () => {
     expect(t({ rounds: 3, pending: 0, due: 900 })).toBe("settling");
+  });
+
+  it("is billed once the counter has raised the invoice", () => {
+    // raising the bill and paying it are different people's jobs, so they are
+    // different states — the floor must not show one as the other
+    expect(t({ rounds: 3, pending: 0, due: 900, billRaised: true })).toBe("billed");
+  });
+
+  it("is paid once nothing is owed, however the bill was raised", () => {
+    expect(t({ rounds: 3, pending: 0, due: 0, billRaised: true })).toBe("paid");
+    expect(t({ rounds: 3, pending: 0, due: 0, billRaised: false })).toBe("paid");
+  });
+
+  it("does not call a table billed while food is still coming", () => {
+    expect(t({ rounds: 3, pending: 1, due: 900, billRaised: true })).toBe("dining");
   });
 
   it("is paid when everything is served and nothing is owed", () => {

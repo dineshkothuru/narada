@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbFetch } from "@/lib/supabase-server";
-import { computeBill, finalizeBill } from "@/lib/billing";
+import { computeBill } from "@/lib/billing";
+import { recordPayment } from "@/lib/settle";
+import { deriveTableStatus } from "@/lib/status";
 
-type TableRow = { id: string; label: string; code: string; needs_cleaning: boolean };
+type TableRow = {
+  id: string;
+  label: string;
+  code: string;
+  capacity: number;
+  needs_cleaning: boolean;
+};
 type SessionRow = {
   id: string;
   table_id: string;
   created_at: string;
   discount_pct: number;
+  guests: number | null;
   attendant: string | null;
+  bill_no: string | null;
   orders: {
     id: string;
     status: string;
@@ -24,9 +34,9 @@ type CallRow = { id: string; table_id: string; created_at: string };
 export async function GET() {
   try {
     const [tables, sessions, calls] = await Promise.all([
-      sbFetch<TableRow[]>(`tables?select=id,label,code,needs_cleaning&order=label`),
+      sbFetch<TableRow[]>(`tables?select=id,label,code,capacity,needs_cleaning&order=label`),
       sbFetch<SessionRow[]>(
-        `sessions?select=id,table_id,created_at,discount_pct,attendant,orders(id,status,total_inr,created_at,lang,items:order_items(name,qty)),payments(amount_inr,status)&status=eq.active`,
+        `sessions?select=id,table_id,created_at,discount_pct,guests,attendant,bill_no,orders(id,status,total_inr,created_at,lang,items:order_items(name,qty)),payments(amount_inr,status)&status=eq.active`,
       ),
       sbFetch<CallRow[]>(
         `waiter_calls?select=id,table_id,created_at&status=eq.open&order=created_at`,
@@ -54,6 +64,7 @@ export async function GET() {
         tableId: t.id,
         label: t.label,
         code: t.code,
+        capacity: t.capacity,
         call: calls.find((c) => c.table_id === t.id) ?? null,
         // paid and emptied, but not yet wiped down and handed back
         needsCleaning: t.needs_cleaning,
@@ -61,6 +72,19 @@ export async function GET() {
           ? {
               id: session.id,
               since: session.created_at,
+              // the host seats a party before it orders — the waiter has to be
+              // able to see that table, and how many people are at it
+              guests: session.guests,
+              status: deriveTableStatus({
+                hasSession: true,
+                needsCleaning: false,
+                rounds: session.orders.filter((o) => o.status !== "cancelled").length,
+                pending: session.orders.filter(
+                  (o) => o.status !== "cancelled" && o.status !== "served",
+                ).length,
+                due: Math.max(0, (bills.get(session.id)?.net ?? ordered) - paid),
+                billRaised: Boolean(session.bill_no),
+              }),
               orders: session.orders,
               ordered,
               paid,
@@ -69,6 +93,7 @@ export async function GET() {
               service: bills.get(session.id)?.service ?? 0,
               serviceWaived: bills.get(session.id)?.serviceWaived ?? false,
               attendant: session.attendant,
+              billNo: session.bill_no,
               // languages this table has actually ordered in, so a waiter who
               // speaks one can choose to pick the table up
               langs: [
@@ -92,16 +117,16 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      action: "ack_call" | "mark_paid" | "mark_served" | "clear_table";
+      action: "ack_call" | "mark_served" | "clear_table" | "record_payment";
+      amount?: number;
+      method?: "upi_intent" | "cash" | "card";
+      utr?: string;
+      collectedBy?: string;
       orderId?: string;
       tableId?: string;
       callId?: string;
       attendedBy?: string;
       sessionId?: string;
-      amount?: number;
-      tip?: number;
-      method?: "upi_intent" | "cash";
-      utr?: string;
     };
     if (body.action === "ack_call" && body.callId) {
       await sbFetch(`waiter_calls?id=eq.${encodeURIComponent(body.callId)}`, {
@@ -148,67 +173,23 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    if (body.action === "mark_paid" && body.sessionId) {
-      const sessions = await sbFetch<{ id: string; outlet_id: string; table_id: string }[]>(
-        `sessions?select=id,outlet_id,table_id&id=eq.${encodeURIComponent(body.sessionId)}&limit=1`,
-      );
-      if (sessions.length === 0) {
-        return NextResponse.json({ error: "unknown session" }, { status: 404 });
+    // the guest can pay wherever they are — at the table by UPI, or in cash to
+    // the waiter. Raising the bill stays with the counter; this only records
+    // money against a bill that already exists.
+    if (body.action === "record_payment" && body.sessionId) {
+      const result = await recordPayment({
+        sessionId: body.sessionId,
+        amount: body.amount,
+        method: body.method,
+        utr: body.utr,
+        collectedBy: body.collectedBy,
+      });
+      if ("error" in result) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
       }
-      // freeze the bill (GST, service, tip, discount) and mint its number
-      const bill = await finalizeBill(
-        body.sessionId,
-        typeof body.tip === "number" ? body.tip : 0,
-        sessions[0].outlet_id,
-      );
-      const amount = typeof body.amount === "number" ? body.amount : bill.net;
-      await sbFetch(`payments`, {
-        method: "POST",
-        body: JSON.stringify({
-          session_id: body.sessionId,
-          amount_inr: amount,
-          method: body.method === "cash" ? "cash" : "upi_intent",
-          status: "confirmed",
-          reference: [
-            bill.billNo,
-            body.utr ? `UTR ${body.utr.trim().slice(0, 40)}` : null,
-            "confirmed by staff",
-          ]
-            .filter(Boolean)
-            .join(" · "),
-        }),
-      });
-      const closedAt = new Date().toISOString();
-      await sbFetch(`sessions?id=eq.${encodeURIComponent(body.sessionId)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "closed", closed_at: closedAt }),
-      });
-
-      // a merged group bills through its primary, so paying it closes the
-      // whole group — otherwise the joined tables would sit "dining" forever
-      const merged = await sbFetch<{ table_id: string }[]>(
-        `sessions?select=table_id&merged_into=eq.${encodeURIComponent(body.sessionId)}&status=eq.active`,
-      );
-      if (merged.length > 0) {
-        await sbFetch(
-          `sessions?merged_into=eq.${encodeURIComponent(body.sessionId)}&status=eq.active`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({ status: "closed", closed_at: closedAt }),
-          },
-        );
-      }
-
-      // the guests are still sitting there, and the table needs wiping down —
-      // a waiter clears it once it is actually ready for the next party
-      const toClean = [sessions[0].table_id, ...merged.map((m) => m.table_id)];
-      await sbFetch(`tables?id=in.(${toClean.map(encodeURIComponent).join(",")})`, {
-        method: "PATCH",
-        body: JSON.stringify({ needs_cleaning: true }),
-      });
-
-      return NextResponse.json({ ok: true, billNo: bill.billNo, net: bill.net });
+      return NextResponse.json(result);
     }
+
     return NextResponse.json({ error: "invalid action" }, { status: 400 });
   } catch (e) {
     console.error("waiter action:", e);

@@ -1,6 +1,7 @@
 "use client";
 
 import AdminShell from "@/components/AdminShell";
+import { ask } from "@/components/Dialogs";
 import Collapsible from "@/components/Collapsible";
 import TipsBoard from "@/components/TipsBoard";
 import { useAdminData } from "../useAdminData";
@@ -61,6 +62,7 @@ export default function Page() {
                 <select name="role" className={inputCls}>
                   <option value="waiter">Waiter</option>
                   <option value="reception">Reception / host</option>
+                  <option value="cashier">Counter / cashier</option>
                   <option value="kitchen">Kitchen</option>
                   <option value="admin">Admin</option>
                 </select>
@@ -127,7 +129,13 @@ export default function Page() {
                   </button>
                   <button
                     onClick={async () => {
-                      if (!confirm(`Remove ${s.name}?`)) return;
+                      const yes = await ask.confirm({
+                        title: `Remove ${s.name}?`,
+                        message: "Their PIN stops working immediately.",
+                        confirmLabel: "Remove staff",
+                        danger: true,
+                      });
+                      if (!yes) return;
                       await fetch(`/api/admin/staff?id=${s.id}`, { method: "DELETE" });
                       flash("Staff removed");
                       load();
