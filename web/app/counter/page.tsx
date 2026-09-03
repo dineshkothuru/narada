@@ -95,43 +95,55 @@ export default function CounterPage() {
       });
       if (!go) return;
     }
-    const tip = await ask.prompt({
+    const yes = await ask.confirm({
       title: `Raise bill for ${t.label}`,
-      message: "Totals are frozen once the bill is raised. Add a tip if the guest asked to.",
-      label: "Tip (₹)",
-      defaultValue: "0",
-      inputMode: "numeric",
+      message: `${inr(t.due)} — totals are frozen once the bill is raised. Any tip is added later, from whatever the guest pays above it.`,
       confirmLabel: "Raise bill",
     });
-    if (tip === null) return;
-    await act({
-      action: "generate_bill",
-      sessionId: t.sessionId,
-      tip: Number(tip) || 0,
-    });
+    if (!yes) return;
+    await act({ action: "generate_bill", sessionId: t.sessionId });
   };
 
   const takePayment = async (t: Tab, method: "upi_intent" | "cash" | "card") => {
-    const who = await ask.prompt({
-      title: `${t.label} paying ${inr(t.due)}`,
+    const out = await ask.form({
+      title: `${t.label} · bill ${inr(t.due)}`,
       message:
-        method === "upi_intent"
-          ? "Paste the UPI reference if you have it."
-          : "Recorded against this bill.",
-      label: method === "upi_intent" ? "UPI reference / UTR" : "Your name",
-      defaultValue: method === "upi_intent" ? "" : cashier,
-      placeholder: method === "upi_intent" ? "optional" : "who took it",
+        method === "cash"
+          ? "Enter what you kept after handing back change. Anything above the bill is recorded as a tip."
+          : "Anything received above the bill is recorded as a tip.",
+      fields: [
+        {
+          name: "amount",
+          label: "Amount received (₹)",
+          defaultValue: String(t.due),
+          inputMode: "numeric",
+          required: true,
+          hint: `Bill is ${inr(t.due)}`,
+        },
+        ...(method === "upi_intent"
+          ? [
+              {
+                name: "utr",
+                label: "UPI reference / UTR",
+                placeholder: "optional",
+              },
+            ]
+          : []),
+        { name: "by", label: "Taken by", defaultValue: cashier, placeholder: "your name" },
+      ],
       confirmLabel: "Record payment",
     });
-    if (who === null) return;
-    if (method !== "upi_intent") rememberCashier(who);
+    if (out === null) return;
+    const amount = Number(out.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    rememberCashier(out.by ?? "");
     await act({
       action: "record_payment",
       sessionId: t.sessionId,
-      amount: t.due,
+      amount,
       method,
-      utr: method === "upi_intent" ? who : undefined,
-      collectedBy: method === "upi_intent" ? cashier : who,
+      utr: out.utr,
+      collectedBy: out.by,
     });
   };
 
@@ -263,38 +275,32 @@ function Section({
           {rows.map((t) => (
             <article
               key={t.sessionId}
-              className="card-float flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-stone-200/80"
+              className="card-float rounded-2xl bg-white p-4 ring-1 ring-stone-200/80"
             >
-              <div className="min-w-0 flex-1">
-                <h3 className="flex items-center gap-2 text-sm font-bold text-stone-900">
-                  {t.label}
-                  {t.mergedWith.length > 0 && (
-                    <span className="text-[10px] font-bold text-stone-400">
-                      🔗 with {t.mergedWith.join(", ")}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-stone-900">{t.label}</h3>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-stone-500">
+                    <span>{minutesAgo(t.since, true)}</span>
+                    <span>
+                      {t.rounds} round{t.rounds === 1 ? "" : "s"}
                     </span>
-                  )}
-                  {t.billNo && (
-                    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-bold text-stone-500">
-                      {t.billNo}
-                    </span>
-                  )}
-                </h3>
-                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
-                  <span>{minutesAgo(t.since, true)}</span>
-                  <span>
-                    {t.rounds} round{t.rounds === 1 ? "" : "s"}
-                  </span>
-                  {t.unserved > 0 && (
-                    <span className="font-semibold text-amber-600">{t.unserved} not served</span>
-                  )}
-                  {t.attendant && <span>👤 {t.attendant}</span>}
-                  {t.serviceWaived && <span className="text-stone-400">service waived</span>}
-                </p>
+                    {t.unserved > 0 && (
+                      <span className="font-semibold text-amber-600">{t.unserved} not served</span>
+                    )}
+                    {t.attendant && <span>👤 {t.attendant}</span>}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] text-stone-400">
+                    {t.billNo && <span className="font-bold">{t.billNo}</span>}
+                    {t.mergedWith.length > 0 && <span>🔗 with {t.mergedWith.join(", ")}</span>}
+                    {t.serviceWaived && <span>service waived</span>}
+                  </p>
+                </div>
+                <span className="font-display shrink-0 text-lg font-semibold text-stone-900">
+                  {inr(t.due)}
+                </span>
               </div>
-              <span className="font-display text-lg font-semibold text-stone-900">
-                {inr(t.due)}
-              </span>
-              <div className="flex flex-wrap gap-1.5">{render(t)}</div>
+              <div className="mt-3 flex flex-wrap gap-1.5">{render(t)}</div>
             </article>
           ))}
         </div>

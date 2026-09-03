@@ -15,6 +15,8 @@ type AdminItem = {
   spice_level: number;
   allergens: string[];
   gst_pct: number;
+  image_url: string | null;
+  emoji: string | null;
 };
 type AdminCategory = {
   id: string;
@@ -101,6 +103,29 @@ export function useAdminData() {
 
   const flash = (msg: string) => setSaved(msg);
 
+  // dish photos go through their own endpoint because they are multipart
+  const uploadImage = async (itemId: string, file: File) => {
+    const body = new FormData();
+    body.append("itemId", itemId);
+    body.append("file", file);
+    const res = await fetch("/api/admin/image", { method: "POST", body });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, image_url: d.imageUrl } : i)));
+      flash("Photo updated");
+    } else {
+      flash(d.error ?? "Upload failed");
+    }
+  };
+
+  const clearImage = async (itemId: string) => {
+    await fetch(`/api/admin/image?itemId=${encodeURIComponent(itemId)}`, {
+      method: "DELETE",
+    });
+    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, image_url: null } : i)));
+    flash("Photo removed");
+  };
+
   const patchItem = async (
     itemId: string,
     patch: Partial<
@@ -114,6 +139,7 @@ export function useAdminData() {
         | "is_veg"
         | "allergens"
         | "gst_pct"
+        | "image_url"
       >
     >,
   ) => {
@@ -231,6 +257,8 @@ export function useAdminData() {
     load,
     flash,
     patchItem,
+    uploadImage,
+    clearImage,
     toggleTag,
     deleteItem,
     addItem,

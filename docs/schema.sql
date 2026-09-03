@@ -184,3 +184,9 @@ grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
 revoke select on table outlets from authenticated;
 grant select (id, name, slug, currency, upi_vpa, payment_timing, created_at)
   on table outlets to authenticated;
+
+-- Dish photos live in a public Supabase Storage bucket named "menu";
+-- menu_items.image_url points at the public object URL. Create it once with:
+--   POST /storage/v1/bucket {"id":"menu","public":true,
+--     "file_size_limit":5242880,
+--     "allowed_mime_types":["image/jpeg","image/png","image/webp","image/avif"]}

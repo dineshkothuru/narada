@@ -25,7 +25,7 @@ export default function Collapsible({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <section
-      className={`rounded-3xl card-float bg-white ring-1 ring-stone-200/80 ${
+      className={`min-w-0 rounded-3xl card-float bg-white ring-1 ring-stone-200/80 ${
         spanWhenOpen && open ? "sm:col-span-2" : ""
       }`}
     >

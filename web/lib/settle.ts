@@ -1,6 +1,7 @@
 import "server-only";
 import { sbFetch } from "./supabase-server";
 import { computeBill, finalizeBill } from "./billing";
+import { splitPayment } from "./settle-math";
 
 // Two separate steps, because they happen in different places.
 //
@@ -9,7 +10,9 @@ import { computeBill, finalizeBill } from "./billing";
 // wherever the guest is — UPI at the table, cash to a waiter, or card at the
 // counter — so any staff member can record a payment against a raised bill.
 
-export async function generateBill(sessionId: string, tip: number) {
+// Raised without a tip: nobody knows it yet. Whatever the guest pays above the
+// bill becomes the tip when the payment is recorded.
+export async function generateBill(sessionId: string) {
   const sessions = await sbFetch<{ id: string; outlet_id: string; bill_no: string | null }[]>(
     `sessions?select=id,outlet_id,bill_no&id=eq.${encodeURIComponent(sessionId)}&limit=1`,
   );
@@ -18,7 +21,7 @@ export async function generateBill(sessionId: string, tip: number) {
     // a double-tap at the counter must not mint a second invoice number
     return { error: "bill already raised", status: 409 } as const;
   }
-  const bill = await finalizeBill(sessionId, tip, sessions[0].outlet_id);
+  const bill = await finalizeBill(sessionId, 0, sessions[0].outlet_id);
   return { ok: true, billNo: bill.billNo, net: bill.net } as const;
 }
 
@@ -47,8 +50,25 @@ export async function recordPayment(input: PaymentInput) {
   }
 
   const before = await computeBill(input.sessionId);
-  const amount =
-    typeof input.amount === "number" ? input.amount : Math.max(0, before.net - before.paid);
+  const dueBefore = Math.max(0, before.net - before.paid);
+  const amount = typeof input.amount === "number" ? input.amount : dueBefore;
+  const split = splitPayment(dueBefore, amount);
+
+  // paying more than the bill is a tip, and it belongs to whoever served the
+  // table — the frozen invoice grows by exactly that much
+  if (split.tip > 0) {
+    const attended = await sbFetch<{ attendant: string | null; tip_to: string | null }[]>(
+      `sessions?select=attendant,tip_to&id=eq.${encodeURIComponent(input.sessionId)}&limit=1`,
+    );
+    await sbFetch(`sessions?id=eq.${encodeURIComponent(input.sessionId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        bill_tip: Math.round(before.tip + split.tip),
+        bill_net: Math.round(before.net + split.tip),
+        tip_to: attended[0]?.tip_to ?? attended[0]?.attendant ?? null,
+      }),
+    });
+  }
 
   await sbFetch(`payments`, {
     method: "POST",
@@ -59,6 +79,7 @@ export async function recordPayment(input: PaymentInput) {
       status: "confirmed",
       reference: [
         session.bill_no,
+        split.tip > 0 ? `incl. tip ₹${split.tip}` : null,
         input.utr ? `UTR ${input.utr.trim().slice(0, 40)}` : null,
         input.collectedBy?.trim()
           ? `collected by ${input.collectedBy.trim().slice(0, 40)}`
