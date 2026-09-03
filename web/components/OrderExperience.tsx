@@ -260,6 +260,25 @@ export default function OrderExperience({
   const applyAnnaActions = (res: AnnaResponse) => {
     for (const a of res.actions) {
       if (a.type === "confirm_order") continue;
+      if (a.type === "set_name") {
+        // dedupe against names already on the table's rounds: Ravi → Ravi 2
+        const base = a.name.trim().slice(0, 30);
+        if (base) {
+          const taken = new Set(
+            rounds
+              .filter((r) => !myOrderIds.includes(r.id))
+              .map((r) => r.placed_by?.toLowerCase())
+              .filter(Boolean),
+          );
+          let candidate = base;
+          for (let n = 2; taken.has(candidate.toLowerCase()); n++) {
+            candidate = `${base} ${n}`;
+          }
+          setGuestName(candidate);
+          setToast(`👋 ${candidate}`);
+        }
+        continue;
+      }
       const item = MENU_BY_ID.get(a.itemId);
       if (!item) continue;
       if (a.type === "add") {

@@ -47,7 +47,8 @@ export type AnnaAction =
   | { type: "add"; itemId: string; qty: number; notes?: string }
   | { type: "remove"; itemId: string }
   | { type: "set_qty"; itemId: string; qty: number }
-  | { type: "confirm_order" };
+  | { type: "confirm_order" }
+  | { type: "set_name"; name: string };
 
 export type AnnaResponse = {
   reply: string;
