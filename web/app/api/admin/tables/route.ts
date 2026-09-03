@@ -6,6 +6,7 @@ type TableRow = {
   label: string;
   code: string;
   ui_variant: string;
+  capacity: number;
 };
 
 const slug = (s: string) =>
@@ -18,7 +19,7 @@ const slug = (s: string) =>
 export async function GET() {
   try {
     const [tables, restaurants] = await Promise.all([
-      sbFetch<TableRow[]>(`tables?select=id,label,code,ui_variant&order=label`),
+      sbFetch<TableRow[]>(`tables?select=id,label,code,ui_variant,capacity&order=label`),
       sbFetch<{ id: string; name: string }[]>(`restaurants?select=id,name&limit=1`),
     ]);
     return NextResponse.json({
@@ -34,11 +35,12 @@ export async function GET() {
 // Add tables: either one labelled table, or a batch ("add 10 more").
 export async function POST(req: NextRequest) {
   try {
-    const { label, count, prefix, ui_variant } = (await req.json()) as {
+    const { label, count, prefix, ui_variant, capacity } = (await req.json()) as {
       label?: string;
       count?: number;
       prefix?: string;
       ui_variant?: string;
+      capacity?: number;
     };
     const restaurants = await sbFetch<{ id: string }[]>(`restaurants?select=id&limit=1`);
     if (restaurants.length === 0) {
@@ -58,7 +60,11 @@ export async function POST(req: NextRequest) {
       return code;
     };
 
-    const rows: Record<string, string>[] = [];
+    const seats =
+      typeof capacity === "number" && capacity > 0 && capacity <= 50
+        ? Math.floor(capacity)
+        : 4;
+    const rows: Record<string, string | number>[] = [];
     if (typeof count === "number" && count > 0) {
       // batch: continue numbering after the highest existing "Table N"
       const nums = existing
@@ -73,6 +79,7 @@ export async function POST(req: NextRequest) {
           label: lbl,
           code: uniqueCode(slug(lbl)),
           ui_variant: variant,
+          capacity: seats,
         });
       }
     } else if (label?.trim()) {
@@ -82,6 +89,7 @@ export async function POST(req: NextRequest) {
         label: lbl,
         code: uniqueCode(slug(lbl)),
         ui_variant: variant,
+        capacity: seats,
       });
     } else {
       return NextResponse.json({ error: "label or count required" }, { status: 400 });
@@ -97,10 +105,11 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { tableId, ui_variant, label } = (await req.json()) as {
+    const { tableId, ui_variant, label, capacity } = (await req.json()) as {
       tableId?: string;
       ui_variant?: string;
       label?: string;
+      capacity?: number;
     };
     if (!tableId) {
       return NextResponse.json({ error: "tableId required" }, { status: 400 });
@@ -111,6 +120,9 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof label === "string" && label.trim()) {
       patch.label = label.trim().slice(0, 40);
+    }
+    if (typeof capacity === "number" && capacity > 0 && capacity <= 50) {
+      patch.capacity = Math.floor(capacity);
     }
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "nothing to update" }, { status: 400 });

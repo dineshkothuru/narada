@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     };
     if (
       !name?.trim() ||
-      !["admin", "kitchen", "waiter"].includes(role ?? "") ||
+      !["admin", "kitchen", "waiter", "reception"].includes(role ?? "") ||
       !pin ||
       pin.length < 4
     ) {

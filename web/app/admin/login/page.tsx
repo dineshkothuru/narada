@@ -1,13 +1,12 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 function LoginForm() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
-  const router = useRouter();
   const params = useSearchParams();
 
   const submit = async (e: React.FormEvent) => {
@@ -19,12 +18,25 @@ function LoginForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pin }),
     });
-    setBusy(false);
     if (res.ok) {
-      router.replace(params.get("next") || "/admin");
-    } else {
-      setError(true);
+      const d = (await res.json().catch(() => ({}))) as { role?: string };
+      // land on the screen this role can actually open
+      const fallback =
+        d.role === "kitchen"
+          ? "/kitchen"
+          : d.role === "waiter"
+            ? "/waiter"
+            : d.role === "reception"
+              ? "/floor"
+              : "/admin";
+      const next = params.get("next") || fallback;
+      // hard navigation: middleware must re-run with the new cookie, and the
+      // App Router may still be caching the pre-login redirect for this path
+      window.location.replace(next);
+      return;
     }
+    setBusy(false);
+    setError(true);
   };
 
   return (

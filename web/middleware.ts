@@ -29,8 +29,10 @@ export const config = {
     "/admin/:path*",
     "/kitchen/:path*",
     "/waiter/:path*",
+    "/floor/:path*",
     "/api/kitchen/:path*",
     "/api/admin/:path*",
     "/api/waiter/:path*",
+    "/api/floor/:path*",
   ],
 };

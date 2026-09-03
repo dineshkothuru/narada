@@ -2,15 +2,16 @@ import Link from "next/link";
 import { RESTAURANT } from "@/lib/menu-data";
 
 const DEMO_TABLES = [
-  { code: "t1-demo", label: "Table 1", variant: "Classic" },
-  { code: "t2-demo", label: "Table 2", variant: "Classic" },
-  { code: "t3-demo", label: "Table 3", variant: "✨ Stories" },
-  { code: "t4-demo", label: "Table 4", variant: "Classic" },
+  { code: "table-1", label: "Table 1", variant: "Classic" },
+  { code: "table-2", label: "Table 2", variant: "Classic" },
+  { code: "table-3", label: "Table 3", variant: "✨ Stories" },
+  { code: "table-4", label: "Table 4", variant: "Classic" },
 ];
 
 const STAFF_SCREENS = [
   { href: "/kitchen", label: "Kitchen", emoji: "👨‍🍳", hint: "live order tickets" },
   { href: "/waiter", label: "Waiter", emoji: "🔔", hint: "calls, tabs & payments" },
+  { href: "/floor", label: "Floor", emoji: "🪑", hint: "free tables & seating" },
   { href: "/admin", label: "Admin", emoji: "⚙️", hint: "menu, staff, settings" },
   { href: "/admin/orders", label: "Orders", emoji: "🧾", hint: "sales & history" },
   { href: "/admin/qr", label: "QR codes", emoji: "🖨️", hint: "printable table cards" },

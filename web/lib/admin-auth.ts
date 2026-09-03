@@ -4,7 +4,7 @@
 // Replace with Supabase Auth when multi-tenant hosting arrives.
 export const ADMIN_COOKIE = "narada_admin";
 
-export type StaffRole = "admin" | "kitchen" | "waiter";
+export type StaffRole = "admin" | "kitchen" | "waiter" | "reception";
 
 export const ROLE_ACCESS: Record<string, StaffRole[]> = {
   "/admin": ["admin"],
@@ -13,6 +13,8 @@ export const ROLE_ACCESS: Record<string, StaffRole[]> = {
   "/api/kitchen": ["admin", "kitchen"],
   "/waiter": ["admin", "waiter"],
   "/api/waiter": ["admin", "waiter"],
+  "/floor": ["admin", "waiter", "reception"],
+  "/api/floor": ["admin", "waiter", "reception"],
 };
 
 const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
@@ -36,7 +38,9 @@ export async function roleToken(role: StaffRole): Promise<string> {
 export async function verifyToken(token: string | undefined): Promise<StaffRole | null> {
   if (!token) return null;
   const [role, expStr, hash] = token.split(".");
-  if (role !== "admin" && role !== "kitchen" && role !== "waiter") return null;
+  if (role !== "admin" && role !== "kitchen" && role !== "waiter" && role !== "reception") {
+    return null;
+  }
   const exp = Number(expStr);
   if (!Number.isFinite(exp) || exp < Date.now()) return null;
   return hash === (await hmac(`${role}:${exp}`)) ? role : null;

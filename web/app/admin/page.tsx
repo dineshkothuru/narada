@@ -21,7 +21,7 @@ type AdminCategory = { id: string; name: string; emoji: string | null };
 type StaffRow = {
   id: string;
   name: string;
-  role: "admin" | "kitchen" | "waiter";
+  role: "admin" | "kitchen" | "waiter" | "reception";
   pin: string;
   active: boolean;
 };
@@ -49,7 +49,13 @@ export default function AdminPage() {
   const [addingSection, setAddingSection] = useState(false);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [tables, setTables] = useState<
-    { id: string; label: string; code: string; ui_variant: string }[]
+    {
+      id: string;
+      label: string;
+      code: string;
+      ui_variant: string;
+      capacity: number;
+    }[]
   >([]);
   const [addingStaff, setAddingStaff] = useState(false);
   const [addingTable, setAddingTable] = useState(false);
@@ -510,6 +516,26 @@ export default function AdminPage() {
               >
                 /t/{tb.code}
               </a>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                defaultValue={tb.capacity ?? 4}
+                title="seats"
+                onBlur={async (e) => {
+                  const v = Number(e.target.value);
+                  if (v > 0 && v !== tb.capacity) {
+                    await fetch("/api/admin/tables", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ tableId: tb.id, capacity: v }),
+                    });
+                    flash("Saved");
+                    load();
+                  }
+                }}
+                className="w-14 shrink-0 rounded-lg bg-stone-100 px-2 py-1.5 text-center text-xs font-bold outline-none focus:ring-2 focus:ring-rose-400"
+              />
               <select
                 value={tb.ui_variant}
                 onChange={async (e) => {
@@ -582,6 +608,7 @@ export default function AdminPage() {
             <input name="name" required placeholder="Name" className={inputCls} />
             <select name="role" className={inputCls}>
               <option value="waiter">Waiter</option>
+              <option value="reception">Reception / host</option>
               <option value="kitchen">Kitchen</option>
               <option value="admin">Admin</option>
             </select>
