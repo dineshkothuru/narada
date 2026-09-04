@@ -41,6 +41,7 @@ import SpinSheet from "./SpinSheet";
 import { OrderBanner, dishChipsFor, statusDotFor, statusLabelFor } from "./OrderStatus";
 import StoryViewer from "./StoryViewer";
 import VoiceMode, { type VoiceTurnResult } from "./VoiceMode";
+import { Button } from "@/components/ui/button";
 
 const COMP_ITEM_NAME = "Gulab Jamun (2 pcs)";
 
@@ -426,20 +427,20 @@ export default function OrderExperience({
             </div>
             <div className="flex flex-col items-end gap-2">
               {serviceType === "dine_in" && (
-                <button
+                <Button
                   onClick={callWaiter}
                   className="flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-stone-300 transition active:scale-95"
                 >
                   🔔 {t.callWaiter}
-                </button>
+                </Button>
               )}
               {menu.uiVariant === "stories" && (
-                <button
+                <Button
                   onClick={() => setStoriesOpen(true)}
                   className="flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-300 transition active:scale-95"
                 >
                   ✨ Stories
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -492,7 +493,7 @@ export default function OrderExperience({
 
       {/* Floating cart bar */}
       {itemCount > 0 && !cartOpen && (
-        <button
+        <Button
           onClick={() => setCartOpen(true)}
           className={`animate-pop fixed left-1/2 z-30 flex w-[calc(100%-2.5rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-2xl bg-rose-600 px-5 py-4 text-white shadow-xl shadow-rose-600/30 transition active:scale-[0.98] ${
             voiceOpen ? "bottom-44" : "bottom-5"
@@ -502,12 +503,12 @@ export default function OrderExperience({
             {t.items(itemCount)} · {inr(total)}
           </span>
           <span className="flex items-center gap-1 text-sm font-bold">{t.viewCart}</span>
-        </button>
+        </Button>
       )}
 
       {/* Narada FAB — opens the voice conversation */}
       {!voiceOpen && (
-        <button
+        <Button
           onClick={() => setVoiceOpen(true)}
           aria-label="Talk to Narada"
           className={`fixed right-5 z-30 grid h-14 w-14 place-items-center rounded-full bg-rose-600 text-2xl shadow-xl shadow-rose-600/40 transition active:scale-90 ${
@@ -515,7 +516,7 @@ export default function OrderExperience({
           }`}
         >
           🎙️
-        </button>
+        </Button>
       )}
 
       {wheelOpen && (

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { inr, type Lang, type MenuCategory, type MenuItem } from "@narada/shared";
+import { Button } from "@/components/ui/button";
 
 // Feast Stories: the menu as full-screen swipeable dish stories.
 // Sits under the app's sheets/dock (z-40 < their z-50/60), so cart, voice,
@@ -128,21 +129,23 @@ export default function StoryViewer({
               )}
 
               <div className="absolute right-4 bottom-44 z-20 flex flex-col items-center gap-4">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={onOpenVoice}
                   className="grid h-12 w-12 place-items-center rounded-full bg-black/45 text-xl backdrop-blur"
                   aria-label="Talk to Narada"
                 >
                   🎙️
-                </button>
+                </Button>
                 {showSpin && (
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={onOpenSpin}
                     className="grid h-12 w-12 place-items-center rounded-full bg-black/45 text-xl backdrop-blur"
                     aria-label={strings.spinBanner}
                   >
                     🎡
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -173,12 +176,13 @@ export default function StoryViewer({
                 </h1>
                 <p className="mt-1 text-lg font-extrabold">{inr(item.priceInr)}</p>
                 <div className="mt-4 flex items-center gap-3">
-                  <button
+                  <Button
+                    variant="default"
                     onClick={() => onAdd(item)}
                     className="flex-1 rounded-2xl bg-rose-600 py-4 text-center text-[15px] font-extrabold shadow-2xl shadow-rose-600/50 transition active:scale-[0.97]"
                   >
                     {qty > 0 ? `✓ ×${qty} · ${strings.add} +` : strings.add}
-                  </button>
+                  </Button>
                 </div>
                 <p className="mt-3 text-center text-[10.5px] text-white/50">
                   {strings.storiesHint}
@@ -200,7 +204,8 @@ export default function StoryViewer({
           ))}
         </div>
         {orderBanner && (
-          <button
+          <Button
+            variant="ghost"
             onClick={onOpenCart}
             className="pointer-events-auto mb-2 flex w-full items-center justify-between rounded-2xl bg-black/55 px-4 py-2.5 backdrop-blur"
           >
@@ -218,10 +223,11 @@ export default function StoryViewer({
                 {orderBanner.payText} ›
               </span>
             </span>
-          </button>
+          </Button>
         )}
         <div className="pointer-events-auto flex items-center justify-between">
-          <button
+          <Button
+            variant="default"
             onClick={() => {
               setTileCat(null);
               setTilesOpen(true);
@@ -230,21 +236,25 @@ export default function StoryViewer({
           >
             ☰ {strings.menuTiles}
             <span className="font-medium text-white/60">· {currentCat?.name[lang]}</span>
-          </button>
+          </Button>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onOpenCart}
               className="rounded-full bg-rose-600 px-4 py-2 text-xs font-extrabold text-white shadow-lg"
             >
               🛒 {cartCount > 0 ? `${cartCount} · ${inr(cartTotal)}` : "0"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClose}
               aria-label="switch to list view"
               className="grid h-8 w-8 place-items-center rounded-full bg-black/45 text-sm text-white backdrop-blur"
             >
               ≡
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -256,12 +266,14 @@ export default function StoryViewer({
             <h2 className="font-display text-2xl font-semibold text-white">
               {tileCat ? categories.find((c) => c.id === tileCat)?.name[lang] : strings.menuTiles}
             </h2>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-lg"
               onClick={() => (tileCat ? setTileCat(null) : setTilesOpen(false))}
               className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white"
             >
               {tileCat ? "←" : "✕"}
-            </button>
+            </Button>
           </div>
           {!tileCat ? (
             <div className="grid grid-cols-2 gap-3">
@@ -270,7 +282,8 @@ export default function StoryViewer({
                 if (catItems.length === 0) return null;
                 const cover = catItems.find((d) => d.imageUrl)?.imageUrl;
                 return (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={c.id}
                     onClick={() => setTileCat(c.id)}
                     className="relative h-32 overflow-hidden rounded-2xl text-left shadow-lg transition active:scale-[0.97]"
@@ -295,7 +308,7 @@ export default function StoryViewer({
                         {catItems.length} dishes
                       </span>
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -304,7 +317,8 @@ export default function StoryViewer({
               {dishes
                 .filter((d) => d.categoryId === tileCat)
                 .map((d) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={d.id}
                     onClick={() => jumpTo(d.id)}
                     className="overflow-hidden rounded-xl bg-white/5 text-left transition active:scale-[0.96]"
@@ -324,7 +338,7 @@ export default function StoryViewer({
                         {inr(d.priceInr)}
                       </span>
                     </span>
-                  </button>
+                  </Button>
                 ))}
             </div>
           )}

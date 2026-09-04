@@ -3,6 +3,7 @@ import { inr, type Lang, type MenuItem, type MenuPayload } from "@narada/shared"
 import type { STRINGS } from "@narada/shared";
 import HeroCarousel from "./HeroCarousel";
 import { ItemPhoto, SpiceDots, VegMark } from "./MenuAtoms";
+import { Button } from "@/components/ui/button";
 
 type Strings = (typeof STRINGS)["en"];
 
@@ -59,7 +60,7 @@ export default function Menu({
         <HeroCarousel>
           {[
             ...heroDishes.map((item) => (
-              <button
+              <Button
                 key={item.id}
                 onClick={() => onChangeQty(item.id, 1)}
                 className="relative block h-44 w-full overflow-hidden rounded-3xl text-left shadow-md transition active:scale-[0.98]"
@@ -83,11 +84,11 @@ export default function Menu({
                 <span className="absolute right-3 bottom-4 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-extrabold text-white shadow">
                   {t.add}
                 </span>
-              </button>
+              </Button>
             )),
             ...(!spinDone && showRewards
               ? [
-                  <button
+                  <Button
                     key="spin"
                     onClick={onOpenSpin}
                     className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 to-indigo-700 px-6 text-left shadow-md transition active:scale-[0.98]"
@@ -99,10 +100,10 @@ export default function Menu({
                       </span>
                       <span className="mt-1 block text-xs text-sky-100">{t.spinSub}</span>
                     </span>
-                  </button>,
+                  </Button>,
                 ]
               : []),
-            <button
+            <Button
               key="anna"
               onClick={onOpenVoice}
               className="flex h-44 w-full items-center gap-4 overflow-hidden rounded-3xl bg-rose-600 px-6 text-left shadow-md transition active:scale-[0.98]"
@@ -116,14 +117,14 @@ export default function Menu({
                 </span>
                 <span className="mt-1 block text-xs text-rose-100">{t.voiceHint}</span>
               </span>
-            </button>,
+            </Button>,
           ]}
         </HeroCarousel>
       </div>
 
       <nav className="no-scrollbar flex gap-2 overflow-x-auto bg-stone-100/95 px-4 py-3 backdrop-blur">
         {categories.map((c) => (
-          <button
+          <Button
             key={c.id}
             onClick={() => onScrollToCat(c.id)}
             className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold whitespace-nowrap transition ${
@@ -133,7 +134,7 @@ export default function Menu({
             }`}
           >
             {c.emoji} {c.name[lang]}
-          </button>
+          </Button>
         ))}
       </nav>
 
@@ -211,29 +212,29 @@ export default function Menu({
                         </span>
                         <div className="absolute inset-x-3 -bottom-2.5">
                           {!item.isAvailable ? null : qty === 0 ? (
-                            <button
+                            <Button
                               onClick={() => onChangeQty(item.id, 1)}
                               className="w-full rounded-lg border border-stone-200 bg-white py-1.5 text-xs font-extrabold text-rose-600 shadow-md transition active:scale-95"
                             >
                               {t.add}
-                            </button>
+                            </Button>
                           ) : (
                             <div className="flex w-full items-center justify-between rounded-lg bg-rose-600 px-1 py-0.5 text-white shadow-md">
-                              <button
+                              <Button
                                 onClick={() => onChangeQty(item.id, -1)}
                                 className="grid h-6 w-7 place-items-center text-lg leading-none active:scale-90"
                                 aria-label="decrease"
                               >
                                 −
-                              </button>
+                              </Button>
                               <span className="text-xs font-bold">{qty}</span>
-                              <button
+                              <Button
                                 onClick={() => onChangeQty(item.id, 1)}
                                 className="grid h-6 w-7 place-items-center text-lg leading-none active:scale-90"
                                 aria-label="increase"
                               >
                                 +
-                              </button>
+                              </Button>
                             </div>
                           )}
                         </div>
@@ -305,12 +306,12 @@ export function DishDetail({
             </p>
           )}
           {item.isAvailable && (
-            <button
+            <Button
               onClick={onAdd}
               className="mt-5 w-full rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98]"
             >
               {t.add} · {inr(item.priceInr)}
-            </button>
+            </Button>
           )}
         </div>
       </div>

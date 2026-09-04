@@ -3,6 +3,11 @@ import type { BillSheet, OrderRound } from "@/api/hooks";
 import { applyDiscount } from "@/lib/cartMath";
 import { ItemPhoto } from "./MenuAtoms";
 import { MemoryGame } from "./Games";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { RoundList, statusDotFor } from "./OrderStatus";
 
 type Strings = (typeof STRINGS)["en"];
@@ -117,13 +122,13 @@ export default function Cart({
             )}
 
             {canPlayGame && !compItem && !gameOpen && (
-              <button
+              <Button
                 onClick={onOpenGame}
                 className="mt-5 w-full rounded-2xl bg-stone-900 px-5 py-4 text-left shadow-lg transition active:scale-[0.98]"
               >
                 <span className="block text-sm font-bold text-white">{t.playTitle}</span>
                 <span className="block text-xs text-stone-300">{t.playSub}</span>
-              </button>
+              </Button>
             )}
 
             {canPlayGame && !compItem && gameOpen && (
@@ -185,12 +190,12 @@ export default function Cart({
                 </div>
 
                 {!bill.serviceWaived && bill.service > 0 && (
-                  <button
+                  <Button
                     onClick={() => onPatchBill({ serviceWaived: true })}
                     className="mt-2 w-full rounded-lg bg-white py-2 text-[11px] font-bold text-stone-500 ring-1 ring-stone-200"
                   >
                     {t.removeService}
-                  </button>
+                  </Button>
                 )}
                 {bill.serviceWaived && (
                   <p className="mt-2 text-center text-[10px] font-semibold text-stone-400">
@@ -201,24 +206,29 @@ export default function Cart({
                 <p className="mt-3 text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                   {t.addTip}
                 </p>
-                <div className="mt-1 flex gap-1.5">
+                <ToggleGroup
+                  type="single"
+                  value={[0, 20, 50, 100].includes(bill.tip) ? String(bill.tip) : ""}
+                  onValueChange={(value) => {
+                    if (value) {
+                      const amount = Number(value);
+                      onSetTip(amount);
+                      onPatchBill({ tip: amount });
+                    }
+                  }}
+                  className="mt-1 w-full gap-1.5"
+                >
                   {[0, 20, 50, 100].map((amt) => (
-                    <button
+                    <ToggleGroupItem
                       key={amt}
-                      onClick={() => {
-                        onSetTip(amt);
-                        onPatchBill({ tip: amt });
-                      }}
-                      className={`flex-1 rounded-lg py-2 text-[11px] font-bold transition ${
-                        bill.tip === amt
-                          ? "bg-stone-900 text-white"
-                          : "bg-white text-stone-600 ring-1 ring-stone-200"
-                      }`}
+                      value={String(amt)}
+                      aria-label={amt === 0 ? "No tip" : `Tip ₹${amt}`}
+                      className="flex-1 rounded-lg py-2 text-[11px] font-bold"
                     >
                       {amt === 0 ? "—" : `₹${amt}`}
-                    </button>
+                    </ToggleGroupItem>
                   ))}
-                </div>
+                </ToggleGroup>
 
                 <a
                   href={`/bill/${orderPlaced.sessionId}`}
@@ -242,15 +252,19 @@ export default function Cart({
                 </span>
               )}
             </a>
-            <button
+            <Button
               onClick={onAskBill}
               className="mt-3 w-full rounded-2xl bg-stone-900 px-6 py-3 text-xs font-bold text-white transition active:scale-[0.98]"
             >
               🧾 {t.askBill}
-            </button>
-            <button onClick={onClose} className="mt-2 text-xs font-semibold text-stone-400">
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="mt-2 text-xs font-semibold text-stone-400"
+            >
               {t.payLater}
-            </button>
+            </Button>
           </div>
         ) : (
           <>
@@ -291,21 +305,25 @@ export default function Cart({
                         </p>
                       </div>
                       <div className="flex items-center gap-2.5 rounded-full bg-white px-2 py-1 ring-1 ring-stone-200">
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => onChangeQty(line.itemId, -1)}
                           aria-label="decrease"
                           className="grid h-6 w-6 place-items-center text-lg leading-none text-stone-600 active:scale-90"
                         >
                           −
-                        </button>
+                        </Button>
                         <span className="min-w-4 text-center text-xs font-bold">{line.qty}</span>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => onChangeQty(line.itemId, 1)}
                           aria-label="increase"
                           className="grid h-6 w-6 place-items-center text-lg leading-none text-stone-600 active:scale-90"
                         >
                           +
-                        </button>
+                        </Button>
                       </div>
                       <span className="w-14 text-right text-sm font-bold text-stone-800">
                         {inr(item.priceInr * line.qty)}
@@ -319,13 +337,18 @@ export default function Cart({
                     {inr(total)}
                   </span>
                 </div>
-                <input
-                  value={guestName}
-                  onChange={(e) => onGuestName(e.target.value)}
-                  placeholder={t.yourName}
-                  maxLength={40}
-                  className="rounded-xl bg-stone-100 px-4 py-2.5 text-sm outline-none placeholder:text-stone-400 focus:ring-2 focus:ring-rose-400"
-                />
+                <Field>
+                  <FieldLabel htmlFor="guest-name" className="sr-only">
+                    {t.yourName}
+                  </FieldLabel>
+                  <Input
+                    id="guest-name"
+                    value={guestName}
+                    onChange={(e) => onGuestName(e.target.value)}
+                    placeholder={t.yourName}
+                    maxLength={40}
+                  />
+                </Field>
                 {paymentTiming === "pre" ? (
                   <a
                     href={sessionReady ? preOrderUpiHref : undefined}
@@ -342,13 +365,20 @@ export default function Cart({
                     {t.payToOrder} · {inr(applyDiscount(total, discountPct))}
                   </a>
                 ) : (
-                  <button
+                  <Button
                     onClick={onPlaceOrder}
                     disabled={placing || !sessionReady}
                     className="mt-2 rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-rose-600/25 transition active:scale-[0.98] disabled:opacity-60"
                   >
-                    {placing ? "…" : `${t.placeOrder} · ${inr(total)}`}
-                  </button>
+                    {placing ? (
+                      <>
+                        <Spinner data-icon="inline-start" />
+                        Placing…
+                      </>
+                    ) : (
+                      `${t.placeOrder} · ${inr(total)}`
+                    )}
+                  </Button>
                 )}
               </div>
             )}

@@ -2,6 +2,8 @@ import { inr, type STRINGS } from "@narada/shared";
 import { ask } from "@/components/Dialogs";
 import { useCancelOrderItem } from "@/api/hooks";
 import type { OrderRound } from "@/api/hooks";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 type Strings = (typeof STRINGS)["en"];
 
@@ -77,7 +79,10 @@ export function OrderBanner({
   onOpen: () => void;
 }) {
   return (
-    <button onClick={onOpen} className="block w-full bg-stone-900 px-4 py-2.5 text-left">
+    <Button
+      onClick={onOpen}
+      className="block h-auto w-full rounded-none bg-stone-900 px-4 py-2.5 text-left text-white hover:bg-stone-800"
+    >
       <span className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-xs font-bold text-white">
           <span
@@ -87,9 +92,9 @@ export function OrderBanner({
           />
           {allServed ? t.allServed : statusLabel}
         </span>
-        <span className="shrink-0 rounded-full bg-rose-600 px-3 py-1 text-[11px] font-extrabold text-white">
+        <Badge variant="info" className="shrink-0">
           {payableText} ›
-        </span>
+        </Badge>
       </span>
       {orderNo && (
         <span className="mt-1 block text-[10px] font-extrabold tracking-[0.1em] text-stone-400">
@@ -111,7 +116,7 @@ export function OrderBanner({
           </span>
         </span>
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -170,7 +175,9 @@ export function RoundList({
                 <span className="ml-2 flex shrink-0 items-center gap-2 text-stone-500">
                   {statusLabelFor(it.status ?? r.status, t)}
                   {it.id && (it.status ?? r.status) === "queued" && (
-                    <button
+                    <Button
+                      variant="link"
+                      size="xs"
                       onClick={async () => {
                         const itemId = it.id;
                         if (!itemId) return;
@@ -182,10 +189,9 @@ export function RoundList({
                         });
                         if (yes) cancel.mutate(itemId);
                       }}
-                      className="text-[10px] font-bold underline underline-offset-2"
                     >
                       Remove
-                    </button>
+                    </Button>
                   )}
                 </span>
               </div>

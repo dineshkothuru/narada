@@ -1,6 +1,7 @@
 import { useLocation, useParams } from "react-router";
 import { inr } from "@narada/shared";
 import { useBillReceipt } from "@/api/hooks";
+import { Button } from "@/components/ui/button";
 
 // Printable bill / receipt — 80mm thermal friendly, works for staff and guests.
 export default function BillPage() {
@@ -31,18 +32,17 @@ export default function BillPage() {
     <main className="min-h-dvh bg-stone-100 p-4 print:bg-white print:p-0">
       <div className="mx-auto max-w-sm">
         <div className="mb-3 flex justify-between print:hidden">
-          <a
-            href="/admin/orders"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-          >
-            ← Orders
-          </a>
-          <button
-            onClick={() => window.print()}
-            className="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
-          >
+          <Button asChild variant="secondary">
+            <a
+              href="/admin/orders"
+              className="rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
+            >
+              ← Orders
+            </a>
+          </Button>
+          <Button variant="default" onClick={() => window.print()}>
             🖨️ Print bill
-          </button>
+          </Button>
         </div>
 
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-200 print:rounded-none print:shadow-none print:ring-0">

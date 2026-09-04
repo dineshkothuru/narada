@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MEMORY_EMOJIS, MEMORY_LEVELS, WHEEL } from "@narada/shared";
+import { Button } from "@/components/ui/button";
 
 const SLICE_DEG = 360 / WHEEL.length;
 
@@ -111,13 +112,13 @@ export function SpinWheel({
         </svg>
       </div>
       {!done && (
-        <button
+        <Button
           onClick={spin}
           disabled={spinning}
           className="mt-4 rounded-full bg-rose-600 px-10 py-3 text-sm font-bold text-white shadow-lg transition active:scale-95 disabled:opacity-60"
         >
           {strings.spin}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -223,7 +224,7 @@ export function MemoryGame({
         {deck.map((card, i) => {
           const shown = card.matched || flipped.includes(i);
           return (
-            <button
+            <Button
               key={card.id}
               onClick={() => flip(i)}
               className={`grid aspect-square place-items-center rounded-xl text-2xl transition-all duration-200 ${
@@ -235,17 +236,17 @@ export function MemoryGame({
               }`}
             >
               {shown ? card.emoji : "✦"}
-            </button>
+            </Button>
           );
         })}
       </div>
       {levelClear && level < MEMORY_LEVELS.length - 1 && (
-        <button
+        <Button
           onClick={nextLevel}
           className="animate-pop mt-3 w-full rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition active:scale-[0.98]"
         >
           {strings.levelClear} {strings.nextLevel}
-        </button>
+        </Button>
       )}
       {levelClear && level === MEMORY_LEVELS.length - 1 && (
         <p className="animate-pop mt-3 text-center text-sm font-bold text-green-600">🎉</p>

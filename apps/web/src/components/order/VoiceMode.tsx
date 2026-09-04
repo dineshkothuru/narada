@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { blobToWavBase64 } from "@/lib/audio";
 import { VAD, levelFromRms, rmsOf, stepVad, turnEnded, type VadState } from "@/lib/vad";
+import { Button } from "@/components/ui/button";
 
 export type VoiceTurnResult = {
   transcript: string;
@@ -209,7 +210,8 @@ export default function VoiceMode({
     return (
       <div className="pointer-events-none fixed inset-x-0 bottom-5 z-50 mx-auto flex max-w-md flex-col items-center gap-2 px-4">
         {error && (
-          <button
+          <Button
+            variant="outline"
             onClick={() => {
               setError(null);
               startListening();
@@ -217,24 +219,26 @@ export default function VoiceMode({
             className="pointer-events-auto rounded-full bg-white px-4 py-2 text-xs font-bold text-stone-900 shadow-xl"
           >
             ⚠️ {error.slice(0, 60)} — tap to retry
-          </button>
+          </Button>
         )}
         {chips.length > 0 && !error && (
           <div className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto">
             {chips.map((chip) => (
-              <button
+              <Button
+                variant="outline"
                 key={chip}
                 onClick={() => sendText(chip)}
                 disabled={status === "thinking"}
                 className="animate-pop shrink-0 rounded-full bg-black/60 px-4 py-2 text-xs font-bold whitespace-nowrap text-white ring-1 ring-white/30 backdrop-blur transition active:scale-95 disabled:opacity-40"
               >
                 {chip}
-              </button>
+              </Button>
             ))}
           </div>
         )}
         <div className="pointer-events-auto flex flex-col items-center gap-1.5">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => {
               if (status === "listening" && recorderRef.current?.state === "recording") {
                 recorderRef.current.stop();
@@ -275,7 +279,7 @@ export default function VoiceMode({
                 "🎙️"
               )}
             </span>
-          </button>
+          </Button>
           <p className="text-xs font-bold text-white [text-shadow:0_1px_6px_rgba(0,0,0,.9)]">
             {status === "listening"
               ? strings.listening
@@ -283,13 +287,14 @@ export default function VoiceMode({
                 ? strings.thinking
                 : strings.speaking}
           </p>
-          <button
+          <Button
+            variant="ghost"
             onClick={end}
             aria-label={strings.endVoice}
             className="mt-0.5 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur transition active:scale-95"
           >
             ✕
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -299,7 +304,8 @@ export default function VoiceMode({
     <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md px-3 pb-3">
       <div className="rounded-3xl bg-stone-950/95 p-3 shadow-2xl shadow-stone-950/50 ring-1 ring-white/10 backdrop-blur">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => {
               if (status === "listening" && recorderRef.current?.state === "recording") {
                 recorderRef.current.stop();
@@ -339,7 +345,7 @@ export default function VoiceMode({
                 "🎙️"
               )}
             </span>
-          </button>
+          </Button>
 
           <div className="min-w-0 flex-1 text-left">
             <p className="text-[11px] font-bold text-white">
@@ -351,17 +357,19 @@ export default function VoiceMode({
             </p>
           </div>
 
-          <button
+          <Button
+            variant="secondary"
             onClick={end}
             aria-label={strings.endVoice}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-bold text-white transition active:scale-95"
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         {error && (
-          <button
+          <Button
+            variant="secondary"
             onClick={() => {
               setError(null);
               startListening();
@@ -369,20 +377,21 @@ export default function VoiceMode({
             className="mt-2 w-full rounded-xl bg-white px-4 py-2 text-xs font-bold text-stone-900 transition active:scale-[0.98]"
           >
             Try again
-          </button>
+          </Button>
         )}
 
         {chips.length > 0 && !error && (
           <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto">
             {chips.map((chip) => (
-              <button
+              <Button
+                variant="ghost"
                 key={chip}
                 onClick={() => sendText(chip)}
                 disabled={status === "thinking"}
                 className="animate-pop shrink-0 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold whitespace-nowrap text-white ring-1 ring-white/25 transition active:scale-95 disabled:opacity-40"
               >
                 {chip}
-              </button>
+              </Button>
             ))}
           </div>
         )}
