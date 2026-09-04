@@ -173,4 +173,17 @@ describe("OutletLoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
     expect(await screen.findByText(/invalid username or password/i)).toBeInTheDocument();
   });
+
+  it("announces username validation errors and marks the field invalid", async () => {
+    renderLogin();
+    const user = userEvent.setup();
+    const username = await screen.findByPlaceholderText("username");
+    await user.type(username, "!");
+    await user.type(screen.getByPlaceholderText("Password"), "correct-horse-battery");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(username).toHaveAttribute("aria-invalid", "true");
+    expect(username.closest('[data-slot="field"]')).toHaveAttribute("data-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent(/username must be/i);
+  });
 });

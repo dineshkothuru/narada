@@ -59,5 +59,28 @@ describe("StaffSignupPage", () => {
       role: "waiter",
       password: "a-secure-password-123",
     });
+    expect(screen.getByRole("alert")).toHaveTextContent(/account created/i);
+  });
+
+  it("announces password validation errors and marks the field invalid", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <StaffSignupPage role="waiter" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    const password = screen.getByPlaceholderText("Password (15–128 characters)");
+    await user.type(screen.getByPlaceholderText("username"), "maya.server");
+    await user.type(screen.getByPlaceholderText("First name"), "Maya");
+    await user.type(password, "short");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+
+    expect(password).toHaveAttribute("aria-invalid", "true");
+    expect(password.closest('[data-slot="field"]')).toHaveAttribute("data-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent(/password must be/i);
   });
 });

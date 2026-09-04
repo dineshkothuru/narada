@@ -53,7 +53,8 @@ describe("customer auth", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderPage(<CustomerLoginPage />);
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText(/phone number/i), "+91 (98765)-43210");
+    expect(screen.getByLabelText("Country code")).toHaveValue("+91");
+    await user.type(screen.getByLabelText("Phone number"), "98765 43210");
     await user.type(screen.getByLabelText(/password/i), "correct-horse-battery");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
@@ -64,6 +65,19 @@ describe("customer auth", () => {
         body: JSON.stringify({ phone: "+919876543210", password: "correct-horse-battery" }),
       }),
     );
+  });
+
+  it("announces phone validation errors and marks the field invalid", async () => {
+    renderPage(<CustomerLoginPage />);
+    const user = userEvent.setup();
+    const phone = screen.getByRole("textbox", { name: "Phone number" });
+    await user.type(phone, "12345");
+    await user.type(screen.getByLabelText(/password/i), "correct-horse-battery");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(phone).toHaveAttribute("aria-invalid", "true");
+    expect(phone.closest('[data-slot="field"]')).toHaveAttribute("data-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent(/valid phone number/i);
   });
 
   it("requires a first name and sends an optional last name on signup", async () => {
@@ -82,7 +96,9 @@ describe("customer auth", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderPage(<CustomerSignupPage />, "/signup");
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText(/phone number/i), "+91 (98765)-43210");
+    await user.clear(screen.getByLabelText("Country code"));
+    await user.type(screen.getByLabelText("Country code"), "+1");
+    await user.type(screen.getByLabelText("Phone number"), "202 555 0100");
     await user.type(screen.getByLabelText(/first name/i), "Asha");
     await user.type(screen.getByLabelText(/last name/i), "Rao");
     await user.type(screen.getByLabelText(/password/i), "correct-horse-battery");
@@ -93,12 +109,15 @@ describe("customer auth", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          phone: "+919876543210",
+          phone: "+12025550100",
           firstName: "Asha",
           lastName: "Rao",
           password: "correct-horse-battery",
         }),
       }),
     );
+    expect(
+      JSON.parse(String((fetchMock.mock.calls.at(-1) as [string, RequestInit])[1].body)),
+    ).not.toHaveProperty("countryCode");
   });
 });

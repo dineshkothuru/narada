@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import Collapsible from "@/components/Collapsible";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { SelectGroup } from "@/components/ui/select";
 import {
   Select,
   SelectContent,
@@ -9,10 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ApiError, useAdminMenu, usePatchSettings } from "@/api/hooks";
 
-const inputCls =
-  "mt-1 h-auto w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-rose-400";
 const OUTLET_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const normalizeOutletSlug = (value: string) => value.trim().toLowerCase().slice(0, 63);
 
@@ -82,11 +85,18 @@ export default function AdminDashboardPage() {
 
           {outlet && (
             <Collapsible title="Settings" hint="payment, UPI, GST, API keys">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="text-xs font-semibold text-stone-600 sm:col-span-3">
-                  Outlet URL slug
+              <FieldGroup className="grid gap-4 sm:grid-cols-3">
+                <Field className="sm:col-span-3" data-invalid={Boolean(slugError)}>
+                  <FieldLabel htmlFor="outlet-slug">Outlet URL slug</FieldLabel>
                   <Input
+                    id="outlet-slug"
                     aria-label="Outlet URL slug"
+                    aria-invalid={Boolean(slugError)}
+                    aria-describedby={
+                      slugError
+                        ? "outlet-slug-description outlet-slug-error"
+                        : "outlet-slug-description"
+                    }
                     value={slug}
                     onChange={(e) => {
                       setSlug(normalizeOutletSlug(e.target.value));
@@ -95,54 +105,57 @@ export default function AdminDashboardPage() {
                     }}
                     placeholder="spice-garden"
                     autoComplete="off"
-                    className={inputCls}
                   />
-                  <span className="mt-1 block text-[10px] font-normal text-stone-400">
+                  <FieldDescription id="outlet-slug-description" className="text-[10px]">
                     Public URL: /outlet/{slug || "<slug>"}
-                  </span>
+                  </FieldDescription>
                   <div className="mt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={saveSlug}
-                      disabled={patch.isPending}
-                      className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
-                    >
+                    <Button type="button" onClick={saveSlug} disabled={patch.isPending} size="sm">
+                      {patch.isPending && <Spinner data-icon="inline-start" />}
                       {patch.isPending ? "Saving…" : slugSaved ? "Saved" : "Save URL"}
-                    </button>
-                    {slugError && (
-                      <span className="text-xs font-semibold text-rose-600">{slugError}</span>
-                    )}
+                    </Button>
+                    {slugError && <FieldError id="outlet-slug-error">{slugError}</FieldError>}
                   </div>
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
-                  Payment timing
-                  <Select
+                </Field>
+                <Field>
+                  <FieldLabel>Payment timing</FieldLabel>
+                  <ToggleGroup
+                    type="single"
                     value={outlet.payment_timing}
-                    onValueChange={(v) => save({ payment_timing: v })}
+                    onValueChange={(value) => value && save({ payment_timing: value })}
+                    variant="outline"
+                    className="w-full"
+                    aria-label="Payment timing"
                   >
-                    <SelectTrigger className={inputCls}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="post">Order first, pay at the end</SelectItem>
-                      <SelectItem value="pre">Pay to place the order</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
-                  UPI ID (VPA)
+                    <ToggleGroupItem
+                      value="post"
+                      className="h-auto min-h-8 flex-1 whitespace-normal py-2"
+                    >
+                      Order first, pay at the end
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="pre"
+                      className="h-auto min-h-8 flex-1 whitespace-normal py-2"
+                    >
+                      Pay to place the order
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="upi-vpa">UPI ID (VPA)</FieldLabel>
                   <Input
+                    id="upi-vpa"
                     defaultValue={outlet.upi_vpa ?? ""}
                     onBlur={(e) => {
                       if (e.target.value !== outlet.upi_vpa) save({ upi_vpa: e.target.value });
                     }}
                     placeholder="outlet@upi"
-                    className={inputCls}
                   />
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
-                  Service charge %
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="service-charge">Service charge %</FieldLabel>
                   <Input
+                    id="service-charge"
                     type="number"
                     min="0"
                     max="20"
@@ -154,46 +167,50 @@ export default function AdminDashboardPage() {
                         save({ service_charge_pct: v });
                       }
                     }}
-                    className={inputCls}
                   />
-                  <span className="mt-1 block text-[10px] font-normal text-stone-400">
+                  <FieldDescription className="text-[10px]">
                     Applied on the bill · guests may ask to waive it
-                  </span>
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
-                  GSTIN
+                  </FieldDescription>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="gstin">GSTIN</FieldLabel>
                   <Input
+                    id="gstin"
                     defaultValue={outlet.gstin ?? ""}
                     onBlur={(e) => {
                       if (e.target.value !== (outlet.gstin ?? "")) save({ gstin: e.target.value });
                     }}
                     placeholder="29ABCDE1234F1Z5"
-                    className={inputCls}
                   />
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
-                  Game prize (free dish) 🎁
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="game-prize">Game prize (free dish) 🎁</FieldLabel>
                   <Select
                     value={outlet.comp_item_id ?? "__default"}
                     onValueChange={(v) => save({ comp_item_id: v === "__default" ? null : v })}
                   >
-                    <SelectTrigger className={inputCls}>
+                    <SelectTrigger id="game-prize" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__default">— default (Gulab Jamun) —</SelectItem>
-                      {items.map((i) => (
-                        <SelectItem key={i.id} value={i.id}>
-                          {i.name}
-                        </SelectItem>
-                      ))}
+                      <SelectGroup>
+                        <SelectItem value="__default">— default (Gulab Jamun) —</SelectItem>
+                        {items.map((i) => (
+                          <SelectItem key={i.id} value={i.id}>
+                            {i.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
-                </label>
-                <label className="text-xs font-semibold text-stone-600 sm:col-span-2">
-                  Gemini API key{" "}
-                  <span className="font-normal text-stone-400">(Narada&apos;s brain)</span>
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel htmlFor="gemini-api-key">
+                    Gemini API key{" "}
+                    <span className="font-normal text-muted-foreground">(Narada&apos;s brain)</span>
+                  </FieldLabel>
                   <Input
+                    id="gemini-api-key"
                     type="password"
                     defaultValue={outlet.gemini_api_key ?? ""}
                     onBlur={(e) => {
@@ -202,12 +219,15 @@ export default function AdminDashboardPage() {
                       }
                     }}
                     placeholder="AIza…  (falls back to server env if empty)"
-                    className={inputCls}
                   />
-                </label>
-                <label className="text-xs font-semibold text-stone-600">
-                  Sarvam API key <span className="font-normal text-stone-400">(voice)</span>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="sarvam-api-key">
+                    Sarvam API key{" "}
+                    <span className="font-normal text-muted-foreground">(voice)</span>
+                  </FieldLabel>
                   <Input
+                    id="sarvam-api-key"
                     type="password"
                     defaultValue={outlet.sarvam_api_key ?? ""}
                     onBlur={(e) => {
@@ -216,10 +236,9 @@ export default function AdminDashboardPage() {
                       }
                     }}
                     placeholder="falls back to server env if empty"
-                    className={inputCls}
                   />
-                </label>
-              </div>
+                </Field>
+              </FieldGroup>
             </Collapsible>
           )}
         </div>

@@ -88,6 +88,9 @@ describe("AdminDashboardPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Save URL" }));
     expect(await screen.findByText("That outlet URL is already in use")).toBeInTheDocument();
+    expect(slug).toHaveAttribute("aria-invalid", "true");
+    expect(slug.closest('[data-slot="field"]')).toHaveAttribute("data-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent("That outlet URL is already in use");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/admin/settings",
       expect.objectContaining({
@@ -95,5 +98,40 @@ describe("AdminDashboardPage", () => {
         body: JSON.stringify({ slug: "taken-slug" }),
       }),
     );
+  });
+
+  it("uses the payment timing toggle and saves other settings on blur", async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <AdminDashboardPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /^Settings/ }));
+    await user.click(screen.getByRole("radio", { name: "Pay to place the order" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/settings",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ payment_timing: "pre" }),
+      }),
+    );
+
+    const upi = screen.getByLabelText("UPI ID (VPA)");
+    await user.type(upi, "spice@upi");
+    await user.tab();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/settings",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ upi_vpa: "spice@upi" }),
+      }),
+    );
+    expect(screen.getByLabelText(/Gemini API key/)).toHaveAttribute("type", "password");
+    expect(screen.getByLabelText(/Sarvam API key/)).toHaveAttribute("type", "password");
   });
 });
