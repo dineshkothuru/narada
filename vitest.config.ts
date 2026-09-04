@@ -9,6 +9,7 @@ const apiInclude = ["apps/api/tests/**/*.test.ts", "packages/shared/tests/**/*.t
 export default defineConfig({
   test: {
     environment: "node",
+    setupFiles: ["./test/setup.ts"],
     env: {
       SUPABASE_URL: "http://localhost.test",
       SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",

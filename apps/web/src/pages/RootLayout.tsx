@@ -1,5 +1,6 @@
 import { Outlet } from "react-router";
 import { DialogHost } from "@/components/Dialogs";
+import { Toaster } from "@/components/ui/sonner";
 
 // Port of web/app/layout.tsx: fonts and metadata are handled in index.html /
 // main.tsx (Vite has no next/font or next/head equivalent), so this only
@@ -9,6 +10,7 @@ export default function RootLayout() {
     <div className="flex min-h-full flex-1 flex-col">
       <Outlet />
       <DialogHost />
+      <Toaster />
     </div>
   );
 }
