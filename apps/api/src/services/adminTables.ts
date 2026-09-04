@@ -27,6 +27,7 @@ export async function getAdminTables(
       capacity: Number(t.capacity),
     })),
     outletName: outlet?.name ?? "Narada",
+    outletSlug: outlet?.slug,
   };
 }
 

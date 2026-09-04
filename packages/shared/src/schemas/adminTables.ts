@@ -33,7 +33,11 @@ export type AdminTableRow = {
   capacity: number;
 };
 
-export type AdminTablesResponse = { tables: AdminTableRow[]; outletName: string };
+export type AdminTablesResponse = {
+  tables: AdminTableRow[];
+  outletName: string;
+  outletSlug?: string;
+};
 export type CreateTablesResponse = { ok: true; added: number };
 export type PatchTableResponse = { ok: true };
 export type DeleteTableResponse = { ok: true } | { ok: false; reason: string };

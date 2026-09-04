@@ -14,6 +14,7 @@ describe("GET /api/admin/tables", () => {
     const body = res.json();
     expect(body.tables.length).toBe(2);
     expect(body.outletName).toBe("Spice Garden");
+    expect(body.outletSlug).toBe("demo-spice-garden");
   });
 });
 
