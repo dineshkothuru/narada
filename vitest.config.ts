@@ -15,6 +15,8 @@ export default defineConfig({
       SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
       SESSION_SECRET: "test-session-secret",
       DATABASE_URL: "postgres://test:test@localhost:5432/test",
+      OPENROUTER_API_KEY: "test-openrouter-key",
+      SARVAM_API_KEY: "test-sarvam-key",
     },
     // Without an explicit projects list, vitest auto-discovers
     // apps/web/vite.config.ts as a second project and runs the include globs

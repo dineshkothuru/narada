@@ -24,8 +24,6 @@ export interface OutletsTable {
   payment_timing: Generated<string>; // 'pre' | 'post'
   active: Generated<boolean>;
   created_at: Generated<string>;
-  gemini_api_key: string | null;
-  sarvam_api_key: string | null;
   comp_item_id: string | null;
   service_charge_pct: Generated<number>; // LIVE
   gstin: string | null; // LIVE

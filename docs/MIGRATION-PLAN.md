@@ -22,7 +22,8 @@ Rules that every agent/session must keep:
 - **Data access (web)**: components and pages import hooks from `src/api/hooks/*` only; never `src/api/client.ts` (eslint `no-restricted-imports` enforces). Query keys in `src/api/keys.ts`. Polling = `refetchInterval`, mutations invalidate keys.
 - **Routes keep their legacy paths, JSON shapes and status codes** (`/api/...`), except intentionally removed unused compatibility routes: `/api/anna` and the legacy staff login APIs (`/api/auth/outlets`, `/api/auth/staff/login`, `/api/admin/login`). The current staff login is `/api/outlet/:slug/login`; parity notes live in `apps/api/tests/routes/PARITY*.md`.
 - **Tenant is `outlet`** (`outlets`, `outlet_id`, `outletId`, `outletName`, `Outlet*`). Main branch still says `restaurant`; every sync re-applies the rename.
-- **BYOK**: Gemini/Sarvam keys live per outlet in the DB with env fallback (`services/keys.ts`). Do not move to env-only.
+- **AI keys**: OpenRouter and Sarvam use server environment keys for now. Defer
+  owner-supplied per-outlet keys until their security and administration model is defined.
 - Tests: vitest at root (`pnpm test`), two projects (node for api/shared, jsdom for apps/web). Repository tests run against real Postgres via pglite loading `docs/schema.sql`.
 - Tooling gates, all must exit 0 before a commit is "done": `pnpm run format:check`, `pnpm run lint`, `pnpm run typecheck`, `pnpm test`, `pnpm run knip`.
 - Working model: Fable session = architect/planner/orchestrator; first consult recent `agentmemory` (recall/smart-search) for prior decisions + gotchas, then delegate execution to Sonnet subagents (Opus only for conflict-laden merges / large splits). Prefer routing: plan/spec with the highest-capability model available (you mentioned Grok 4.6) and execute concrete edits with smaller model subagents (you mentioned Composer). One agent per file-ownership area; shared small files are append-only.
@@ -73,12 +74,12 @@ merged at `b4cae51`.
 
 The password-auth migration preserves legacy rows and their display name as
 `first_name`, removes the legacy PIN columns, and leaves incomplete identity
-rows unavailable for login. Bootstrap an admin if necessary, remove the
-bootstrap values, then complete each remaining row in Admin > Users.
+rows unavailable for login. Complete each remaining row in Admin > Users; the
+existing SQL demo-account migration remains authoritative for demo accounts.
 
 ## Next (external gates)
 
-1. **Apply the auth and tenant migrations to an existing database**: take a backup, run the migrations in the README order, bootstrap the first admin if needed, remove the bootstrap values, then complete legacy staff setup in Admin > Users.
+1. **Apply the auth and tenant migrations to an existing database**: take a backup, run the migrations in the README order, then complete legacy staff setup in Admin > Users.
 2. **Run live smoke tests** with a real `DATABASE_URL`: customer order, kitchen, waiter call, bill/settlement, admin menu edit, photo upload, and slug changes. Verify Railway, Redis, and production-browser/security behavior.
 
 ## Follow-up: customer and outlet login

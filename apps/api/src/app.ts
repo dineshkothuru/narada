@@ -6,14 +6,13 @@ import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { db } from "./db/index.js";
 import { type Deps, makeDeps } from "./deps.js";
 import { env, trustedProxyHops } from "./env.js";
 import { clientIp } from "./lib/ratelimit.js";
 import authPlugin from "./plugins/auth.js";
 import { type Repos } from "./repositories/index.js";
-import { ensureAdminBootstrap } from "./services/adminStaff.js";
 import billRoutes from "./routes/bill.js";
 import publicMenuRoutes from "./routes/menu.js";
 import orderRoutes from "./routes/order.js";
@@ -99,7 +98,6 @@ export function buildApp(opts?: BuildAppOptions): FastifyInstance {
   });
   app.decorate("deps", deps);
   app.decorate("repos", deps.repos);
-  app.addHook("onReady", async () => ensureAdminBootstrap(app.repos));
 
   const health = async () => ({ ok: true });
   app.get("/health", health);
@@ -146,7 +144,7 @@ export function buildApp(opts?: BuildAppOptions): FastifyInstance {
   });
 
   if (env.WEB_DIST) {
-    const webDist = env.WEB_DIST;
+    const webDist = resolve(env.WEB_DIST);
     app.register(fastifyStatic, {
       root: webDist,
       wildcard: false,

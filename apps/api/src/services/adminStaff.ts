@@ -1,8 +1,4 @@
 import {
-  firstNameSchema,
-  lastNameSchema,
-  passwordSchema,
-  usernameSchema,
   createStaffSchema,
   patchStaffSchema,
   type CreateStaffInput,
@@ -14,7 +10,6 @@ import type { Repos } from "../repositories/index.js";
 import { badRequest, conflict, notFound } from "../lib/http.js";
 import { isStaffRole, type StaffSession } from "../plugins/auth.js";
 import { hashPassword, isStrictPasswordHash } from "../lib/password.js";
-import { env } from "../env.js";
 
 type StaffRepo = Repos["staff"];
 type StaffRecord = Awaited<ReturnType<StaffRepo["findById"]>>;
@@ -122,79 +117,4 @@ export async function deleteStaff(
     throw error;
   }
   return { ok: true };
-}
-
-export async function ensureAdminBootstrap(repos: Pick<Repos, "staff" | "outlets">): Promise<void> {
-  const configured = [
-    env.ADMIN_BOOTSTRAP_USERNAME,
-    env.ADMIN_BOOTSTRAP_FIRST_NAME,
-    env.ADMIN_BOOTSTRAP_LAST_NAME,
-    env.ADMIN_BOOTSTRAP_PASSWORD,
-    env.ADMIN_BOOTSTRAP_OUTLET_SLUG,
-  ];
-  if (!configured.some(Boolean)) return;
-  const usernameResult = usernameSchema.safeParse(env.ADMIN_BOOTSTRAP_USERNAME);
-  const firstNameResult = firstNameSchema.safeParse(env.ADMIN_BOOTSTRAP_FIRST_NAME);
-  const lastNameResult = env.ADMIN_BOOTSTRAP_LAST_NAME
-    ? lastNameSchema.safeParse(env.ADMIN_BOOTSTRAP_LAST_NAME)
-    : { success: true as const, data: undefined };
-  const passwordResult = passwordSchema.safeParse(env.ADMIN_BOOTSTRAP_PASSWORD);
-  if (
-    !usernameResult.success ||
-    !firstNameResult.success ||
-    !lastNameResult.success ||
-    !passwordResult.success
-  ) {
-    throw new Error("invalid admin bootstrap configuration");
-  }
-  const username = usernameResult.data;
-  const firstName = firstNameResult.data;
-  const outlets = await repos.outlets.listActive();
-  const outlet = env.ADMIN_BOOTSTRAP_OUTLET_SLUG
-    ? await repos.outlets.findActiveBySlug(env.ADMIN_BOOTSTRAP_OUTLET_SLUG)
-    : outlets.length === 1
-      ? outlets[0]
-      : null;
-  if (!outlet)
-    throw new Error("bootstrap requires one active outlet or ADMIN_BOOTSTRAP_OUTLET_SLUG");
-  const admins = await repos.staff.listByOutlet(outlet.id);
-  if (
-    admins.some(
-      (staff) =>
-        staff.active &&
-        staff.role === "admin" &&
-        usernameSchema.safeParse(staff.username).success &&
-        firstNameSchema.safeParse(staff.first_name).success &&
-        isStrictPasswordHash(staff.password_hash),
-    )
-  )
-    return;
-  const existing =
-    (await repos.staff.findByUsername(outlet.id, username)) ??
-    admins.find(
-      (staff) => staff.active && staff.role === "admin" && (!staff.username || !staff.first_name),
-    );
-  const passwordHash = await hashPassword(passwordResult.data);
-  if (existing) {
-    if (existing.role !== "admin" && existing.active)
-      throw conflict("bootstrap username belongs to another role");
-    await repos.staff.update(existing.id, {
-      username,
-      first_name: firstName,
-      last_name: lastNameResult.data?.trim() || null,
-      role: "admin",
-      password_hash: passwordHash,
-      active: true,
-    });
-    return;
-  }
-  await repos.staff.create({
-    outlet_id: outlet.id,
-    username,
-    first_name: firstName,
-    last_name: lastNameResult.data?.trim() || null,
-    role: "admin",
-    password_hash: passwordHash,
-    active: true,
-  });
 }

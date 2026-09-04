@@ -190,12 +190,6 @@ export async function updateSettings(
   if (input.comp_item_id === null || typeof input.comp_item_id === "string") {
     patch.comp_item_id = input.comp_item_id || null;
   }
-  if (typeof input.gemini_api_key === "string") {
-    patch.gemini_api_key = input.gemini_api_key || null;
-  }
-  if (typeof input.sarvam_api_key === "string") {
-    patch.sarvam_api_key = input.sarvam_api_key || null;
-  }
   if (Object.keys(patch).length === 0) throw badRequest("nothing to update");
 
   if (typeof input.comp_item_id === "string" && input.comp_item_id) {

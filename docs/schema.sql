@@ -120,7 +120,15 @@ create table if not exists payments (
 );
 
 create index if not exists idx_menu_items_outlet on menu_items(outlet_id, category_id, sort_order);
+create index if not exists idx_tables_outlet on tables(outlet_id);
+create index if not exists idx_menu_categories_outlet on menu_categories(outlet_id);
+create index if not exists idx_menu_items_category on menu_items(category_id);
+create index if not exists idx_sessions_customer on sessions(customer_id);
 create index if not exists idx_orders_session on orders(session_id);
+create index if not exists idx_orders_outlet on orders(outlet_id);
+create index if not exists idx_order_items_order on order_items(order_id);
+create index if not exists idx_order_items_menu_item on order_items(menu_item_id);
+create index if not exists idx_payments_session on payments(session_id);
 create index if not exists idx_sessions_table on sessions(table_id) where status = 'active';
 create index if not exists idx_sessions_outlet on sessions(outlet_id, status, created_at desc);
 -- Row Level Security: the browser uses the API only. Keep RLS enabled and do
@@ -146,9 +154,9 @@ alter table outlets
   add column if not exists tables_enabled boolean not null default false,
   add column if not exists payment_timing text not null default 'post'
     check (payment_timing in ('pre','post')),
-  add column if not exists gemini_api_key text,
-  add column if not exists sarvam_api_key text,
   add column if not exists comp_item_id uuid references menu_items(id);
+
+create index if not exists idx_outlets_comp_item on outlets(comp_item_id);
 
 alter table menu_categories
   add column if not exists name_hi text,
@@ -187,6 +195,7 @@ create table if not exists waiter_calls (
 );
 alter table waiter_calls enable row level security;
 create index if not exists idx_waiter_calls_open on waiter_calls(table_id) where status = 'open';
+create index if not exists idx_waiter_calls_outlet on waiter_calls(outlet_id);
 
 create table if not exists staff (
   id            uuid primary key default gen_random_uuid(),
@@ -245,6 +254,8 @@ alter table sessions
   add column if not exists tip_to text,                 -- attendant frozen at bill time
   add column if not exists settled_at timestamptz;
 
+create index if not exists idx_sessions_merged_into on sessions(merged_into);
+
 alter table orders
   add column if not exists lang text; -- en | hi | te
 
@@ -289,6 +300,7 @@ create table if not exists audit_log (
 alter table audit_log enable row level security;
 create index if not exists idx_audit_log_outlet_created
   on audit_log(outlet_id, created_at desc);
+create index if not exists idx_audit_log_staff on audit_log(staff_id);
 
 -- No anon/authenticated grants: all application reads and writes go through
 -- the API's privileged database connection.

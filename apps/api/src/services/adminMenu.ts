@@ -24,8 +24,6 @@ export async function getAdminMenu(
           slug: outlet.slug,
           upi_vpa: outlet.upi_vpa,
           payment_timing: outlet.payment_timing,
-          gemini_api_key: outlet.gemini_api_key,
-          sarvam_api_key: outlet.sarvam_api_key,
           comp_item_id: outlet.comp_item_id,
           service_charge_pct: outlet.service_charge_pct,
           gstin: outlet.gstin,

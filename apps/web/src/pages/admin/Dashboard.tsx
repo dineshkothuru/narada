@@ -80,11 +80,11 @@ export default function AdminDashboardPage() {
         <div className="flex max-w-5xl flex-col gap-3">
           <header className="mb-1">
             <h1 className="font-display text-2xl font-semibold text-stone-900">Settings</h1>
-            <p className="text-xs text-stone-500">Payment, UPI, GST, service charge and AI keys</p>
+            <p className="text-xs text-stone-500">Payment, UPI, GST and service charge</p>
           </header>
 
           {outlet && (
-            <Collapsible title="Settings" hint="payment, UPI, GST, API keys">
+            <Collapsible title="Settings" hint="payment, UPI, GST, service charge">
               <FieldGroup className="grid gap-4 sm:grid-cols-3">
                 <Field className="sm:col-span-3" data-invalid={Boolean(slugError)}>
                   <FieldLabel htmlFor="outlet-slug">Outlet URL slug</FieldLabel>
@@ -203,40 +203,6 @@ export default function AdminDashboardPage() {
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                </Field>
-                <Field className="sm:col-span-2">
-                  <FieldLabel htmlFor="gemini-api-key">
-                    Gemini API key{" "}
-                    <span className="font-normal text-muted-foreground">(Narada&apos;s brain)</span>
-                  </FieldLabel>
-                  <Input
-                    id="gemini-api-key"
-                    type="password"
-                    defaultValue={outlet.gemini_api_key ?? ""}
-                    onBlur={(e) => {
-                      if (e.target.value !== (outlet.gemini_api_key ?? "")) {
-                        save({ gemini_api_key: e.target.value });
-                      }
-                    }}
-                    placeholder="AIza…  (falls back to server env if empty)"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="sarvam-api-key">
-                    Sarvam API key{" "}
-                    <span className="font-normal text-muted-foreground">(voice)</span>
-                  </FieldLabel>
-                  <Input
-                    id="sarvam-api-key"
-                    type="password"
-                    defaultValue={outlet.sarvam_api_key ?? ""}
-                    onBlur={(e) => {
-                      if (e.target.value !== (outlet.sarvam_api_key ?? "")) {
-                        save({ sarvam_api_key: e.target.value });
-                      }
-                    }}
-                    placeholder="falls back to server env if empty"
-                  />
                 </Field>
               </FieldGroup>
             </Collapsible>

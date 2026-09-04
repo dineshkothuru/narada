@@ -103,14 +103,6 @@ export function makeFakeRepos(data: FakeDb): Repos {
             })
           : null;
       },
-      findApiKeys: async (outletId: string) => {
-        const o = typedData.outlets.find(
-          (r) => (!outletId || r.id === outletId) && r.active !== false,
-        );
-        return o
-          ? clone({ gemini_api_key: o.gemini_api_key, sarvam_api_key: o.sarvam_api_key })
-          : null;
-      },
       findBillSeq: async (id: string) => {
         const o = byId(typedData.outlets, id);
         return o ? clone({ bill_seq: o.bill_seq }) : null;
@@ -1336,8 +1328,6 @@ export function seed(): {
     payment_timing: "post",
     active: true,
     created_at: nowIso(),
-    gemini_api_key: null,
-    sarvam_api_key: null,
     comp_item_id: null,
     service_charge_pct: 5,
     gstin: "36AAAAA0000A1Z5",

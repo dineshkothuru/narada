@@ -39,13 +39,12 @@ predates the hosting move and live socket — regenerate after Phase 5).
 - **STT/TTS**: Sarvam realtime STT (`wss://api.sarvam.ai/speech-to-text-realtime/ws`,
   `saaras:v3-realtime`, `language_code=auto`, server-side silence detection) for live voice;
   REST `speech-to-text` for WhatsApp voice notes; REST `text-to-speech` (`bulbul:v3`,
-  validated speaker list). Per-outlet key via `services/keys.ts`.
-- **LLM**: `createOpenRouter({ apiKey })(LLM_MODEL, { usage: { include: true } })` with
-  `generateText` (`streamText` in Phase 5). Model from env `LLM_MODEL` (default
-  `google/gemini-3.1-flash-lite`). Fallback: a 5-line wrapper retrying `LLM_FALLBACK_MODEL`
-  on 429/5xx.
-- **Keys**: BYOK stays. Add `openrouter_api_key` beside `gemini_api_key` in `outlets`, admin
-  settings, `services/keys.ts`; env fallback `OPENROUTER_API_KEY`. Gemini column removed in T6.2.
+  validated speaker list). Sarvam uses the server-side `SARVAM_API_KEY`.
+- **LLM**: `createOpenRouter({ apiKey })("google/gemini-3.1-flash-lite", { usage: { include: true },
+provider: { allow_fallbacks: false } })` with `generateText` (`streamText` in Phase 5).
+- **Keys**: OpenRouter and Sarvam use server environment keys (`OPENROUTER_API_KEY` and
+  `SARVAM_API_KEY`) for now. Owner-supplied per-outlet keys are deferred until their
+  security and administration model is defined.
 - **Caching**: OpenRouter passes Gemini implicit caching through. Prompt static-first,
   volatile-last; verify with `usage.inputTokenDetails.cacheReadTokens`.
 - **Layers**: controllers → one service → repositories. Zod schemas in `packages/shared`.
@@ -173,9 +172,9 @@ confirms `google/gemini-3.1-flash-lite` with `tools` in `supported_parameters`; 
 `generateText` with two tools and `toolChoice: "required"`; one `streamText` showing
 tool-call parts precede text; confirm `usage.inputTokenDetails.cacheReadTokens` is populated
 on a second call. Record here. Add
-`LLM_MODEL`, `OPENROUTER_API_KEY` to `env.ts` / `.env.example`; `openrouter_api_key` to
-`outlets` (`docs/migrate-openrouter-key.sql` + `schema.sql`), `keys.ts`, admin settings
-schema + page. _Acceptance_: doc updated; key plumbing typechecks; existing route unchanged.
+`OPENROUTER_API_KEY` and `SARVAM_API_KEY` to `env.ts` / `.env.example`; the model remains
+the fixed `google/gemini-3.1-flash-lite`. Per-outlet key storage is deferred.
+_Acceptance_: doc updated; key plumbing typechecks; existing route unchanged.
 
 **T0.2 Latency baseline.** 3 s Hindi WAV ×10 against `POST /api/voice`: STT, LLM, TTS,
 total p50/p90. Same clip through juice-bot's live path (final transcript → first audio) so
@@ -260,7 +259,7 @@ platform proxy.
 
 **T5.1 Live socket.** `@fastify/websocket` at `/api/voice/live?token=…` ← juice-bot
 `routes/live-voice.ts`: token = table/customer session token (Sarvam key stays server-side);
-binary frames = 16 kHz PCM → `openLiveVoiceSession` (per-outlet key); each `final` runs
+binary frames = 16 kHz PCM → `openLiveVoiceSession` (server-side Sarvam key); each `final` runs
 `runAgentTurn` serialized per socket; emits `transcript` (partial/final), `turn` (reply, cart,
 showItems, quickReplies, uiLanguage), `audio` (MP3 base64 per sentence). Phase 9 reuses it
 with a staff token. _Acceptance_: fake-`connect` test replays two finals → two turns in
@@ -281,8 +280,8 @@ loop with scripted LLM fixtures → assert final cart, staged id, UI payloads. 2
 (add/remove/qty, veg filter, "that one"), safety (unknown id, sold-out, injection in notes,
 invented price rejected), language (Hinglish, Telugu), confirm flow. _Acceptance_: green in CI.
 
-**T6.2 Delete dead code.** JSON-action parsing, `actions` type, Gemini path + key column,
-unused web paths. `knip` clean. Update `MIGRATION-PLAN.md` status.
+**T6.2 Delete dead code.** JSON-action parsing, `actions` type, obsolete provider-specific
+paths and key columns, unused web paths. `knip` clean. Update `MIGRATION-PLAN.md` status.
 
 ### Phase 7 — customer memory (4–6 h)
 
@@ -382,9 +381,9 @@ analysis tool on a Supabase read-only role.
 
 ## Risks
 
-- **Flash-Lite tool-calling on Hinglish/Telugu** — T0.1 spike + T6.1 cases; model swap is an
-  env change.
-- **OpenRouter hop** (~50–150 ms) — measured in T0.2; accepted for flexibility + fallback.
+- **Flash-Lite tool-calling on Hinglish/Telugu** — T0.1 spike + T6.1 cases; model changes
+  require an explicit implementation decision.
+- **OpenRouter hop** (~50–150 ms) — measured in T0.2; accepted for flexibility.
 - **In-process cart lock** wrong under >1 API instance — documented ceiling; pg advisory lock.
 - **Hosting move** — DNS/cert cutover and platform WebSocket proxy limits; verified in T5.0
   before the client swap.

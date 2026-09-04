@@ -54,14 +54,6 @@ export function makeOutletsRepo(db: Kysely<DB>) {
         .limit(1)
         .executeTakeFirst()) ?? null,
 
-    findApiKeys: async (outletId: string) =>
-      (await db
-        .selectFrom("outlets")
-        .select(["gemini_api_key", "sarvam_api_key"])
-        .where("id", "=", outletId)
-        .limit(1)
-        .executeTakeFirst()) ?? null,
-
     findBillSeq: async (id: string) =>
       (await db.selectFrom("outlets").select("bill_seq").where("id", "=", id).executeTakeFirst()) ??
       null,

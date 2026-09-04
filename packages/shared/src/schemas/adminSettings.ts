@@ -16,8 +16,6 @@ export const patchSettingsSchema = z.object({
   slug: outletSlugSchema.optional(),
   payment_timing: z.enum(["pre", "post"]).optional(),
   upi_vpa: z.string().optional(),
-  gemini_api_key: z.string().optional(),
-  sarvam_api_key: z.string().optional(),
   comp_item_id: z.string().nullable().optional(),
   service_charge_pct: z.number().optional(),
   gstin: z.string().optional(),

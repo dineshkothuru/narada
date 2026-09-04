@@ -33,8 +33,6 @@ export type AdminOutlet = {
   slug?: string | null;
   upi_vpa: string | null;
   payment_timing: "pre" | "post";
-  gemini_api_key: string | null;
-  sarvam_api_key: string | null;
   comp_item_id: string | null;
   service_charge_pct: number;
   gstin: string | null;

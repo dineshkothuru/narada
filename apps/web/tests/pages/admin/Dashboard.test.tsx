@@ -46,8 +46,6 @@ describe("AdminDashboardPage", () => {
               slug: "spice-garden",
               upi_vpa: null,
               payment_timing: "post",
-              gemini_api_key: null,
-              sarvam_api_key: null,
               comp_item_id: null,
               service_charge_pct: 0,
               gstin: null,
@@ -131,7 +129,6 @@ describe("AdminDashboardPage", () => {
         body: JSON.stringify({ upi_vpa: "spice@upi" }),
       }),
     );
-    expect(screen.getByLabelText(/Gemini API key/)).toHaveAttribute("type", "password");
-    expect(screen.getByLabelText(/Sarvam API key/)).toHaveAttribute("type", "password");
+    expect(screen.queryByLabelText(/Gemini API key|OpenRouter API key|Sarvam API key/)).toBeNull();
   });
 });

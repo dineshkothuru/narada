@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../../src/app.js";
 import { CUSTOMER_COOKIE, customerCapability } from "../../src/lib/customerCapability.js";
-import { clearApiKeyCache } from "../../src/services/keys.js";
 import { seed } from "../helpers/fakeRepos.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  clearApiKeyCache();
 });
 
 function stubFetch() {
@@ -19,16 +17,14 @@ function stubFetch() {
       if (url.includes("text-to-speech")) {
         return { ok: true, json: async () => ({ audios: ["base64audio"] }) };
       }
-      if (url.includes("generativelanguage")) {
+      if (url.includes("openrouter.ai")) {
         return {
           ok: true,
           json: async () => ({
-            candidates: [
+            choices: [
               {
-                content: {
-                  parts: [
-                    { text: JSON.stringify({ reply: "hi there", actions: [], uiLanguage: "en" }) },
-                  ],
+                message: {
+                  content: JSON.stringify({ reply: "hi there", actions: [], uiLanguage: "en" }),
                 },
               },
             ],
@@ -42,9 +38,7 @@ function stubFetch() {
 
 describe("POST /api/voice", () => {
   it("greets and returns spoken audio on a greet trigger", async () => {
-    const { data, repos } = seed();
-    data.outlets[0].sarvam_api_key = "sarvam-key";
-    data.outlets[0].gemini_api_key = "gemini-key";
+    const { repos } = seed();
     stubFetch();
     const app = buildApp({ repos });
     const res = await app.inject({
@@ -60,9 +54,7 @@ describe("POST /api/voice", () => {
   });
 
   it("resolves an immediate takeaway turn from outletSlug before a session cookie exists", async () => {
-    const { data, repos } = seed();
-    data.outlets[0].sarvam_api_key = "sarvam-key";
-    data.outlets[0].gemini_api_key = "gemini-key";
+    const { repos } = seed();
     stubFetch();
     const app = buildApp({ repos });
     const res = await app.inject({
@@ -94,8 +86,7 @@ describe("POST /api/voice", () => {
   });
 
   it("400s when audio, text and greet are all absent", async () => {
-    const { data, repos } = seed();
-    data.outlets[0].sarvam_api_key = "sarvam-key";
+    const { repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "POST",
@@ -106,8 +97,7 @@ describe("POST /api/voice", () => {
   });
 
   it("reaches the service audio limit for a 4MB base64 payload", async () => {
-    const { data, repos } = seed();
-    data.outlets[0].sarvam_api_key = "sarvam-key";
+    const { repos } = seed();
     const app = buildApp({ repos });
     const res = await app.inject({
       method: "POST",
@@ -116,18 +106,5 @@ describe("POST /api/voice", () => {
     });
     expect(res.statusCode).toBe(413);
     expect(res.json()).toEqual({ error: "audio too long" });
-  });
-
-  it("500s when no Sarvam key is configured anywhere", async () => {
-    const { repos } = seed();
-    const app = buildApp({ repos });
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/voice",
-      payload: { greet: true, cart: [], messages: [] },
-    });
-    // env.SARVAM_API_KEY may or may not be set in the ambient environment;
-    // either the well-known 500 or a successful turn is a valid outcome here.
-    expect([200, 500]).toContain(res.statusCode);
   });
 });

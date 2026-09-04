@@ -1,8 +1,8 @@
 import type { AnnaResponse, CartLine, ChatMessage } from "@narada/shared";
 import { badRequest, HttpError } from "../lib/http.js";
 import type { Repos } from "../repositories/index.js";
+import { env } from "../env.js";
 import { askAnna } from "./agent.js";
-import { getApiKeys } from "./keys.js";
 import { fetchMenu, fetchOutletMenu } from "./menu.js";
 
 // Port of web/app/api/voice/route.ts. Sarvam STT auto-detects the spoken
@@ -33,7 +33,7 @@ export type VoiceResult = {
   audio: string | null;
 };
 
-// spoken fallback when Gemini is unavailable — Sarvam TTS still voices it,
+// spoken fallback when OpenRouter is unavailable — Sarvam TTS still voices it,
 // so the mic keeps "working" even while the brain is rate-limited
 function fallbackReply(langName: string, greet: boolean): AnnaResponse {
   const texts: Record<string, { greet: string; busy: string; chips: string[] }> = {
@@ -80,17 +80,11 @@ export async function processVoiceTurn(
     throw new HttpError(413, "audio too long");
   }
 
-  const table = input.tableCode
-    ? outletId
-      ? await repos.tables.findByCodeForOutlet(input.tableCode, outletId)
-      : await repos.tables.findByCode(input.tableCode)
-    : null;
   const outlet = outletId ? await repos.outlets.findActiveById(outletId) : null;
-  const effectiveOutletId = outlet?.id ?? table?.outlet_id ?? "";
-  const { sarvam: sarvamKey } = await getApiKeys(repos, effectiveOutletId);
+  const sarvamKey = env.SARVAM_API_KEY;
   if (!sarvamKey) {
     // legacy responds 500 here (misconfiguration, not the caller's fault)
-    throw new HttpError(500, "Sarvam API key not configured (admin settings or env)");
+    throw new HttpError(500, "Sarvam API key not configured (env)");
   }
 
   const appLangCode =
@@ -151,7 +145,7 @@ export async function processVoiceTurn(
   ];
   let anna: AnnaResponse;
   try {
-    anna = await askAnna(repos, menu, allMessages, input.cart ?? [], langName, effectiveOutletId, {
+    anna = await askAnna(menu, allMessages, input.cart ?? [], langName, {
       voice: true,
     });
   } catch {

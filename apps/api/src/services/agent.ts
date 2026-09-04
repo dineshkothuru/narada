@@ -1,14 +1,10 @@
 import type { AnnaResponse, CartLine, ChatMessage, MenuPayload } from "@narada/shared";
-import type { Repos } from "../repositories/index.js";
-import { getApiKeys } from "./keys.js";
+import { env } from "../env.js";
 
-// Port of web/lib/anna.ts askAnna. Talks to Gemini with a menu-grounded
+// Port of web/lib/anna.ts askAnna. Talks to OpenRouter with a menu-grounded
 // system prompt; the model answers with strict JSON matching AnnaResponse.
-
-// flash-lite has its own free-tier quota bucket — fallback when flash is throttled
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const geminiUrl = (model: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL = "google/gemini-3.1-flash-lite";
 
 export function buildSystemPrompt(menu: MenuPayload, cart: CartLine[], language: string): string {
   const menuForPrompt = menu.categories.map((c) => ({
@@ -64,55 +60,39 @@ ${JSON.stringify(cart)}`;
 }
 
 export async function askAnna(
-  repos: Pick<Repos, "outlets">,
   menu: MenuPayload,
   messages: ChatMessage[],
   cart: CartLine[],
   language: string,
-  outletId: string,
   opts?: { voice?: boolean },
 ): Promise<AnnaResponse> {
-  const { gemini: apiKey } = await getApiKeys(repos, outletId);
-  if (!apiKey) throw new Error("Gemini API key not configured (admin settings or env)");
-
-  const contents = messages.slice(-12).map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.text }],
-  }));
+  const apiKey = env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OpenRouter API key not configured (env)");
 
   const voiceNote = opts?.voice
     ? '\nVOICE MODE: your reply is spoken aloud — keep it under 25 words (1-2 short sentences), warm and natural. Never list more than 2 dishes in speech; put the rest in "showItems".'
     : "";
   const body = JSON.stringify({
-    systemInstruction: {
-      parts: [{ text: buildSystemPrompt(menu, cart, language) + voiceNote }],
-    },
-    contents,
-    generationConfig: {
-      responseMimeType: "application/json",
-      temperature: 0.4,
-      maxOutputTokens: opts?.voice ? 400 : 1024,
-    },
+    model: MODEL,
+    messages: [
+      { role: "system", content: buildSystemPrompt(menu, cart, language) + voiceNote },
+      ...messages.slice(-12).map((m) => ({ role: m.role, content: m.text })),
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.4,
+    max_tokens: opts?.voice ? 400 : 1024,
+    provider: { allow_fallbacks: false, require_parameters: true },
   });
 
-  // voice turns are latency-critical: flash-lite answers noticeably faster
-  const models = opts?.voice ? [...GEMINI_MODELS].reverse() : GEMINI_MODELS;
-  let res: Response | null = null;
-  for (const model of models) {
-    res = await fetch(`${geminiUrl(model)}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
-    if (res.ok) break;
-    const detail = await res.text();
-    console.error(`Gemini ${model} error`, res.status, detail.slice(0, 300));
-    if (res.status !== 429 && res.status !== 503) break;
-  }
-  if (!res || !res.ok) throw new Error("gemini unavailable");
+  const res = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body,
+  });
+  if (!res.ok) throw new Error("openrouter unavailable");
 
   const data = await res.json();
-  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const raw = data?.choices?.[0]?.message?.content ?? "";
   let parsed: AnnaResponse;
   try {
     parsed = JSON.parse(raw);

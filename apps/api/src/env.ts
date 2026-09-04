@@ -2,7 +2,7 @@ const REQUIRED = ["DATABASE_URL", "SESSION_SECRET"] as const;
 // SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are optional and used only for
 // Supabase Storage (dish photos). Everything else reads Postgres directly.
 const OPTIONAL = [
-  "GEMINI_API_KEY",
+  "OPENROUTER_API_KEY",
   "SARVAM_API_KEY",
   "PORT",
   "WEB_DIST",
@@ -10,11 +10,6 @@ const OPTIONAL = [
   "TRUST_PROXY_HOPS",
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "ADMIN_BOOTSTRAP_USERNAME",
-  "ADMIN_BOOTSTRAP_FIRST_NAME",
-  "ADMIN_BOOTSTRAP_LAST_NAME",
-  "ADMIN_BOOTSTRAP_PASSWORD",
-  "ADMIN_BOOTSTRAP_OUTLET_SLUG",
 ] as const;
 
 type RequiredKey = (typeof REQUIRED)[number];

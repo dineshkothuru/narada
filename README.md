@@ -32,29 +32,27 @@ DATABASE_URL=postgres://postgres:<password>@db.<project-ref>.supabase.co:5432/po
 SESSION_SECRET=<long random string; openssl rand -hex 32>
 ```
 
-`GEMINI_API_KEY` and `SARVAM_API_KEY` are optional environment fallbacks; the
-admin settings screen can store per-outlet keys. `SUPABASE_URL` and
+`OPENROUTER_API_KEY` and `SARVAM_API_KEY` are server environment keys used by
+the voice agent; per-outlet owner-supplied keys are deferred. `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY` are needed only for dish-photo uploads.
-
-For a one-time first-admin bootstrap, set `ADMIN_BOOTSTRAP_USERNAME`,
-`ADMIN_BOOTSTRAP_FIRST_NAME`, and `ADMIN_BOOTSTRAP_PASSWORD`. The username must
-be 3–32 lowercase ASCII letters, numbers, dots, underscores, or hyphens; the
-password must be 15–128 characters. `ADMIN_BOOTSTRAP_LAST_NAME` is optional.
-Set `ADMIN_BOOTSTRAP_OUTLET_SLUG` when more than one active outlet exists.
-Bootstrap runs only when the target outlet has no usable active admin; remove
-the bootstrap values after the account is available.
 
 ### Database
 
-For a fresh database, run these files in this order in the SQL editor:
+For a fresh Supabase database, apply every file in
+[`supabase/migrations/`](supabase/migrations/) in timestamp order through
+Supabase MCP. The baseline migration creates the schema and safely seeds the
+`Spice Garden` outlet, table QR codes, menu, and translations. The
+`20260904035136_seed_demo_accounts.sql` migration contains the staff and
+customer demo accounts.
 
-1. [`docs/schema.sql`](docs/schema.sql)
-2. [`docs/seed.sql`](docs/seed.sql)
-3. [`docs/seed-i18n.sql`](docs/seed-i18n.sql)
+Every future database change must first get a new migration file, created with:
 
-The demo seed creates the `Spice Garden` outlet, four table QR codes, and local
-staff accounts. See [`docs/DEMO-CREDENTIALS.md`](docs/DEMO-CREDENTIALS.md) for
-the local demo URLs and seeded credentials.
+```bash
+pnpm dlx supabase migration new <name>
+```
+
+Commit the generated `supabase/migrations/<timestamp>_<name>.sql`, then apply it
+through Supabase MCP.
 
 For a database created by the legacy `web/` app, do not rerun the fresh seed.
 Apply the migrations in this order:
@@ -73,9 +71,8 @@ the outlet naming, so they do not need the migration files. The password-auth
 migration preserves existing staff and outlet rows, copies a legacy display
 name into `first_name`, and removes the legacy PIN columns. Legacy rows without
 a username or password cannot sign in until an admin completes their setup in
-Admin > Users. If no active admin can sign in, use the one-time bootstrap
-variables above, start the API, remove those variables, then enroll the
-remaining staff accounts.
+Admin > Users. The existing SQL demo-account migration remains authoritative
+for local/demo accounts.
 
 ## Run
 
