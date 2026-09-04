@@ -1,0 +1,11 @@
+{
+  "buildCommand": "pnpm run build",
+  "env": {
+    "WEB_DIST": "apps/web/dist"
+  },
+  "functions": {
+    "server.ts": {
+      "includeFiles": "apps/web/dist/**"
+    }
+  }
+}

@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      fastify:
+        specifier: ^5
+        version: 5.12.1
     devDependencies:
       '@types/node':
         specifier: ^24

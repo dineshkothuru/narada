@@ -1,8 +1,10 @@
 {
   "name": "narada",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@11.18.0",
   "scripts": {
+    "build": "pnpm --filter @narada/web build",
     "dev": "pnpm run dev:api & pnpm run dev:web & wait",
     "dev:api": "pnpm --filter @narada/api dev",
     "dev:web": "pnpm --filter @narada/web dev",
@@ -13,6 +15,9 @@
     "format:check": "prettier --check .",
     "knip": "knip",
     "prepare": "simple-git-hooks"
+  },
+  "dependencies": {
+    "fastify": "^5"
   },
   "devDependencies": {
     "vitest": "4.1.11",
