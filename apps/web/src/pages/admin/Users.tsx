@@ -4,6 +4,12 @@ import AdminShell from "@/components/AdminShell";
 import { ask } from "@/components/Dialogs";
 import Collapsible from "@/components/Collapsible";
 import TipsBoard from "@/components/TipsBoard";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Switch } from "@/components/ui/switch";
 import { useAddStaff, useAdminStaff, useDeleteStaff, usePatchStaff } from "@/api/hooks";
 import {
   normalizeUsername,
@@ -14,9 +20,6 @@ import {
   codePointLength,
   limitCodePoints,
 } from "@/lib/identity";
-
-const inputCls =
-  "mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-rose-400";
 
 export default function AdminUsersPage() {
   const { data } = useAdminStaff();
@@ -101,31 +104,27 @@ export default function AdminUsersPage() {
             badge={String(staff.length)}
             hint="usernames, roles and setup"
             actions={
-              <button
-                onClick={() => setAddingStaff((v) => !v)}
-                className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
-              >
+              <Button variant="secondary" size="sm" onClick={() => setAddingStaff((v) => !v)}>
                 + Add staff
-              </button>
+              </Button>
             }
           >
             {addingStaff && (
-              <form
-                onSubmit={(e) => submit(e)}
-                className="mt-3 grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-3"
-              >
-                <IdentityFields />
-                <select name="role" className={inputCls} defaultValue="waiter">
-                  <option value="waiter">Waiter</option>
-                  <option value="reception">Reception / host</option>
-                  <option value="cashier">Counter / cashier</option>
-                  <option value="kitchen">Kitchen</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <PasswordField required />
-                <button className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white sm:col-span-3">
-                  Add
-                </button>
+              <form onSubmit={(e) => submit(e)} className="mt-3">
+                <FieldGroup className="grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-3">
+                  <IdentityFields />
+                  <NativeSelect name="role" aria-label="Role" defaultValue="waiter">
+                    <NativeSelectOption value="waiter">Waiter</NativeSelectOption>
+                    <NativeSelectOption value="reception">Reception / host</NativeSelectOption>
+                    <NativeSelectOption value="cashier">Counter / cashier</NativeSelectOption>
+                    <NativeSelectOption value="kitchen">Kitchen</NativeSelectOption>
+                    <NativeSelectOption value="admin">Admin</NativeSelectOption>
+                  </NativeSelect>
+                  <PasswordField required />
+                  <Button type="submit" className="sm:col-span-3">
+                    Add
+                  </Button>
+                </FieldGroup>
               </form>
             )}
             <div className="mt-2 divide-y divide-stone-100">
@@ -153,27 +152,30 @@ export default function AdminUsersPage() {
                       <span className="text-[10px] font-bold text-stone-500">
                         {setupRequired ? "Setup needed" : "Ready"}
                       </span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${s.role === "admin" ? "bg-rose-100 text-rose-700" : "bg-stone-100 text-stone-600"}`}
-                      >
+                      <Badge variant={s.role === "admin" ? "destructive" : "secondary"}>
                         {s.role}
-                      </span>
-                      <button
-                        onClick={() => patchStaff.mutate({ staffId: s.id, active: !s.active })}
-                        className={`relative h-6 w-11 shrink-0 rounded-full transition ${s.active ? "bg-green-500" : "bg-stone-300"}`}
-                        aria-label={s.active ? "disable login" : "enable login"}
-                      >
-                        <span
-                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${s.active ? "left-[22px]" : "left-0.5"}`}
+                      </Badge>
+                      <Field orientation="horizontal" className="w-auto items-center gap-2">
+                        <Switch
+                          id={`active-${s.id}`}
+                          checked={s.active}
+                          onCheckedChange={(active) => patchStaff.mutate({ staffId: s.id, active })}
+                          aria-label={s.active ? "disable login" : "enable login"}
                         />
-                      </button>
-                      <button
+                        <FieldLabel htmlFor={`active-${s.id}`} className="sr-only">
+                          Account active
+                        </FieldLabel>
+                      </Field>
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setEditingId(editingId === s.id ? null : s.id)}
-                        className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600"
                       >
                         {setupRequired ? "Complete setup" : "Edit"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={async () => {
                           const yes = await ask.confirm({
                             title: `Remove ${displayName}?`,
@@ -185,22 +187,20 @@ export default function AdminUsersPage() {
                           await deleteStaff.mutateAsync(s.id);
                           ask.toast("Staff removed");
                         }}
-                        className="grid h-7 w-7 place-items-center rounded-full text-xs text-stone-400 hover:bg-rose-50 hover:text-rose-600"
                         aria-label={`Remove ${displayName}`}
                       >
                         🗑
-                      </button>
+                      </Button>
                     </div>
                     {editingId === s.id && (
-                      <form
-                        onSubmit={(e) => submit(e, s.id, setupRequired)}
-                        className="mt-2 grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-3"
-                      >
-                        <IdentityFields staff={s} />
-                        <PasswordField required={setupRequired} />
-                        <button className="rounded-xl bg-stone-900 px-4 py-2 text-xs font-bold text-white">
-                          {setupRequired ? "Complete setup" : "Save"}
-                        </button>
+                      <form onSubmit={(e) => submit(e, s.id, setupRequired)} className="mt-2">
+                        <FieldGroup className="grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-3">
+                          <IdentityFields staff={s} />
+                          <PasswordField required={setupRequired} />
+                          <Button type="submit" variant="secondary">
+                            {setupRequired ? "Complete setup" : "Save"}
+                          </Button>
+                        </FieldGroup>
                       </form>
                     )}
                   </div>
@@ -221,7 +221,7 @@ function IdentityFields({
 }) {
   return (
     <>
-      <input
+      <Input
         name="username"
         required
         minLength={USERNAME_MIN_LENGTH}
@@ -229,26 +229,26 @@ function IdentityFields({
         pattern={USERNAME_PATTERN.source}
         defaultValue={staff?.username ?? ""}
         placeholder="username"
-        className={inputCls}
+        aria-label="Username"
         onChange={(e) => {
           e.currentTarget.value = normalizeUsername(e.currentTarget.value);
         }}
       />
-      <input
+      <Input
         name="firstName"
         required
         defaultValue={staff?.firstName ?? ""}
         placeholder="First name"
-        className={inputCls}
+        aria-label="First name"
         onChange={(e) => {
           e.currentTarget.value = limitCodePoints(e.currentTarget.value, 60);
         }}
       />
-      <input
+      <Input
         name="lastName"
         defaultValue={staff?.lastName ?? ""}
         placeholder="Last name (optional)"
-        className={inputCls}
+        aria-label="Last name"
         onChange={(e) => {
           e.currentTarget.value = limitCodePoints(e.currentTarget.value, 60);
         }}
@@ -259,19 +259,19 @@ function IdentityFields({
 
 function PasswordField({ required = false }: { required?: boolean }) {
   return (
-    <input
+    <Input
       name="password"
       type="password"
       required={required}
       minLength={PASSWORD_MIN_LENGTH}
       autoComplete="new-password"
       placeholder={required ? "Password (15–128 characters)" : "New password (optional)"}
+      aria-label={required ? "Password" : "New password"}
       onChange={(e) => {
         if ([...e.currentTarget.value].length > PASSWORD_MAX_LENGTH) {
           e.currentTarget.value = [...e.currentTarget.value].slice(0, PASSWORD_MAX_LENGTH).join("");
         }
       }}
-      className={inputCls}
     />
   );
 }

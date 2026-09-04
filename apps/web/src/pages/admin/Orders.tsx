@@ -3,20 +3,16 @@ import AdminShell from "@/components/AdminShell";
 import { inr, minutesAgo } from "@narada/shared";
 import { useAdminOrders, type AdminOrder } from "@/api/hooks";
 import { Metric, Panel } from "@/components/Panel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const RANGES = [
   { key: "today", label: "Today" },
   { key: "week", label: "Last 7 days" },
   { key: "all", label: "All time" },
 ] as const;
-
-const STATUS_STYLE: Record<string, string> = {
-  placed: "bg-rose-100 text-rose-700",
-  preparing: "bg-sky-100 text-sky-700",
-  ready: "bg-amber-100 text-amber-700",
-  served: "bg-green-100 text-green-700",
-  cancelled: "bg-stone-200 text-stone-500",
-};
 
 export default function AdminOrdersPage() {
   const [range, setRange] = useState<"today" | "week" | "all">("today");
@@ -43,19 +39,18 @@ export default function AdminOrdersPage() {
         </header>
 
         <div className="mb-4 flex max-w-5xl gap-2">
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              onClick={() => setRange(r.key)}
-              className={`rounded-full px-4 py-2 text-xs font-bold transition ${
-                range === r.key
-                  ? "bg-slate-900 text-white"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
+          <ToggleGroup
+            type="single"
+            value={range}
+            onValueChange={(value) => value && setRange(value as typeof range)}
+            variant="outline"
+          >
+            {RANGES.map((r) => (
+              <ToggleGroupItem key={r.key} value={r.key}>
+                {r.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </div>
 
         {stats && (
@@ -90,16 +85,19 @@ export default function AdminOrdersPage() {
 
         <section className="panel max-w-5xl overflow-hidden">
           {orders.length === 0 && (
-            <p className="py-10 text-center text-sm text-slate-400">No orders in this range</p>
+            <Empty>
+              <EmptyDescription>No orders in this range</EmptyDescription>
+            </Empty>
           )}
           {orders.map((o) => {
             const paid = paidFor(o);
             const isOpen = open === o.id;
             return (
               <div key={o.id} className="border-b border-slate-100 last:border-0">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => setOpen(isOpen ? null : o.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
+                  className="h-auto w-full justify-start rounded-none px-4 py-3 text-left"
                 >
                   <span className="w-20 shrink-0 text-sm font-bold text-slate-900">
                     {o.session?.table?.label ?? "Takeaway"}
@@ -113,13 +111,19 @@ export default function AdminOrdersPage() {
                       {o.placed_by}
                     </span>
                   )}
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                      STATUS_STYLE[o.status] ?? "bg-stone-100 text-stone-600"
-                    }`}
+                  <Badge
+                    variant={
+                      o.status === "cancelled"
+                        ? "secondary"
+                        : o.status === "ready"
+                          ? "outline"
+                          : o.status === "served"
+                            ? "default"
+                            : "destructive"
+                    }
                   >
                     {o.status}
-                  </span>
+                  </Badge>
                   <span className="w-20 shrink-0 text-right text-sm font-bold text-stone-800">
                     {Number(o.total_inr) === 0 ? "🎁 free" : inr(o.total_inr)}
                   </span>
@@ -133,7 +137,7 @@ export default function AdminOrdersPage() {
                   <span className="hidden w-20 shrink-0 text-right text-[11px] text-stone-400 sm:block">
                     {minutesAgo(o.created_at)}
                   </span>
-                </button>
+                </Button>
                 {isOpen && (
                   <div className="bg-stone-50 px-4 py-3 text-xs">
                     <div className="grid gap-1 sm:grid-cols-2">

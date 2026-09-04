@@ -2,6 +2,13 @@ import { useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import Collapsible from "@/components/Collapsible";
 import { ask } from "@/components/Dialogs";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   useAdminMenu,
   useAddCategory,
@@ -21,9 +28,6 @@ const INTENSITY: Record<"food" | "drink", { label: string; options: string[] }> 
   food: { label: "Spice", options: ["No spice", "Mild 🌶️", "Medium 🌶️🌶️", "Hot 🌶️🌶️🌶️"] },
   drink: { label: "Sweetness", options: ["No sugar", "Less sweet", "Regular", "Extra sweet"] },
 };
-
-const inputCls =
-  "mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-rose-400";
 
 export default function AdminMenuPage() {
   const { data } = useAdminMenu();
@@ -86,19 +90,21 @@ export default function AdminMenuPage() {
                   badge={`${list.length} dishes`}
                   actions={
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setAddingTo(addingTo === cat.id ? null : cat.id)}
-                        className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
                       >
                         + Add dish
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => removeSection(cat)}
                         title="Remove section"
-                        className="grid h-6 w-6 place-items-center rounded-full text-xs text-stone-400 hover:bg-stone-100"
                       >
                         ✕
-                      </button>
+                      </Button>
                     </div>
                   }
                 >
@@ -119,46 +125,49 @@ export default function AdminMenuPage() {
                         ask.toast(res.ok ? "Dish added" : "Failed");
                         setAddingTo(null);
                       }}
-                      className="mt-3 grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-6"
+                      className="mt-3"
                     >
-                      <input
-                        name="name"
-                        required
-                        placeholder="Dish name"
-                        className={`${inputCls} sm:col-span-2`}
-                      />
-                      <input
-                        name="price"
-                        required
-                        type="number"
-                        min="1"
-                        placeholder="₹"
-                        className={inputCls}
-                      />
-                      <input name="emoji" placeholder="Emoji" className={inputCls} />
-                      <select
-                        name="spice"
-                        aria-label={INTENSITY[cat.kind ?? "food"].label}
-                        className={inputCls}
-                      >
-                        {INTENSITY[cat.kind ?? "food"].options.map((o, i) => (
-                          <option key={o} value={i}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
-                      <label className="flex items-center gap-2 pt-2 text-xs font-semibold text-stone-600">
-                        <input name="veg" type="checkbox" defaultChecked /> Veg
-                      </label>
-                      <textarea
-                        name="description"
-                        placeholder="Description / ingredients (Narada uses this to answer questions)"
-                        className={`${inputCls} sm:col-span-5`}
-                        rows={2}
-                      />
-                      <button className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white">
-                        Add
-                      </button>
+                      <FieldGroup className="grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-6">
+                        <Input
+                          name="name"
+                          required
+                          aria-label="Dish name"
+                          placeholder="Dish name"
+                          className="sm:col-span-2"
+                        />
+                        <Input
+                          name="price"
+                          required
+                          type="number"
+                          min="1"
+                          placeholder="₹"
+                          aria-label="Price"
+                        />
+                        <Input name="emoji" placeholder="Emoji" aria-label="Dish emoji" />
+                        <NativeSelect name="spice" aria-label={INTENSITY[cat.kind ?? "food"].label}>
+                          {INTENSITY[cat.kind ?? "food"].options.map((o, i) => (
+                            <NativeSelectOption key={o} value={i}>
+                              {o}
+                            </NativeSelectOption>
+                          ))}
+                        </NativeSelect>
+                        <Field orientation="horizontal" className="items-center gap-2 pt-2">
+                          <Checkbox id={`add-veg-${cat.id}`} name="veg" defaultChecked />
+                          <FieldLabel htmlFor={`add-veg-${cat.id}`} className="text-xs">
+                            Veg
+                          </FieldLabel>
+                        </Field>
+                        <Textarea
+                          name="description"
+                          aria-label="Description"
+                          placeholder="Description / ingredients (Narada uses this to answer questions)"
+                          className="sm:col-span-5"
+                          rows={2}
+                        />
+                        <Button type="submit" className="sm:col-span-1">
+                          Add
+                        </Button>
+                      </FieldGroup>
                     </form>
                   )}
 
@@ -195,41 +204,40 @@ export default function AdminMenuPage() {
                 ask.toast(res.ok ? "Section added" : "Failed");
                 setAddingSection(false);
               }}
-              className="card-float flex gap-2 rounded-3xl bg-white p-4 ring-1 ring-stone-200/80"
+              className="card-float"
             >
-              <input name="emoji" placeholder="🍰" className={`${inputCls} !mt-0 w-16`} />
-              <input
-                name="name"
-                required
-                placeholder="Section name (e.g. Desserts)"
-                className={`${inputCls} !mt-0 flex-1`}
-              />
-              <select
-                name="kind"
-                title="Which scale this section uses"
-                className={`${inputCls} !mt-0 w-28`}
-              >
-                <option value="food">Food</option>
-                <option value="drink">Drinks</option>
-              </select>
-              <button className="rounded-xl bg-rose-600 px-5 text-xs font-bold text-white">
-                Add
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddingSection(false)}
-                className="rounded-xl bg-stone-100 px-4 text-xs font-bold text-stone-500"
-              >
-                Cancel
-              </button>
+              <FieldGroup className="flex gap-2 rounded-3xl bg-white p-4 ring-1 ring-stone-200/80">
+                <Input name="emoji" placeholder="🍰" aria-label="Section emoji" className="w-16" />
+                <Input
+                  name="name"
+                  required
+                  aria-label="Section name"
+                  placeholder="Section name (e.g. Desserts)"
+                  className="flex-1"
+                />
+                <NativeSelect
+                  name="kind"
+                  aria-label="Section type"
+                  title="Which scale this section uses"
+                  className="w-28"
+                >
+                  <NativeSelectOption value="food">Food</NativeSelectOption>
+                  <NativeSelectOption value="drink">Drinks</NativeSelectOption>
+                </NativeSelect>
+                <Button type="submit">Add</Button>
+                <Button type="button" variant="secondary" onClick={() => setAddingSection(false)}>
+                  Cancel
+                </Button>
+              </FieldGroup>
             </form>
           ) : (
-            <button
+            <Button
+              variant="outline"
               onClick={() => setAddingSection(true)}
-              className="rounded-3xl border-2 border-dashed border-stone-300 bg-white/50 py-4 text-sm font-bold text-stone-500 transition hover:border-rose-300 hover:text-rose-600"
+              className="w-full rounded-3xl border-2 border-dashed py-4"
             >
               + Add section
-            </button>
+            </Button>
           )}
 
           <p className="pb-6 text-center text-[11px] text-stone-400">
@@ -285,7 +293,9 @@ function MenuItemRow({
         >
           {item.name}
         </span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() =>
             onPatch({
               tags: item.tags.includes("chef-special")
@@ -294,13 +304,15 @@ function MenuItemRow({
             })
           }
           title="Chef's Special — shows in the top carousel"
-          className={`hidden text-base transition active:scale-90 sm:inline ${
+          className={`hidden sm:inline ${
             item.tags.includes("chef-special") ? "" : "opacity-25 grayscale"
           }`}
         >
           ✨
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() =>
             onPatch({
               tags: item.tags.includes("bestseller")
@@ -309,105 +321,99 @@ function MenuItemRow({
             })
           }
           title="Bestseller — badge + carousel"
-          className={`hidden text-base transition active:scale-90 sm:inline ${
+          className={`hidden sm:inline ${
             item.tags.includes("bestseller") ? "" : "opacity-25 grayscale"
           }`}
         >
           ⭐
-        </button>
+        </Button>
         <span className="hidden text-[10px] font-bold text-stone-400 sm:inline">
           GST {item.gst_pct ?? 5}%
         </span>
         <span className="flex items-center gap-1 text-sm font-semibold text-stone-600">
           ₹
-          <input
+          <Input
             type="number"
             defaultValue={item.price_inr}
             onBlur={(e) => {
               const v = Number(e.target.value);
               if (v > 0 && v !== item.price_inr) onPatch({ price_inr: v });
             }}
-            className="w-14 rounded-lg bg-stone-100 px-1.5 py-1 text-right text-sm font-semibold outline-none focus:ring-2 focus:ring-rose-400 sm:w-16 sm:px-2"
+            className="w-14 text-right sm:w-16"
           />
         </span>
-        <button
-          onClick={() => onPatch({ is_available: !item.is_available })}
-          aria-label={item.is_available ? "mark sold out" : "mark available"}
-          className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-            item.is_available ? "bg-green-500" : "bg-stone-300"
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-              item.is_available ? "left-[22px]" : "left-0.5"
-            }`}
+        <Field orientation="horizontal" className="w-auto items-center gap-2">
+          <Switch
+            id={`available-${item.id}`}
+            size="sm"
+            checked={item.is_available}
+            onCheckedChange={(available) => onPatch({ is_available: available })}
+            aria-label={item.is_available ? "mark sold out" : "mark available"}
           />
-        </button>
-        <button
-          onClick={onToggleEdit}
-          title="Edit details"
-          className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-stone-100"
-        >
+          <FieldLabel htmlFor={`available-${item.id}`} className="sr-only">
+            Menu availability
+          </FieldLabel>
+        </Field>
+        <Button variant="ghost" size="icon-sm" onClick={onToggleEdit} title="Edit details">
           ✎
-        </button>
-        <button
-          onClick={onDelete}
-          title="Remove dish"
-          className="grid h-7 w-7 place-items-center rounded-full text-xs text-stone-400 hover:bg-rose-50 hover:text-rose-600"
-        >
+        </Button>
+        <Button variant="ghost" size="icon-sm" onClick={onDelete} title="Remove dish">
           🗑
-        </button>
+        </Button>
       </div>
 
       {editing && (
         <div className="mt-2 grid gap-2 rounded-2xl bg-stone-50 p-3 sm:grid-cols-3">
-          <textarea
+          <Textarea
             defaultValue={item.description ?? ""}
             placeholder="Description / ingredients"
+            aria-label="Description"
             rows={2}
             onBlur={(e) => {
               if (e.target.value !== (item.description ?? "")) {
                 onPatch({ description: e.target.value });
               }
             }}
-            className={`${inputCls} sm:col-span-3`}
+            className="sm:col-span-3"
           />
-          <label className="text-xs font-semibold text-stone-600">
-            {INTENSITY[kind].label}
-            <select
+          <Field>
+            <FieldLabel>{INTENSITY[kind].label}</FieldLabel>
+            <NativeSelect
+              aria-label={INTENSITY[kind].label}
               defaultValue={String(item.spice_level)}
               onChange={(e) => onPatch({ spice_level: Number(e.target.value) })}
-              className={inputCls}
             >
               {INTENSITY[kind].options.map((o, i) => (
-                <option key={o} value={i}>
+                <NativeSelectOption key={o} value={i}>
                   {o}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 pt-2 text-xs font-semibold text-stone-600">
-            <input
-              type="checkbox"
+            </NativeSelect>
+          </Field>
+          <Field orientation="horizontal" className="items-center gap-2 pt-2">
+            <Checkbox
+              id={`veg-${item.id}`}
               defaultChecked={item.is_veg}
-              onChange={(e) => onPatch({ is_veg: e.target.checked })}
+              onCheckedChange={(checked) => onPatch({ is_veg: checked === true })}
             />
-            Veg
-          </label>
-          <label className="text-xs font-semibold text-stone-600">
-            GST % <span className="font-normal text-stone-400">· 5% standard</span>
-            <select
+            <FieldLabel htmlFor={`veg-${item.id}`}>Veg</FieldLabel>
+          </Field>
+          <Field>
+            <FieldLabel>
+              GST % <span className="font-normal text-stone-400">· 5% standard</span>
+            </FieldLabel>
+            <NativeSelect
+              aria-label="GST percentage"
               defaultValue={String(item.gst_pct ?? 5)}
               onChange={(e) => onPatch({ gst_pct: Number(e.target.value) })}
-              className={inputCls}
             >
-              <option value="0">0%</option>
-              <option value="5">5%</option>
-              <option value="12">12%</option>
-              <option value="18">18%</option>
-              <option value="28">28%</option>
-            </select>
-          </label>
+              <NativeSelectOption value="0">0%</NativeSelectOption>
+              <NativeSelectOption value="5">5%</NativeSelectOption>
+              <NativeSelectOption value="12">12%</NativeSelectOption>
+              <NativeSelectOption value="18">18%</NativeSelectOption>
+              <NativeSelectOption value="28">28%</NativeSelectOption>
+            </NativeSelect>
+          </Field>
           <div className="rounded-2xl bg-white p-3 ring-1 ring-stone-200 sm:col-span-3">
             <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">Photo</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -423,7 +429,17 @@ function MenuItemRow({
                 </div>
               )}
               <div className="flex flex-col gap-1.5">
-                <label className="cursor-pointer rounded-xl bg-stone-900 px-4 py-2 text-center text-xs font-bold text-white">
+                <label
+                  role="button"
+                  tabIndex={0}
+                  className="inline-flex h-8 cursor-pointer items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.currentTarget.querySelector<HTMLInputElement>("input")?.click();
+                    }
+                  }}
+                >
                   {item.image_url ? "Replace photo" : "Upload photo"}
                   <input
                     type="file"
@@ -437,30 +453,28 @@ function MenuItemRow({
                   />
                 </label>
                 {item.image_url && (
-                  <button
-                    onClick={onClearImage}
-                    className="rounded-xl bg-stone-100 px-4 py-2 text-xs font-bold text-stone-500"
-                  >
+                  <Button variant="secondary" onClick={onClearImage}>
                     Remove
-                  </button>
+                  </Button>
                 )}
                 <p className="max-w-48 text-[10px] leading-snug text-stone-400">
                   JPG, PNG or WebP under 4MB. Without one the customer menu falls back to the emoji.
                 </p>
               </div>
             </div>
-            <input
+            <Input
               defaultValue={item.image_url ?? ""}
+              aria-label="Image URL"
               placeholder="…or paste an image URL"
               onBlur={(e) => {
                 const v = e.target.value.trim();
                 if (v !== (item.image_url ?? "")) onPatch({ image_url: v || null });
               }}
-              className={inputCls}
             />
           </div>
-          <input
+          <Input
             defaultValue={item.allergens.join(", ")}
+            aria-label="Allergens"
             placeholder="Allergens (comma separated: dairy, nuts…)"
             onBlur={(e) => {
               const v = e.target.value
@@ -469,7 +483,6 @@ function MenuItemRow({
                 .filter(Boolean);
               if (v.join(",") !== item.allergens.join(",")) onPatch({ allergens: v });
             }}
-            className={inputCls}
           />
         </div>
       )}

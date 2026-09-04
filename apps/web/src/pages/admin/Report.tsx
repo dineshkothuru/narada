@@ -3,6 +3,11 @@ import AdminShell from "@/components/AdminShell";
 import { Metric, Panel } from "@/components/Panel";
 import { useAdminReport } from "@/api/hooks";
 import { inr } from "@narada/shared";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const today = () => new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
 
@@ -22,28 +27,28 @@ export default function AdminReportPage() {
             </p>
           </div>
           <div className="flex items-end gap-2 print:hidden">
-            <label className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
-              Business day
-              <input
+            <Field className="gap-1">
+              <FieldLabel className="text-[10px] font-bold tracking-widest uppercase">
+                Business day
+              </FieldLabel>
+              <Input
                 type="date"
                 max={latestDay}
                 value={day}
                 onChange={(event) => setDay(event.target.value)}
-                className="mt-1 block rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200"
               />
-            </label>
-            <button
-              onClick={() => window.print()}
-              className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-200"
-            >
+            </Field>
+            <Button variant="outline" onClick={() => window.print()}>
               Print
-            </button>
+            </Button>
           </div>
         </header>
         {isError && (
-          <p className="mb-4 text-sm font-semibold text-rose-600">Could not load this report.</p>
+          <Alert variant="destructive" className="mb-4 max-w-5xl">
+            <AlertDescription>Could not load this report.</AlertDescription>
+          </Alert>
         )}
-        {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
+        {isLoading && <Skeleton className="h-16 max-w-5xl" />}
         {data && (
           <>
             <section className="mb-5 grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">

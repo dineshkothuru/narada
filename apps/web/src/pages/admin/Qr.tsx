@@ -3,6 +3,8 @@ import QRCode from "qrcode";
 import AdminShell from "@/components/AdminShell";
 import { tableQrUrl } from "@/lib/qr";
 import { useAdminTables } from "@/api/hooks";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function AdminQrPage() {
   const { data } = useAdminTables();
@@ -43,19 +45,18 @@ export default function AdminQrPage() {
             <p className="text-xs text-stone-500">Print, cut, and place one on each table.</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => window.print()}
-              className="rounded-full bg-rose-600 px-5 py-2 text-xs font-bold text-white transition active:scale-95"
-            >
+            <Button variant="default" onClick={() => window.print()}>
               🖨️ Print
-            </button>
+            </Button>
           </div>
         </header>
 
         {!outletSlug && tables.length > 0 ? (
-          <p className="mx-auto max-w-3xl rounded-2xl bg-amber-50 p-4 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-200">
-            Table QR codes are unavailable until this outlet has a canonical URL.
-          </p>
+          <Alert className="mx-auto max-w-3xl text-center">
+            <AlertDescription>
+              Table QR codes are unavailable until this outlet has a canonical URL.
+            </AlertDescription>
+          </Alert>
         ) : (
           <div className="mx-auto grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-3 print:grid-cols-2 print:gap-6">
             {tables.map((t) => (

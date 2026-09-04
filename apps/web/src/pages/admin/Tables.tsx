@@ -3,6 +3,10 @@ import { Link } from "react-router";
 import AdminShell from "@/components/AdminShell";
 import { ask } from "@/components/Dialogs";
 import Collapsible from "@/components/Collapsible";
+import { Button } from "@/components/ui/button";
+import { FieldGroup } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   useAddTables,
   useAdminTables,
@@ -10,9 +14,6 @@ import {
   usePatchTable,
   type AdminTable,
 } from "@/api/hooks";
-
-const inputCls =
-  "mt-1 w-full rounded-xl bg-stone-100 px-3 py-2.5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-rose-400";
 
 export default function AdminTablesPage() {
   const { data } = useAdminTables();
@@ -39,18 +40,12 @@ export default function AdminTablesPage() {
             hint="capacity, QR links, per-table theme"
             actions={
               <div className="flex items-center gap-2">
-                <Link
-                  to="/admin/qr"
-                  className="rounded-full bg-white px-3 py-1 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
-                >
-                  QR codes
-                </Link>
-                <button
-                  onClick={() => setAddingTable((v) => !v)}
-                  className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600 ring-1 ring-rose-200"
-                >
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/admin/qr">QR codes</Link>
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setAddingTable((v) => !v)}>
                   + Add tables
-                </button>
+                </Button>
               </div>
             }
           >
@@ -75,32 +70,36 @@ export default function AdminTablesPage() {
                   }}
                   className="rounded-xl bg-white p-3 ring-1 ring-stone-200"
                 >
-                  <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                    Add several
-                  </p>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      name="count"
-                      type="number"
-                      min="1"
-                      max="100"
-                      defaultValue={10}
-                      className={`${inputCls} !mt-0 w-20`}
-                    />
-                    <input
-                      name="prefix"
-                      defaultValue="Table"
-                      placeholder="Table"
-                      className={`${inputCls} !mt-0 flex-1`}
-                    />
-                  </div>
-                  <select name="variant" className={inputCls}>
-                    <option value="classic">Classic list</option>
-                    <option value="stories">Feast Stories</option>
-                  </select>
-                  <button className="mt-2 w-full rounded-xl bg-rose-600 py-2 text-xs font-bold text-white">
-                    Add
-                  </button>
+                  <FieldGroup className="flex flex-col gap-2">
+                    <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                      Add several
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        name="count"
+                        type="number"
+                        min="1"
+                        max="100"
+                        aria-label="Number of tables"
+                        defaultValue={10}
+                        className="w-20"
+                      />
+                      <Input
+                        name="prefix"
+                        defaultValue="Table"
+                        placeholder="Table"
+                        aria-label="Table prefix"
+                        className="flex-1"
+                      />
+                    </div>
+                    <NativeSelect name="variant" aria-label="Table experience">
+                      <NativeSelectOption value="classic">Classic list</NativeSelectOption>
+                      <NativeSelectOption value="stories">Feast Stories</NativeSelectOption>
+                    </NativeSelect>
+                    <Button type="submit" className="mt-2 w-full">
+                      Add
+                    </Button>
+                  </FieldGroup>
                 </form>
 
                 <form
@@ -116,22 +115,24 @@ export default function AdminTablesPage() {
                   }}
                   className="rounded-xl bg-white p-3 ring-1 ring-stone-200"
                 >
-                  <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                    Add one (custom name)
-                  </p>
-                  <input
-                    name="label"
-                    required
-                    placeholder="Terrace 1 / Cabin A / Bar 3"
-                    className={inputCls}
-                  />
-                  <select name="variant" className={inputCls}>
-                    <option value="classic">Classic list</option>
-                    <option value="stories">Feast Stories</option>
-                  </select>
-                  <button className="mt-2 w-full rounded-xl bg-stone-900 py-2 text-xs font-bold text-white">
-                    Add
-                  </button>
+                  <FieldGroup className="flex flex-col gap-2">
+                    <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                      Add one (custom name)
+                    </p>
+                    <Input
+                      name="label"
+                      required
+                      aria-label="Table label"
+                      placeholder="Terrace 1 / Cabin A / Bar 3"
+                    />
+                    <NativeSelect name="variant" aria-label="Table experience">
+                      <NativeSelectOption value="classic">Classic list</NativeSelectOption>
+                      <NativeSelectOption value="stories">Feast Stories</NativeSelectOption>
+                    </NativeSelect>
+                    <Button type="submit" variant="secondary" className="mt-2 w-full">
+                      Add
+                    </Button>
+                  </FieldGroup>
                 </form>
               </div>
             )}
@@ -191,12 +192,13 @@ function TableRow({
     : null;
   return (
     <div className="flex items-center gap-2 py-2.5 text-sm">
-      <input
+      <Input
         defaultValue={tb.label}
+        aria-label={`Table ${tb.label} label`}
         onBlur={(e) => {
           if (e.target.value.trim() && e.target.value !== tb.label) onRename(e.target.value);
         }}
-        className="min-w-0 flex-1 rounded-lg bg-transparent px-2 py-1 font-medium text-stone-800 outline-none hover:bg-stone-50 focus:bg-stone-50 focus:ring-2 focus:ring-rose-400"
+        className="min-w-0 flex-1"
       />
       {href ? (
         <a
@@ -212,32 +214,30 @@ function TableRow({
           Outlet URL unavailable
         </span>
       )}
-      <input
+      <Input
         type="number"
         min="1"
         max="50"
         defaultValue={tb.capacity ?? 4}
         title="seats"
+        aria-label={`Seats for ${tb.label}`}
         onBlur={(e) => {
           const v = Number(e.target.value);
           if (v > 0 && v !== tb.capacity) onCapacity(v);
         }}
-        className="w-14 shrink-0 rounded-lg bg-stone-100 px-2 py-1.5 text-center text-xs font-bold outline-none focus:ring-2 focus:ring-rose-400"
+        className="w-14 shrink-0 text-center"
       />
-      <select
+      <NativeSelect
+        aria-label={`Experience for ${tb.label}`}
         value={tb.ui_variant}
         onChange={(e) => onVariant(e.target.value)}
-        className="rounded-xl bg-stone-100 px-3 py-2 text-xs font-bold outline-none"
       >
-        <option value="classic">Classic</option>
-        <option value="stories">Stories</option>
-      </select>
-      <button
-        onClick={onRemove}
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs text-stone-400 hover:bg-rose-50 hover:text-rose-600"
-      >
+        <NativeSelectOption value="classic">Classic</NativeSelectOption>
+        <NativeSelectOption value="stories">Stories</NativeSelectOption>
+      </NativeSelect>
+      <Button variant="ghost" size="sm" onClick={onRemove}>
         Remove
-      </button>
+      </Button>
     </div>
   );
 }
