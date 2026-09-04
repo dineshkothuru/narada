@@ -1,45 +1,42 @@
 import { useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ask } from "@/components/Dialogs";
 import { minutesAgo } from "@narada/shared";
 import CallTimer from "@/components/CallTimer";
 import { useFloor, useFloorAction, type FloorTable } from "@/api/hooks";
 
-const LANG_BADGE: Record<string, { label: string; cls: string }> = {
-  en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
-  hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
-  te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
+const LANG_BADGE: Record<string, string> = {
+  en: "EN",
+  hi: "हिं",
+  te: "తె",
 };
 
 const STATUS = {
-  free: { ring: "ring-green-300", chip: "bg-green-100 text-green-700", label: "Free" },
+  free: { ring: "ring-green-300", label: "Free" },
   // paid but still occupied: the party is gathering up and nobody has wiped
   // the table down yet, so it must not be offered to the next guests
   cleaning: {
     ring: "ring-stone-300",
-    chip: "bg-stone-200 text-stone-600",
     label: "Cleaning",
   },
   seated: {
     ring: "ring-violet-300",
-    chip: "bg-violet-100 text-violet-700",
     label: "Seated · yet to order",
   },
-  dining: { ring: "ring-sky-300", chip: "bg-sky-100 text-sky-700", label: "Dining" },
+  dining: { ring: "ring-sky-300", label: "Dining" },
   settling: {
     ring: "ring-amber-400",
-    chip: "bg-amber-100 text-amber-800",
     label: "Needs a bill",
   },
   // the counter has raised the bill; the guest has not paid it yet
   billed: {
     ring: "ring-sky-400",
-    chip: "bg-sky-100 text-sky-800",
     label: "Billed · awaiting payment",
   },
   paid: {
     ring: "ring-stone-300",
-    chip: "bg-stone-200 text-stone-600",
     label: "Paid · clearing",
   },
 };
@@ -80,18 +77,14 @@ export default function FloorPage() {
 
         {stats && (
           <section className="mb-5 grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Stat
-              label="Free tables"
-              value={`${stats.free}/${stats.total}`}
-              tone="text-green-600"
-            />
+            <Stat label="Free tables" value={`${stats.free}/${stats.total}`} tone="text-success" />
             <Stat
               label="Seated / dining"
               value={`${stats.seated} / ${stats.dining}`}
-              tone="text-sky-600"
+              tone="text-info"
             />
-            <Stat label="Needs a bill" value={String(stats.settling)} tone="text-amber-600" />
-            <Stat label="Awaiting payment" value={String(stats.billed)} tone="text-sky-600" />
+            <Stat label="Needs a bill" value={String(stats.settling)} tone="text-warning" />
+            <Stat label="Awaiting payment" value={String(stats.billed)} tone="text-info" />
             <Stat label="Awaiting cleaning" value={String(stats.cleaning)} tone="text-stone-500" />
             <Stat label="Seats occupied" value={`${stats.seatsBusy}/${stats.seats}`} />
           </section>
@@ -106,7 +99,7 @@ export default function FloorPage() {
               {tables
                 .filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged)
                 .map((t) => (
-                  <button
+                  <Button
                     key={t.id}
                     onClick={() => {
                       floorAction.mutate({
@@ -116,10 +109,11 @@ export default function FloorPage() {
                       });
                       setMergeFrom(null);
                     }}
-                    className="rounded-full bg-white/15 px-4 py-2 text-xs font-bold ring-1 ring-white/25"
+                    variant="secondary"
+                    size="sm"
                   >
                     {t.label}
-                  </button>
+                  </Button>
                 ))}
               {tables.filter((t) => t.sessionId && t.id !== mergeFrom.id && !t.isMerged).length ===
                 0 && (
@@ -127,12 +121,9 @@ export default function FloorPage() {
                   No other open table to merge with — seat guests first.
                 </span>
               )}
-              <button
-                onClick={() => setMergeFrom(null)}
-                className="rounded-full bg-white/10 px-4 py-2 text-xs font-bold"
-              >
+              <Button variant="outline" size="sm" onClick={() => setMergeFrom(null)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -150,13 +141,9 @@ export default function FloorPage() {
                     <h2 className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
                       {t.label}
                       {t.langs.map((l) => (
-                        <span
-                          key={l}
-                          title="language this table ordered in"
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-slate-200 text-slate-700"}`}
-                        >
-                          {LANG_BADGE[l]?.label ?? l.toUpperCase()}
-                        </span>
+                        <Badge variant="secondary" key={l} title="language this table ordered in">
+                          {LANG_BADGE[l] ?? l.toUpperCase()}
+                        </Badge>
                       ))}
                       {t.isMerged && (
                         <span className="ml-1.5 text-[10px] font-bold text-stone-400">
@@ -171,11 +158,17 @@ export default function FloorPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${st.chip}`}
+                    <Badge
+                      variant={
+                        t.status === "free"
+                          ? "success"
+                          : t.status === "settling"
+                            ? "warning"
+                            : "secondary"
+                      }
                     >
                       {st.label.toUpperCase()}
-                    </span>
+                    </Badge>
                     {t.calling && t.callSince && <CallTimer since={t.callSince} compact />}
                   </div>
                 </div>
@@ -192,7 +185,7 @@ export default function FloorPage() {
                       <p className="mt-2 text-[11px] text-slate-500">
                         Seated {minutesAgo(t.since!, true)} · nothing ordered yet
                       </p>
-                      <button
+                      <Button
                         onClick={async () => {
                           const yes = await ask.confirm({
                             title: `Release ${t.label}?`,
@@ -202,30 +195,28 @@ export default function FloorPage() {
                           if (yes)
                             floorAction.mutate({ action: "release", sessionId: t.sessionId! });
                         }}
-                        className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
+                        className="mt-3"
                       >
                         Release
-                      </button>
+                      </Button>
                     </>
                   ) : t.status === "cleaning" ? (
                     <>
                       <p className="mt-2 text-[11px] text-slate-500">
                         Bill settled · clear and wipe before seating anyone
                       </p>
-                      <button
+                      <Button
                         onClick={() => floorAction.mutate({ action: "clear_table", tableId: t.id })}
-                        className="mt-3 w-full rounded-full bg-white py-2.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-[0.98]"
+                        variant="outline"
+                        className="mt-3 w-full"
                       >
                         ✓ Table ready
-                      </button>
+                      </Button>
                     </>
                   ) : t.status === "free" ? (
-                    <button
-                      onClick={() => seat(t)}
-                      className="mt-3 w-full rounded-full bg-white py-2.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-[0.98]"
-                    >
+                    <Button onClick={() => seat(t)} variant="outline" className="mt-3 w-full">
                       Seat guests
-                    </button>
+                    </Button>
                   ) : (
                     <>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
@@ -236,21 +227,23 @@ export default function FloorPage() {
                       </div>
                       <div className="mt-3 flex gap-1.5">
                         {t.isMerged ? (
-                          <button
+                          <Button
                             onClick={() =>
                               floorAction.mutate({ action: "unmerge", sessionId: t.sessionId! })
                             }
-                            className="flex-1 rounded-full bg-white py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-300"
+                            variant="outline"
+                            className="flex-1"
                           >
                             Unmerge
-                          </button>
+                          </Button>
                         ) : (
-                          <button
+                          <Button
                             onClick={() => setMergeFrom(t)}
-                            className="flex-1 rounded-full bg-white py-2 text-[11px] font-bold text-slate-700 ring-1 ring-slate-300"
+                            variant="outline"
+                            className="flex-1"
                           >
                             Merge
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </>

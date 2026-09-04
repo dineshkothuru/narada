@@ -13,6 +13,9 @@ import {
   useMe,
   type WaiterTable,
 } from "@/api/hooks";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 // what the host did is visible to the waiter straight away, before any food
 // has been ordered
@@ -23,18 +26,18 @@ const STATUS_LABEL: Record<string, string> = {
   billed: "Billed · awaiting payment",
   paid: "Paid",
 };
-const STATUS_CHIP: Record<string, string> = {
-  seated: "bg-violet-100 text-violet-700",
-  dining: "bg-sky-100 text-sky-700",
-  settling: "bg-amber-100 text-amber-800",
-  billed: "bg-sky-100 text-sky-800",
-  paid: "bg-green-100 text-green-700",
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "success" | "warning" | "info"> = {
+  seated: "info",
+  dining: "info",
+  settling: "warning",
+  billed: "info",
+  paid: "success",
 };
 
-const LANG_BADGE: Record<string, { label: string; cls: string }> = {
-  en: { label: "EN", cls: "bg-stone-200 text-stone-700" },
-  hi: { label: "हिं", cls: "bg-orange-100 text-orange-700" },
-  te: { label: "తె", cls: "bg-teal-100 text-teal-700" },
+const LANG_BADGE: Record<string, string> = {
+  en: "EN",
+  hi: "हिं",
+  te: "తె",
 };
 
 export default function WaiterPage() {
@@ -89,7 +92,7 @@ export default function WaiterPage() {
             <p className="text-xs text-slate-500">
               Calls, running tabs &amp; payments · refreshes every 5s
               {isError && (
-                <span className="ml-2 font-semibold text-rose-600">Could not refresh</span>
+                <span className="ml-2 font-semibold text-destructive">Could not refresh</span>
               )}
             </p>
           </div>
@@ -105,7 +108,7 @@ export default function WaiterPage() {
                 {displayName} · {myTips.tables} table{myTips.tables === 1 ? "" : "s"} settled
               </p>
             </div>
-            <span className="font-display text-2xl font-semibold text-emerald-700">
+            <span className="font-display text-2xl font-semibold text-success">
               {inr(myTips.tips)}
             </span>
           </section>
@@ -126,7 +129,9 @@ export default function WaiterPage() {
                     {t.label}
                     <CallTimer since={t.call!.created_at} />
                   </span>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={async () => {
                       action.mutate({
                         action: "ack_call",
@@ -134,10 +139,9 @@ export default function WaiterPage() {
                         sessionId: t.session?.id,
                       });
                     }}
-                    className="rounded-full bg-white px-5 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
                   >
                     On it ✋
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -161,12 +165,14 @@ export default function WaiterPage() {
                       {item.qty}× {item.name}
                     </span>
                   </span>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => action.mutate({ action: "mark_item_served", itemId: item.id })}
-                    className="shrink-0 rounded-full bg-white px-5 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
+                    className="shrink-0"
                   >
                     Served ✅
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -190,12 +196,14 @@ export default function WaiterPage() {
                       Bill settled · clear and wipe before seating anyone
                     </span>
                   </span>
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => action.mutate({ action: "clear_table", tableId: t.tableId })}
-                    className="shrink-0 rounded-full bg-white px-5 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
+                    className="shrink-0"
                   >
                     Table ready ✓
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -232,9 +240,9 @@ export default function WaiterPage() {
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {running.length === 0 && (
-              <p className="rounded-xl bg-white/60 py-8 text-center text-xs text-slate-400 sm:col-span-2">
-                No running tables
-              </p>
+              <Empty className="bg-white/60 py-8 sm:col-span-2">
+                <EmptyDescription>No running tables</EmptyDescription>
+              </Empty>
             )}
             {running.map((t) => (
               <WaiterCard
@@ -303,30 +311,22 @@ function WaiterCard({
         <span className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
           {t.label}
           {s.langs.map((l) => (
-            <span
-              key={l}
-              title="language this table ordered in"
-              className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${LANG_BADGE[l]?.cls ?? "bg-stone-200 text-stone-700"}`}
-            >
-              {LANG_BADGE[l]?.label ?? l.toUpperCase()}
-            </span>
+            <Badge variant="secondary" key={l} title="language this table ordered in">
+              {LANG_BADGE[l] ?? l.toUpperCase()}
+            </Badge>
           ))}
         </span>
         <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-          <span
-            className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-              STATUS_CHIP[s.status] ?? "bg-slate-100 text-slate-500"
-            }`}
-          >
+          <Badge variant={STATUS_VARIANT[s.status] ?? "secondary"}>
             {STATUS_LABEL[s.status] ?? s.status}
-          </span>
+          </Badge>
           open {minutesAgo(s.since, true)}
         </span>
       </div>
       {s.attendant && (
-        <span className="mt-1 block w-fit rounded-full bg-violet-100 px-2.5 py-0.5 text-[10px] font-extrabold text-violet-700">
+        <Badge variant="info" className="mt-1">
           👤 {s.attendant}
-        </span>
+        </Badge>
       )}
       {s.orders.length === 0 && (
         <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-violet-50 px-2.5 py-2 text-[11px] font-semibold text-violet-700">
@@ -335,12 +335,9 @@ function WaiterCard({
             {waitingNow ? minutesAgo(s.since, true) : "to order"}
           </span>
           {!s.attendant ? (
-            <button
-              onClick={onClaim}
-              className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200"
-            >
+            <Button variant="outline" size="xs" onClick={onClaim}>
               I&apos;ll take it
-            </button>
+            </Button>
           ) : null}
         </div>
       )}
@@ -356,7 +353,9 @@ function WaiterCard({
             : `${s.orders.length} order${s.orders.length !== 1 ? "s" : ""}`}
         </span>
         <span>billed {inr(s.ordered)}</span>
-        {s.discountPct > 0 && <span className="font-bold text-rose-600">-{s.discountPct}% 🎡</span>}
+        {s.discountPct > 0 && (
+          <span className="font-bold text-destructive">-{s.discountPct}% 🎡</span>
+        )}
         <span>+GST {inr(s.gst)}</span>
         {s.service > 0 && <span>+svc {inr(s.service)}</span>}
         {s.serviceWaived && <span className="text-stone-400">svc waived</span>}
@@ -366,33 +365,29 @@ function WaiterCard({
         <span
           className={`text-sm font-extrabold ${
             s.orders.length === 0
-              ? "text-slate-300"
+              ? "text-muted-foreground"
               : s.due > 0
-                ? "text-rose-600"
-                : "text-emerald-600"
+                ? "text-destructive"
+                : "text-success"
           }`}
         >
           {s.orders.length === 0 ? "—" : s.due > 0 ? `Due ${inr(s.due)}` : "Settled ✓"}
         </span>
         {s.due <= 0 && (
-          <button
-            onClick={onOpen}
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
-          >
+          <Button variant="outline" size="sm" onClick={onOpen}>
             Workspace
-          </button>
+          </Button>
         )}
         {s.due > 0 && (
           <div className="flex flex-wrap justify-end gap-1.5">
-            <button
-              onClick={onOpen}
-              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
-            >
+            <Button variant="outline" size="sm" onClick={onOpen}>
               🧾 Details
-            </button>
+            </Button>
             {s.billNo ? (
               <>
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() =>
                     shareBillOnWhatsApp({
                       sessionId: s.id,
@@ -401,11 +396,12 @@ function WaiterCard({
                       net: s.due,
                     })
                   }
-                  className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200"
                 >
                   Share
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
                   onClick={async () => {
                     const out = await ask.form({
                       title: `${t.label} · bill ${inr(s.due)}`,
@@ -434,11 +430,12 @@ function WaiterCard({
                       utr: out.utr,
                     });
                   }}
-                  className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
                 >
                   Paid UPI
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
                   onClick={async () => {
                     const kept = await ask.prompt({
                       title: `${t.label} · bill ${inr(s.due)}`,
@@ -460,15 +457,12 @@ function WaiterCard({
                       method: "cash",
                     });
                   }}
-                  className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
                 >
                   Paid cash
-                </button>
+                </Button>
               </>
             ) : (
-              <span className="rounded-full bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800">
-                Awaiting bill
-              </span>
+              <Badge variant="warning">Awaiting bill</Badge>
             )}
           </div>
         )}

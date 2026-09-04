@@ -6,6 +6,10 @@ import StaffOrderPad from "@/components/StaffOrderPad";
 import { Panel } from "@/components/Panel";
 import { ask } from "@/components/Dialogs";
 import { useWaiterAction, useWaiterTables, useWaiterMenu } from "@/api/hooks";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export default function WaiterTablePage() {
   const { code = "" } = useParams();
@@ -29,31 +33,29 @@ export default function WaiterTablePage() {
               {table?.label ?? code}
             </h1>
           </div>
-          <Link
-            to="/waiter"
-            className="rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
-          >
-            Back
-          </Link>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/waiter">Back</Link>
+          </Button>
         </header>
         {!table || !session ? (
-          <p className="text-sm text-slate-500">That table is no longer open.</p>
+          <Empty>
+            <EmptyDescription>That table is no longer open.</EmptyDescription>
+          </Empty>
         ) : (
           <>
-            <div className="mb-4 flex gap-1.5">
-              <button
-                onClick={() => setTab("details")}
-                className={`rounded-full px-4 py-2 text-xs font-bold ${tab === "details" ? "bg-slate-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}
-              >
+            <ToggleGroup
+              type="single"
+              value={tab}
+              onValueChange={(value) => value && setTab(value as typeof tab)}
+              className="mb-4"
+            >
+              <ToggleGroupItem value="details" size="sm">
                 Details
-              </button>
-              <button
-                onClick={() => setTab("menu")}
-                className={`rounded-full px-4 py-2 text-xs font-bold ${tab === "menu" ? "bg-slate-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}
-              >
+              </ToggleGroupItem>
+              <ToggleGroupItem value="menu" size="sm">
                 Order pad
-              </button>
-            </div>
+              </ToggleGroupItem>
+            </ToggleGroup>
             {tab === "details" ? (
               <TableSheet
                 page
@@ -89,7 +91,9 @@ export default function WaiterTablePage() {
                 />
               </Panel>
             ) : (
-              <p className="text-sm text-slate-400">Loading menu…</p>
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner /> Loading menu…
+              </p>
             )}
           </>
         )}

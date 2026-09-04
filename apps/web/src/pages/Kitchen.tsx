@@ -1,6 +1,9 @@
 import { useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import { SoldOutPanel } from "@/components/SoldOut";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 import { inr, minutesAgo } from "@narada/shared";
 import {
   useAdvanceOrder,
@@ -56,21 +59,20 @@ export default function KitchenPage() {
               Auto-refreshes every 5s
               {dataUpdatedAt > 0 && ` · updated ${new Date(dataUpdatedAt).toLocaleTimeString()}`}
               {isError && (
-                <span className="ml-2 font-semibold text-rose-600">Could not refresh orders</span>
+                <span className="ml-2 font-semibold text-destructive">
+                  Could not refresh orders
+                </span>
               )}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300">
+            <Badge variant="outline">
               {orders.filter((o) => o.status !== "served").length} open ·{" "}
               {orders.filter((o) => o.status === "ready").length} awaiting pickup
-            </span>
-            <button
-              onClick={() => setShowMenu((value) => !value)}
-              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
-            >
+            </Badge>
+            <Button variant="outline" size="sm" onClick={() => setShowMenu((value) => !value)}>
               {showMenu ? "Hide" : "Sold out"}
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -90,9 +92,9 @@ export default function KitchenPage() {
                 </h2>
                 <div className="flex flex-col gap-3">
                   {list.length === 0 && (
-                    <p className="rounded-xl bg-white/60 py-6 text-center text-xs text-slate-400">
-                      No orders
-                    </p>
+                    <Empty className="bg-white/60 py-6">
+                      <EmptyDescription>No orders</EmptyDescription>
+                    </Empty>
                   )}
                   {list.map((o) => (
                     <article
@@ -113,22 +115,25 @@ export default function KitchenPage() {
                         </span>
                         <span className="flex shrink-0 items-center gap-2 text-[11px] text-slate-400">
                           {minutesAgo(o.created_at)}
-                          <a
-                            href={`/kitchen/kot/${o.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Reprint this ticket"
-                            className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200"
-                          >
-                            Print
-                          </a>
+                          <Button variant="outline" size="xs" asChild>
+                            <a
+                              href={`/kitchen/kot/${o.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Reprint this ticket"
+                            >
+                              Print
+                            </a>
+                          </Button>
                         </span>
                       </header>
                       <div className="p-4">
                         <ul className="space-y-1">
                           {o.items.map((it) => (
                             <li key={it.id}>
-                              <button
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() =>
                                   cycleItem.mutate({
                                     itemId: it.id,
@@ -136,26 +141,18 @@ export default function KitchenPage() {
                                   })
                                 }
                                 title="Tap to cycle: queued → preparing → ready"
-                                className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition active:scale-[0.98] ${
-                                  it.status === "served"
-                                    ? "bg-emerald-50 text-slate-400 line-through"
-                                    : it.status === "ready"
-                                      ? "bg-amber-50 font-semibold text-slate-900"
-                                      : it.status === "preparing"
-                                        ? "bg-sky-50 text-slate-800"
-                                        : "text-slate-700 hover:bg-slate-50"
-                                }`}
+                                className="h-auto w-full justify-between px-2 py-1 text-left"
                               >
                                 <span>
                                   {it.qty} × {it.name}
                                   {it.notes && (
-                                    <span className="block text-[11px] text-amber-700">
+                                    <span className="block text-[11px] text-warning">
                                       ✎ {it.notes}
                                     </span>
                                   )}
                                 </span>
                                 <span className="ml-2 text-base">{ITEM_BADGE[it.status]}</span>
-                              </button>
+                              </Button>
                             </li>
                           ))}
                         </ul>
@@ -163,20 +160,21 @@ export default function KitchenPage() {
                           <span className="text-xs font-semibold text-slate-500">
                             {inr(o.total_inr)}
                             {o.placed_via === "anna" && (
-                              <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                              <Badge variant="secondary" className="ml-1.5">
                                 🎙️ Narada
-                              </span>
+                              </Badge>
                             )}
                           </span>
                           {NEXT[o.status] && (
-                            <button
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() =>
                                 advance.mutate({ orderId: o.id, status: NEXT[o.status]!.to })
                               }
-                              className="rounded-full bg-white px-4 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300 transition active:scale-95"
                             >
                               {NEXT[o.status]!.label}
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>

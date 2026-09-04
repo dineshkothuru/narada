@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useParams } from "react-router";
 import { useKitchenKot } from "@/api/hooks";
 import { inr } from "@narada/shared";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function KitchenKotPage() {
   const { order = "" } = useParams();
@@ -13,8 +15,17 @@ export default function KitchenKotPage() {
   }, []);
 
   if (isError)
-    return <main className="p-8 text-sm text-rose-600">Could not load this ticket.</main>;
-  if (!data) return <main className="p-8 text-sm text-slate-400">Loading ticket…</main>;
+    return (
+      <Alert variant="destructive" className="m-8 max-w-md">
+        <AlertDescription>Could not load this ticket.</AlertDescription>
+      </Alert>
+    );
+  if (!data)
+    return (
+      <main className="flex items-center gap-2 p-8 text-sm text-muted-foreground">
+        <Spinner /> Loading ticket…
+      </main>
+    );
 
   return (
     <main className="mx-auto min-h-dvh max-w-md bg-white p-6 text-slate-900 print:p-0">
@@ -35,7 +46,7 @@ export default function KitchenKotPage() {
             <span className="text-base font-semibold">
               {item.qty} × {item.name}
               {item.notes && (
-                <span className="block text-xs font-normal text-amber-700">Note: {item.notes}</span>
+                <span className="block text-xs font-normal text-warning">Note: {item.notes}</span>
               )}
             </span>
             <span className="text-xs text-slate-500 uppercase">{item.status}</span>

@@ -6,6 +6,9 @@ import { inr, minutesAgo } from "@narada/shared";
 import { useCounterAction, useCounterTabs, type CounterTab } from "@/api/hooks";
 import { SoldOutAlerts, SoldOutPanel } from "@/components/SoldOut";
 import { useWaiterAction } from "@/api/hooks";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Empty, EmptyDescription } from "@/components/ui/empty";
 
 // The billing desk. Raising a bill happens here and nowhere else — it freezes
 // the totals and mints the invoice number. Collecting the money can happen
@@ -82,14 +85,13 @@ export default function CounterPage() {
           <h1 className="font-display text-2xl font-semibold text-slate-900">Narada · Counter</h1>
           <p className="text-xs text-slate-500">
             Raise bills here · payment can be taken anywhere
-            {isError && <span className="ml-2 font-semibold text-rose-600">Could not refresh</span>}
+            {isError && (
+              <span className="ml-2 font-semibold text-destructive">Could not refresh</span>
+            )}
           </p>
-          <button
-            onClick={() => setShowSoldOut((value) => !value)}
-            className="mt-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-300"
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowSoldOut((value) => !value)}>
             {showSoldOut ? "Hide menu availability" : "Sold out"}
-          </button>
+          </Button>
         </header>
         <SoldOutAlerts />
         {showSoldOut && (
@@ -98,11 +100,13 @@ export default function CounterPage() {
           </section>
         )}
         {action.isError && (
-          <p className="mb-4 max-w-5xl rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">
-            {action.error instanceof Error
-              ? action.error.message
-              : "That action did not go through. The bill may already be raised."}
-          </p>
+          <Alert variant="destructive" className="mb-4 max-w-5xl">
+            <AlertDescription>
+              {action.error instanceof Error
+                ? action.error.message
+                : "That action did not go through. The bill may already be raised."}
+            </AlertDescription>
+          </Alert>
         )}
 
         <Section
@@ -112,36 +116,37 @@ export default function CounterPage() {
           rows={awaitingBill}
           render={(t) => (
             <>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setOpenTable({ id: t.sessionId, code: t.code, label: t.label })}
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
               >
                 🧾 Details
-              </button>
-              <button
-                onClick={() => raiseBill(t)}
-                className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-bold text-white transition active:scale-95"
-              >
+              </Button>
+              <Button variant="default" size="sm" onClick={() => raiseBill(t)}>
                 Raise bill
-              </button>
+              </Button>
             </>
           )}
         />
 
         <Section
           title={`Raised, awaiting payment (${awaitingPayment.length})`}
-          tone="text-green-700"
+          tone="text-success"
           empty="Nothing is waiting to be paid."
           rows={awaitingPayment}
           render={(t) => (
             <>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setOpenTable({ id: t.sessionId, code: t.code, label: t.label })}
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-stone-600 ring-1 ring-stone-200"
               >
                 🧾 Details
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() =>
                   shareBillOnWhatsApp({
                     sessionId: t.sessionId,
@@ -150,28 +155,18 @@ export default function CounterPage() {
                     net: t.due,
                   })
                 }
-                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-green-700 ring-1 ring-green-200"
               >
                 Share
-              </button>
-              <button
-                onClick={() => takePayment(t, "upi_intent")}
-                className="rounded-full bg-green-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-              >
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => takePayment(t, "upi_intent")}>
                 UPI
-              </button>
-              <button
-                onClick={() => takePayment(t, "card")}
-                className="rounded-full bg-sky-600 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-              >
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => takePayment(t, "card")}>
                 Card
-              </button>
-              <button
-                onClick={() => takePayment(t, "cash")}
-                className="rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition active:scale-95"
-              >
+              </Button>
+              <Button variant="default" size="sm" onClick={() => takePayment(t, "cash")}>
                 Cash
-              </button>
+              </Button>
             </>
           )}
         />
@@ -225,9 +220,9 @@ function Section({
     <section className="mb-6 max-w-5xl">
       <h2 className={`mb-2 text-xs font-bold tracking-widest uppercase ${tone}`}>{title}</h2>
       {rows.length === 0 ? (
-        <p className="card-float rounded-2xl bg-white py-6 text-center text-xs text-stone-400 ring-1 ring-stone-200/80">
-          {empty}
-        </p>
+        <Empty className="card-float rounded-2xl bg-white py-6 ring-1 ring-stone-200/80">
+          <EmptyDescription>{empty}</EmptyDescription>
+        </Empty>
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((t) => (
@@ -244,7 +239,7 @@ function Section({
                       {t.rounds} round{t.rounds === 1 ? "" : "s"}
                     </span>
                     {t.unserved > 0 && (
-                      <span className="font-semibold text-amber-600">{t.unserved} not served</span>
+                      <span className="font-semibold text-warning">{t.unserved} not served</span>
                     )}
                     {t.attendant && <span>👤 {t.attendant}</span>}
                   </p>
