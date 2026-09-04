@@ -1,6 +1,5 @@
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
 import RootLayout from "@/pages/RootLayout";
-import Home from "@/pages/Home";
 import OutletLoginPage from "@/pages/admin/Login";
 import StaffSignupPage from "@/pages/admin/Signup";
 import KitchenPage from "@/pages/Kitchen";
@@ -26,7 +25,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<RootLayout />}>
-        <Route index element={<Home />} />
+        <Route index element={<Navigate to="/login" replace />} />
         <Route path="login" element={<CustomerLoginPage />} />
         <Route path="signup" element={<CustomerSignupPage />} />
         <Route path="t/:code" element={<TablePage legacy />} />

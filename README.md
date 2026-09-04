@@ -53,8 +53,8 @@ For a fresh database, run these files in this order in the SQL editor:
 3. [`docs/seed-i18n.sql`](docs/seed-i18n.sql)
 
 The demo seed creates the `Spice Garden` outlet, four table QR codes, and local
-staff accounts. These credentials are for local demos only; replace them before
-using a real outlet.
+staff accounts. See [`docs/DEMO-CREDENTIALS.md`](docs/DEMO-CREDENTIALS.md) for
+the local demo URLs and seeded credentials.
 
 For a database created by the legacy `web/` app, do not rerun the fresh seed.
 Apply the migrations in this order:
@@ -92,40 +92,17 @@ pnpm dev:api  # http://localhost:3001
 pnpm dev:web  # http://localhost:5173
 ```
 
-Customer demos: takeaway at
-[`/outlet/demo-spice-garden`](http://localhost:5173/outlet/demo-spice-garden),
-or Table 1 at
-[`/outlet/demo-spice-garden/table/t1-demo`](http://localhost:5173/outlet/demo-spice-garden/table/t1-demo).
-The seeded table links are `/outlet/demo-spice-garden/table/t1-demo`,
-`/outlet/demo-spice-garden/table/t2-demo`,
-`/outlet/demo-spice-garden/table/t3-demo`, and
-`/outlet/demo-spice-garden/table/t4-demo`.
+For local customer/staff demo URLs and seeded credentials, see
+[`docs/DEMO-CREDENTIALS.md`](docs/DEMO-CREDENTIALS.md).
 
-Staff sign in at the outlet-scoped URL
-[`/outlet/demo-spice-garden/login`](http://localhost:5173/outlet/demo-spice-garden/login)
-with a lowercase username and password. The form has no outlet chooser or role
-selector: the URL selects the outlet and the server derives the account's role,
-then redirects to that role's home. There is no shared or legacy role-login
-route.
+Staff sign in with a lowercase username and password. The form has no outlet
+chooser or role selector: the URL selects the outlet and the server derives the
+account's role, then redirects to that role's home. There is no shared or legacy
+role-login route.
 
-Signup URLs remain role-specific, admin-protected account-creation screens.
-They require a lowercase username, first name, password, and an optional last
-name; there is no public staff signup.
-
-| Role      | Signup            | Username    | Display name   | Password                  | Destination |
-| --------- | ----------------- | ----------- | -------------- | ------------------------- | ----------- |
-| admin     | `/admin/signup`   | `owner`     | Owner          | `owner-demo-password`     | `/admin`    |
-| kitchen   | `/kitchen/signup` | `kitchen`   | Demo Kitchen   | `kitchen-demo-password`   | `/kitchen`  |
-| waiter    | `/waiter/signup`  | `waiter`    | Demo Waiter    | `waiter-demo-password`    | `/waiter`   |
-| reception | `/floor/signup`   | `reception` | Demo Reception | `reception-demo-password` | `/floor`    |
-| cashier   | `/counter/signup` | `cashier`   | Demo Cashier   | `cashier-demo-password`   | `/counter`  |
-
-These credentials are demo-only and must not be used for a real outlet.
-
-The seeded customer account is phone `+919876543210`, password
-`customer-demo-password`, and display name `Demo Customer`. Customer sign-in is
-at [`/login`](http://localhost:5173/login); customer signup is at
-[`/signup`](http://localhost:5173/signup).
+Signup URLs remain role-specific, admin-protected account-creation screens. They
+require a lowercase username, first name, password, and an optional last name;
+there is no public staff signup.
 
 An admin can enroll and manage staff at
 [`/admin/users`](http://localhost:5173/admin/users); the account-creation API is

@@ -101,15 +101,10 @@ access uses the authenticated `outletId`, never an outlet supplied by a client.
 
 Invalid username or password combinations return the same error.
 Inactive outlets and staff accounts cannot sign in. The login form has no role
-selector. Successful login redirects by stored role:
-
-| Role      | Seed username | Seed password             | Destination |
-| --------- | ------------- | ------------------------- | ----------- |
-| admin     | `owner`       | `owner-demo-password`     | `/admin`    |
-| kitchen   | `kitchen`     | `kitchen-demo-password`   | `/kitchen`  |
-| waiter    | `waiter`      | `waiter-demo-password`    | `/waiter`   |
-| reception | `reception`   | `reception-demo-password` | `/floor`    |
-| cashier   | `cashier`     | `cashier-demo-password`   | `/counter`  |
+selector. Successful login redirects by stored role. The local demo URLs and
+seeded credentials are maintained in
+[`docs/DEMO-CREDENTIALS.md`](DEMO-CREDENTIALS.md), rather than duplicated in
+this plan.
 
 Admin-protected staff creation remains available at `/admin/signup`,
 `/kitchen/signup`, `/waiter/signup`, `/floor/signup`, and `/counter/signup`; the
@@ -117,20 +112,9 @@ route fixes the new account's role. Admins can enroll or edit incomplete legacy
 rows in Admin > Users. Signed-in staff can change their own password through
 `PATCH /api/auth/staff/password`.
 
-The seeded outlet is `demo-spice-garden`, so every staff role uses
-`/outlet/demo-spice-garden/login`:
-
-| Role      | Username    | Password                  | Destination |
-| --------- | ----------- | ------------------------- | ----------- |
-| admin     | `owner`     | `owner-demo-password`     | `/admin`    |
-| kitchen   | `kitchen`   | `kitchen-demo-password`   | `/kitchen`  |
-| waiter    | `waiter`    | `waiter-demo-password`    | `/waiter`   |
-| reception | `reception` | `reception-demo-password` | `/floor`    |
-| cashier   | `cashier`   | `cashier-demo-password`   | `/counter`  |
-
-These credentials are local-demo-only. The seeded customer uses phone
-`+919876543210`, password `customer-demo-password`, and display name `Demo
-Customer`; customer login is `/login` and signup is `/signup`.
+The seeded outlet and customer account, along with each role's local login,
+signup, and destination details, are documented in
+[`docs/DEMO-CREDENTIALS.md`](DEMO-CREDENTIALS.md).
 
 ### Customer login — phone-only, complete
 
