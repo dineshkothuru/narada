@@ -1,11 +1,16 @@
-# Local demo URLs and credentials
+# Public demo URLs and credentials
 
-> **Local-demo only:** These seeded credentials and URLs are for local testing.
-> Never use these passwords for a real outlet or production deployment. Replace
-> all demo credentials before exposing an environment to users.
+> **Public demo environment:** These credentials are intentionally public and
+> for this demo project only. Never connect this project to real outlet,
+> customer, or payment data. Use different credentials and a different
+> database for any non-demo deployment. They are provisioned by
+> [`20260904035136_seed_demo_accounts.sql`](../supabase/migrations/20260904035136_seed_demo_accounts.sql).
 
 Start the local apps with `pnpm dev`. The web app is served at
 `http://localhost:5173`.
+
+The localhost URLs below are examples. For the deployed Vercel app, use the
+same paths appended to its base URL.
 
 ## Customer
 
