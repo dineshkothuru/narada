@@ -1,20 +1,40 @@
-import { useEffect } from "react";
 import { inr } from "@narada/shared";
 import { useBill } from "@/api/hooks";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ask } from "./Dialogs";
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
-const ITEM_MARK: Record<string, { icon: string; cls: string }> = {
-  queued: { icon: "⏳", cls: "text-stone-400" },
-  preparing: { icon: "👨‍🍳", cls: "text-sky-600" },
-  ready: { icon: "🔔", cls: "font-semibold text-amber-600" },
-  served: { icon: "✅", cls: "text-green-600" },
-  cancelled: { icon: "×", cls: "text-slate-400 line-through" },
+const ITEM_MARK: Record<string, { icon: string }> = {
+  queued: { icon: "⏳" },
+  preparing: { icon: "👨‍🍳" },
+  ready: { icon: "🔔" },
+  served: { icon: "✅" },
+  cancelled: { icon: "×" },
 };
-
-// Everything a table has ordered and everything it owes, in one floating panel.
-// A waiter or the owner taps a table and gets the answer without walking to the
-// counter — it stays available until the tab is paid and closed.
+const STATUS_VARIANT: Record<string, "success" | "warning" | "info" | "secondary"> = {
+  queued: "secondary",
+  preparing: "info",
+  ready: "warning",
+  served: "success",
+  cancelled: "secondary",
+};
+type Props = {
+  sessionId: string;
+  tableCode?: string;
+  label: string;
+  onClose: () => void;
+  onShare?: (net: number) => void;
+  actions?: ReactNode;
+  page?: boolean;
+  onCancelItem?: (itemId: string, name: string) => void;
+};
 export default function TableSheet({
   sessionId,
   tableCode,
@@ -24,200 +44,178 @@ export default function TableSheet({
   actions,
   page = false,
   onCancelItem,
-}: {
-  sessionId: string;
-  tableCode?: string;
-  label: string;
-  onClose: () => void;
-  onShare?: (net: number) => void;
-  actions?: ReactNode;
-  page?: boolean;
-  onCancelItem?: (itemId: string, name: string) => void;
-}) {
+}: Props) {
   const { data: sheet, isError: error } = useBill(sessionId, tableCode);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-
   const due = sheet ? Math.max(0, sheet.net - sheet.paid) : 0;
-
-  return (
-    <div
-      role={page ? undefined : "dialog"}
-      aria-modal={page ? undefined : true}
-      aria-label={`${label} order details`}
-      className={
-        page
-          ? "w-full"
-          : "fixed inset-0 z-[90] flex items-end justify-center bg-stone-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
-      }
-      onMouseDown={(e) => {
-        if (!page && e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className={
-          page
-            ? "flex w-full flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-slate-200"
-            : "animate-[dialogIn_.16s_ease-out] flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-stone-200 sm:rounded-3xl"
-        }
-      >
-        <header className="flex items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">
-          <div className="min-w-0">
+  const summary = sheet
+    ? sheet.billNo
+      ? `Bill ${sheet.billNo} · ${sheet.rounds.length} round${sheet.rounds.length === 1 ? "" : "s"}`
+      : `${sheet.rounds.length} round${sheet.rounds.length === 1 ? "" : "s"} · no bill raised yet`
+    : "Loading…";
+  const content = (
+    <>
+      <header className="flex items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">
+        <div className="min-w-0">
+          {page ? (
             <h2 className="font-display text-lg font-semibold text-stone-900">{label}</h2>
-            <p className="text-[11px] text-stone-500">
-              {sheet
-                ? sheet.billNo
-                  ? `Bill ${sheet.billNo} · ${sheet.rounds.length} round${sheet.rounds.length === 1 ? "" : "s"}`
-                  : `${sheet.rounds.length} round${sheet.rounds.length === 1 ? "" : "s"} · no bill raised yet`
-                : "Loading…"}
-            </p>
-          </div>
-          {!page && (
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-100 text-sm text-stone-500"
-            >
-              ✕
-            </button>
+          ) : (
+            <SheetTitle className="font-display text-lg font-semibold text-stone-900">
+              {label}
+            </SheetTitle>
           )}
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {error && <p className="text-xs text-rose-600">Could not load this table.</p>}
-          {!sheet && !error && <p className="text-xs text-stone-400">Loading…</p>}
-
-          {sheet?.rounds.map((r, i) => (
-            <section key={r.id} className="mb-4">
-              <div className="mb-1.5 flex items-baseline justify-between">
-                <h3 className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                  Round {i + 1}
-                  {r.placedBy ? ` · ${r.placedBy}` : ""}
-                  {r.placedVia === "anna" ? " · 🎙️" : ""}
-                </h3>
-                <span className="text-[11px] font-semibold text-stone-500">{inr(r.totalInr)}</span>
-              </div>
-              <ul className="flex flex-col gap-1">
-                {r.items.map((it) => {
-                  const m = ITEM_MARK[it.status] ?? ITEM_MARK.queued;
-                  return (
-                    <li
-                      key={it.id}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 text-xs"
-                    >
-                      <span className="min-w-0 truncate text-stone-700">
-                        {it.qty}× {it.name}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        <span className={`text-[11px] ${m.cls}`}>
-                          {m.icon} {it.status}
-                        </span>
-                        {onCancelItem && !["served", "cancelled"].includes(it.status) && (
-                          <button
-                            onClick={() => onCancelItem(it.id, it.name)}
-                            className="text-[10px] font-bold text-slate-500 underline underline-offset-2"
-                          >
-                            Void
-                          </button>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-
-          {sheet && sheet.rounds.length === 0 && (
-            <p className="text-xs text-stone-400">Nothing ordered yet.</p>
-          )}
-
-          {sheet && sheet.rounds.length > 0 && (
-            <dl className="mt-2 border-t border-stone-200 pt-3 text-xs">
-              <Row label="Items" value={inr(sheet.gross)} />
-              {sheet.discount > 0 && (
-                <Row
-                  label={`Discount (${sheet.discountPct}%)`}
-                  value={`− ${inr(sheet.discount)}`}
-                  tone="text-green-700"
-                />
-              )}
-              <Row label="GST" value={inr(sheet.gst)} />
-              {!sheet.serviceWaived && sheet.service > 0 && (
-                <Row label={`Service (${sheet.serviceChargePct}%)`} value={inr(sheet.service)} />
-              )}
-              {sheet.serviceWaived && (
-                <Row label="Service charge" value="waived" tone="text-stone-400" />
-              )}
-              {sheet.tip > 0 && <Row label="Tip" value={inr(sheet.tip)} />}
-              <div className="mt-2 flex items-baseline justify-between border-t border-stone-200 pt-2">
-                <dt className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
-                  Total
-                </dt>
-                <dd className="font-display text-xl font-semibold text-stone-900">
-                  {inr(sheet.net)}
-                </dd>
-              </div>
-              {sheet.paid > 0 && (
-                <>
-                  <Row label="Paid" value={inr(sheet.paid)} tone="text-green-700" />
-                  <Row
-                    label="Still due"
-                    value={inr(due)}
-                    tone={due > 0 ? "font-bold text-rose-600" : "text-green-700"}
-                  />
-                </>
-              )}
-            </dl>
+          {page ? (
+            <p className="text-[11px] text-stone-500">{summary}</p>
+          ) : (
+            <SheetDescription className="text-[11px] text-stone-500">{summary}</SheetDescription>
           )}
         </div>
-
-        <footer className="flex flex-wrap gap-2 border-t border-stone-200 px-5 py-4">
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>Could not load this table.</AlertDescription>
+          </Alert>
+        )}
+        {!sheet && !error && <Skeleton className="h-16 w-full" />}
+        {sheet?.rounds.map((round, i) => (
+          <section key={round.id} className="mb-4">
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <h3 className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                Round {i + 1}
+                {round.placedBy ? ` · ${round.placedBy}` : ""}
+                {round.placedVia === "anna" ? " · 🎙️" : ""}
+              </h3>
+              <span className="text-[11px] font-semibold text-stone-500">
+                {inr(round.totalInr)}
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1">
+              {round.items.map((item) => {
+                const mark = ITEM_MARK[item.status] ?? ITEM_MARK.queued;
+                return (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 text-xs"
+                  >
+                    <span className="min-w-0 truncate text-stone-700">
+                      {item.qty}× {item.name}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <Badge variant={STATUS_VARIANT[item.status] ?? "secondary"}>
+                        <span className={cn(item.status === "cancelled" && "line-through")}>
+                          {mark.icon} {item.status}
+                        </span>
+                      </Badge>
+                      {onCancelItem && !["served", "cancelled"].includes(item.status) && (
+                        <Button
+                          variant="link"
+                          size="xs"
+                          onClick={() => onCancelItem(item.id, item.name)}
+                        >
+                          Void
+                        </Button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+        {sheet && sheet.rounds.length === 0 && (
+          <Empty className="py-8">
+            <EmptyHeader>
+              <EmptyTitle>Nothing ordered yet.</EmptyTitle>
+              <EmptyDescription>This table has no rounds.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {sheet && sheet.rounds.length > 0 && (
+          <dl className="mt-2 border-t border-stone-200 pt-3 text-xs">
+            <Row label="Items" value={inr(sheet.gross)} />
+            {sheet.discount > 0 && (
+              <Row
+                label={`Discount (${sheet.discountPct}%)`}
+                value={`− ${inr(sheet.discount)}`}
+                tone="text-success"
+              />
+            )}
+            <Row label="GST" value={inr(sheet.gst)} />
+            {!sheet.serviceWaived && sheet.service > 0 && (
+              <Row label={`Service (${sheet.serviceChargePct}%)`} value={inr(sheet.service)} />
+            )}
+            {sheet.serviceWaived && (
+              <Row label="Service charge" value="waived" tone="text-stone-400" />
+            )}
+            {sheet.tip > 0 && <Row label="Tip" value={inr(sheet.tip)} />}
+            <Separator className="my-2" />
+            <div className="flex items-baseline justify-between pt-2">
+              <dt className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                Total
+              </dt>
+              <dd className="font-display text-xl font-semibold text-stone-900">
+                {inr(sheet.net)}
+              </dd>
+            </div>
+            {sheet.paid > 0 && (
+              <>
+                <Row label="Paid" value={inr(sheet.paid)} tone="text-success" />
+                <Row
+                  label="Still due"
+                  value={inr(due)}
+                  tone={due > 0 ? "font-bold text-destructive" : "text-success"}
+                />
+              </>
+            )}
+          </dl>
+        )}
+      </div>
+      <footer className="flex flex-wrap gap-2 border-t border-stone-200 px-5 py-4">
+        <Button asChild variant="secondary">
           <a
             href={`/bill/${sessionId}${tableCode ? `?tableCode=${encodeURIComponent(tableCode)}` : ""}`}
             target="_blank"
             rel="noreferrer"
-            className="rounded-xl bg-stone-100 px-4 py-2.5 text-xs font-bold text-stone-600"
           >
             🧾 Print view
           </a>
-          {onShare && sheet && (
-            <button
-              onClick={() => onShare(sheet.net)}
-              className="rounded-xl bg-green-600 px-4 py-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
-            >
-              Share on WhatsApp
-            </button>
-          )}
-          {actions}
-        </footer>
+        </Button>
+        {onShare && sheet && (
+          <Button variant="default" onClick={() => onShare(sheet.net)}>
+            Share on WhatsApp
+          </Button>
+        )}
+        {actions}
+      </footer>
+    </>
+  );
+  if (!page)
+    return (
+      <Sheet open onOpenChange={(open) => !open && onClose()}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[92dvh] gap-0 overflow-hidden rounded-t-3xl p-0 sm:mx-auto sm:max-w-lg sm:rounded-3xl"
+        >
+          {content}
+        </SheetContent>
+      </Sheet>
+    );
+  return (
+    <div className="w-full">
+      <div className="flex w-full flex-col overflow-hidden rounded-3xl bg-white ring-1 ring-slate-200">
+        {content}
       </div>
     </div>
   );
 }
-
 function Row({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="flex items-baseline justify-between py-0.5">
       <dt className="text-stone-500">{label}</dt>
-      <dd className={tone ?? "text-stone-700"}>{value}</dd>
+      <dd className={cn(tone ?? "text-muted-foreground")}>{value}</dd>
     </div>
   );
 }
-
-// Opens WhatsApp with the bill link ready to send. The guest's number is
-// optional — without one WhatsApp just asks who to send it to.
 export async function shareBillOnWhatsApp(opts: {
   sessionId: string;
   tableCode?: string;
@@ -233,14 +231,12 @@ export async function shareBillOnWhatsApp(opts: {
     confirmLabel: "Open WhatsApp",
   });
   if (number === null) return;
-
   const digits = number.replace(/\D/g, "");
-  // a bare 10-digit Indian mobile needs its country code for wa.me
+  // A bare 10-digit Indian mobile needs its country code for wa.me.
   const to = digits ? (digits.length === 10 ? `91${digits}` : digits) : "";
   const link = `${window.location.origin}/bill/${opts.sessionId}${opts.tableCode ? `?tableCode=${encodeURIComponent(opts.tableCode)}` : ""}`;
-  const text = `Your bill at ${opts.label} — ${inr(opts.net)}\n${link}`;
   window.open(
-    `https://wa.me/${to}?text=${encodeURIComponent(text)}`,
+    `https://wa.me/${to}?text=${encodeURIComponent(`Your bill at ${opts.label} — ${inr(opts.net)}\n${link}`)}`,
     "_blank",
     "noopener,noreferrer",
   );

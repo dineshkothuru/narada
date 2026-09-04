@@ -1,5 +1,13 @@
 import { WHEEL, type STRINGS } from "@narada/shared";
 import { SpinWheel } from "./Games";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
 
 type Strings = (typeof STRINGS)["en"];
 
@@ -19,12 +27,14 @@ export default function SpinSheet({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="animate-fade-in absolute inset-0 bg-stone-950/60" onClick={onClose} />
-      <div className="animate-sheet-up relative flex flex-col items-center rounded-t-[2rem] bg-white px-5 pt-3 pb-10">
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-stone-200" />
-        <h2 className="font-display text-2xl font-semibold text-stone-900">{t.spinBanner}</h2>
-        <p className="mb-5 text-xs text-stone-400">{t.spinSub}</p>
+    <Drawer open onOpenChange={(open) => !open && onClose()}>
+      <DrawerContent className="items-center rounded-t-[2rem] px-5 pb-10">
+        <DrawerHeader>
+          <DrawerTitle className="font-display text-2xl font-semibold text-stone-900">
+            {t.spinBanner}
+          </DrawerTitle>
+          <DrawerDescription className="mb-5 text-xs text-stone-400">{t.spinSub}</DrawerDescription>
+        </DrawerHeader>
         <SpinWheel strings={{ spin: t.spin }} resolveSpin={resolveSpin} onResult={onResult} />
         {spinResult !== null && (
           <>
@@ -42,15 +52,12 @@ export default function SpinSheet({
                   )
                 : t.spinNone}
             </div>
-            <button
-              onClick={onClose}
-              className="mt-3 rounded-full bg-stone-900 px-8 py-2.5 text-xs font-bold text-white transition active:scale-95"
-            >
+            <Button aria-label="Close spin wheel" onClick={onClose} className="mt-3 rounded-full">
               ✕
-            </button>
+            </Button>
           </>
         )}
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
