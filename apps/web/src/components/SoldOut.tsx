@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAvailability, usePatchAvailability } from "@/api/hooks";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function SoldOutPanel() {
   const { data } = useAvailability();
@@ -16,18 +19,16 @@ export function SoldOutPanel() {
       </p>
       <div className="flex flex-wrap gap-1.5">
         {menu.map((dish) => (
-          <button
+          <Button
+            variant={dish.is_available ? "secondary" : "destructive"}
+            size="sm"
             key={dish.id}
             onClick={() => patch.mutate({ menuItemId: dish.id, available: !dish.is_available })}
             disabled={patch.isPending}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 disabled:opacity-60 ${
-              dish.is_available
-                ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                : "bg-rose-100 text-rose-700 line-through"
-            }`}
+            className={cn("rounded-full", !dish.is_available && "line-through")}
           >
             {dish.name}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -65,32 +66,30 @@ export function SoldOutAlerts() {
   };
 
   return (
-    <div className="tone-rose panel panel-lift mb-4 max-w-5xl p-4 print:hidden">
+    <Alert variant="destructive" className="mb-4 max-w-5xl print:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-widest text-rose-600 uppercase">
-            Menu changed
-          </p>
-          <ul className="mt-1.5 flex flex-col gap-1">
-            {fresh.slice(0, 5).map((event, index) => {
-              const name = typeof event.details?.name === "string" ? event.details.name : "A dish";
-              return (
-                <li key={`${event.created_at}-${index}`} className="text-xs text-slate-700">
-                  <span className="font-semibold">{name}</span>{" "}
-                  {event.action === "dish_sold_out" ? "is sold out" : "is back on"}
-                  <span className="text-slate-400"> · {event.role ?? "staff"}</span>
-                </li>
-              );
-            })}
-          </ul>
+          <AlertTitle>Menu changed</AlertTitle>
+          <AlertDescription>
+            <ul className="mt-1.5 flex flex-col gap-1">
+              {fresh.slice(0, 5).map((event, index) => {
+                const name =
+                  typeof event.details?.name === "string" ? event.details.name : "A dish";
+                return (
+                  <li key={`${event.created_at}-${index}`} className="text-xs text-slate-700">
+                    <span className="font-semibold">{name}</span>{" "}
+                    {event.action === "dish_sold_out" ? "is sold out" : "is back on"}
+                    <span className="text-slate-400"> · {event.role ?? "staff"}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </AlertDescription>
         </div>
-        <button
-          onClick={dismiss}
-          className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600"
-        >
+        <Button variant="secondary" size="sm" onClick={dismiss} className="shrink-0 rounded-full">
           Got it
-        </button>
+        </Button>
       </div>
-    </div>
+    </Alert>
   );
 }

@@ -8,7 +8,10 @@ import StaffOrderPad from "../../src/components/StaffOrderPad";
 
 const menu = {
   tableLabel: "Table 1",
-  categories: [{ id: "food", name: "Food", emoji: "🍽️" }],
+  categories: [
+    { id: "food", name: "Food", emoji: "🍽️" },
+    { id: "drinks", name: "Drinks", emoji: "🥤" },
+  ],
   items: [
     {
       id: "paneer",
@@ -27,6 +30,15 @@ const menu = {
       isVeg: true,
       isAvailable: true,
       emoji: "🍚",
+    },
+    {
+      id: "lassi",
+      categoryId: "drinks",
+      name: "Mango Lassi",
+      priceInr: 120,
+      isVeg: true,
+      isAvailable: true,
+      emoji: "🥭",
     },
   ],
 };
@@ -49,8 +61,12 @@ describe("StaffOrderPad", () => {
 
     expect(screen.getByText(/Paneer Tikka/)).toBeInTheDocument();
     expect(screen.getByText(/Veg Biryani/)).toBeInTheDocument();
-    await user.type(screen.getByPlaceholderText("Search the menu…"), "paneer");
+    await user.type(screen.getByRole("textbox", { name: "Search the menu" }), "paneer");
     expect(screen.getByText(/Paneer Tikka/)).toBeInTheDocument();
     expect(screen.queryByText(/Veg Biryani/)).not.toBeInTheDocument();
+    await user.clear(screen.getByRole("textbox", { name: "Search the menu" }));
+    await user.click(screen.getByRole("radio", { name: /drinks/i }));
+    expect(screen.getByText(/Mango Lassi/)).toBeInTheDocument();
+    expect(screen.queryByText(/Paneer Tikka/)).not.toBeInTheDocument();
   });
 });

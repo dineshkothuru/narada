@@ -2,6 +2,13 @@ import { useMemo, useRef, useState } from "react";
 import { inr, type CartLine } from "@narada/shared";
 import type { WaiterMenuResponse } from "@/api/hooks";
 import { usePlaceOrder, useWaiterDictate } from "@/api/hooks";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SearchIcon } from "lucide-react";
 
 function audioToBase64(blob: Blob): Promise<string> {
   return blob.arrayBuffer().then((buffer) => {
@@ -129,55 +136,64 @@ export default function StaffOrderPad({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-slate-200">
-          <span aria-hidden="true">⌕</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search the menu…"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
-          />
-        </label>
-        <button
+        <Field className="min-w-0 flex-1 gap-0">
+          <FieldLabel htmlFor="staff-menu-search" className="sr-only">
+            Search the menu
+          </FieldLabel>
+          <InputGroup className="h-10 rounded-xl bg-white ring-1 ring-slate-200">
+            <InputGroupInput
+              id="staff-menu-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search the menu…"
+            />
+            <InputGroupAddon align="inline-end">
+              <SearchIcon aria-hidden="true" />
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
+        <Button
+          variant={listening ? "default" : "outline"}
+          size="icon-lg"
           onClick={listen}
           aria-label={listening ? "Stop dictation" : "Dictate order"}
-          className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg ${listening ? "bg-rose-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
+          className="rounded-full"
         >
           {listening ? "■" : "🎙️"}
-        </button>
+        </Button>
       </div>
       {heard && (
-        <p className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">
-          Heard: “{heard}”
-        </p>
+        <Alert variant="info">
+          <AlertDescription>Heard: “{heard}”</AlertDescription>
+        </Alert>
       )}
       {unmatched.length > 0 && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-          Not found: {unmatched.join(", ")}
-        </p>
+        <Alert variant="warning">
+          <AlertDescription>Not found: {unmatched.join(", ")}</AlertDescription>
+        </Alert>
       )}
       {error && (
-        <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
-      <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
-        <button
-          onClick={() => setCategory(null)}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${category === null ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}
-        >
+      <ToggleGroup
+        type="single"
+        value={category ?? "all"}
+        onValueChange={(value) => setCategory(value === "all" ? null : value || null)}
+        className="no-scrollbar w-full justify-start overflow-x-auto"
+        variant="outline"
+        size="sm"
+      >
+        <ToggleGroupItem value="all" aria-label="Everything">
           Everything
-        </button>
+        </ToggleGroupItem>
         {menu.categories.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setCategory(item.id === category ? null : item.id)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${category === item.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`}
-          >
+          <ToggleGroupItem key={item.id} value={item.id}>
             {item.emoji} {item.name}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
       <div className="grid gap-2 sm:grid-cols-2">
         {items.map((item) => (
           <div
@@ -195,31 +211,30 @@ export default function StaffOrderPad({
             </span>
             {item.isAvailable && (cart.find((line) => line.itemId === item.id)?.qty ?? 0) > 0 ? (
               <span className="flex shrink-0 items-center gap-1.5">
-                <button
+                <Button
+                  variant="secondary"
+                  size="icon"
                   onClick={() => add(item.id, -1)}
                   aria-label={`one less ${item.name}`}
-                  className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-sm font-bold text-slate-600"
                 >
                   −
-                </button>
+                </Button>
                 <span className="w-5 text-center text-sm font-bold tabular-nums">
                   {cart.find((line) => line.itemId === item.id)?.qty}
                 </span>
-                <button
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => add(item.id)}
                   aria-label={`one more ${item.name}`}
-                  className="grid h-8 w-8 place-items-center rounded-full bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-300"
                 >
                   +
-                </button>
+                </Button>
               </span>
             ) : item.isAvailable ? (
-              <button
-                onClick={() => add(item.id)}
-                className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"
-              >
+              <Button variant="secondary" size="sm" onClick={() => add(item.id)}>
                 Add
-              </button>
+              </Button>
             ) : null}
           </div>
         ))}
@@ -228,9 +243,9 @@ export default function StaffOrderPad({
         <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
           <div className="flex items-center justify-between">
             <span className="font-bold">Round to send</span>
-            <button onClick={() => setReadBack(false)} className="font-semibold text-slate-500">
+            <Button variant="ghost" size="sm" onClick={() => setReadBack(false)}>
               Hide
-            </button>
+            </Button>
           </div>
           <p className="mt-1">
             {cart
@@ -244,9 +259,11 @@ export default function StaffOrderPad({
       )}
       {count > 0 && (
         <div className="sticky bottom-0 flex items-center gap-3 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
-          <button
+          <Button
+            variant="link"
+            size="sm"
             onClick={() => setReadBack((value) => !value)}
-            className="min-w-0 flex-1 truncate text-left text-xs font-semibold text-slate-600 underline"
+            className="min-w-0 flex-1 justify-start truncate text-left"
           >
             {readBack
               ? "Hide the list"
@@ -256,24 +273,22 @@ export default function StaffOrderPad({
                       `${line.qty}× ${menu.items.find((item) => item.id === line.itemId)?.name ?? "item"}`,
                   )
                   .join(", ")}
-          </button>
+          </Button>
           <span className="font-display text-lg font-semibold tabular-nums">{inr(total)}</span>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => {
               setCart([]);
               setReadBack(false);
             }}
-            className="rounded-full bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600"
           >
             Clear
-          </button>
-          <button
-            onClick={placeOrder}
-            disabled={place.isPending}
-            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="default" size="sm" onClick={placeOrder} disabled={place.isPending}>
+            {place.isPending && <Spinner data-icon="inline-start" />}
             {place.isPending ? "Sending…" : "Send to kitchen"}
-          </button>
+          </Button>
         </div>
       )}
     </div>

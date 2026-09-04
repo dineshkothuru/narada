@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 import CallAlertBar, { type OpenCall } from "./CallAlertBar";
 import { useFloor, useLogout, useMe } from "@/api/hooks";
 import { ROLE_LABEL, type StaffRole } from "@/lib/roles";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const I = (p: string) => (
   <svg
@@ -156,13 +159,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="border-t border-slate-200 p-3">
-          <button
+        <div className="p-3">
+          <Separator className="mb-3" />
+          <Button
+            variant="ghost"
             onClick={logout}
-            className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-slate-100"
+            className="w-full justify-start px-3 text-left text-rose-600"
           >
             Log out
-          </button>
+          </Button>
         </div>
       </aside>
 
@@ -172,13 +177,13 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2 px-3 pt-2">
             <span className="font-display text-sm font-semibold text-slate-900">🪈 Narada</span>
             {role && (
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-500 uppercase">
+              <Badge variant="secondary" className="text-[10px] font-bold tracking-wide uppercase">
                 {ROLE_LABEL[role]}
-              </span>
+              </Badge>
             )}
-            <button onClick={logout} className="ml-auto text-xs font-semibold text-rose-600">
+            <Button variant="ghost" size="sm" onClick={logout} className="ml-auto text-rose-600">
               Log out
-            </button>
+            </Button>
           </div>
           <nav className="flex gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none]">
             {flat.map((l) => {

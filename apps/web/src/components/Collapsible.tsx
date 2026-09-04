@@ -1,4 +1,12 @@
 import { useState, type ReactNode } from "react";
+import {
+  Collapsible as CollapsiblePrimitive,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { Tone } from "./Panel";
 
 // Admin panels start collapsed so the page opens as a short list of sections.
@@ -25,33 +33,37 @@ export default function Collapsible({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section
-      className={`tone-${tone ?? "slate"} panel panel-lift min-w-0 ${
-        spanWhenOpen && open ? "sm:col-span-2" : ""
-      }`}
+    <CollapsiblePrimitive
+      open={open}
+      onOpenChange={setOpen}
+      className={cn(
+        `tone-${tone ?? "slate"} panel panel-lift min-w-0`,
+        spanWhenOpen && open && "sm:col-span-2",
+      )}
     >
       {/* the padding lives on the button, so the whole header row toggles —
           not just the thin strip of text across its middle */}
-      <div className={`panel-head flex items-center gap-2 ${open ? "" : "panel-head-flat"}`}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center gap-2.5 px-5 py-4 text-left"
-        >
-          <span className="panel-pill" />
-          <span className="panel-title text-sm font-bold">{title}</span>
-          {badge && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold text-slate-500">
-              {badge}
-            </span>
-          )}
-          {hint && !open && (
-            <span className="hidden truncate text-[11px] text-slate-400 sm:block">· {hint}</span>
-          )}
-        </button>
+      <div className={cn("panel-head flex items-center gap-2", !open && "panel-head-flat")}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="flex min-w-0 flex-1 items-center justify-start gap-2.5 rounded-none px-5 py-4 text-left"
+          >
+            <span className="panel-pill" />
+            <span className="panel-title text-sm font-bold">{title}</span>
+            {badge && (
+              <Badge variant="secondary" className="text-[10px] font-extrabold">
+                {badge}
+              </Badge>
+            )}
+            {hint && !open && (
+              <span className="hidden truncate text-[11px] text-slate-400 sm:block">· {hint}</span>
+            )}
+          </Button>
+        </CollapsibleTrigger>
         {open && <div className="pr-5">{actions}</div>}
       </div>
-      {open && <div className="px-5 pb-5">{children}</div>}
-    </section>
+      <CollapsibleContent className="px-5 pb-5">{children}</CollapsibleContent>
+    </CollapsiblePrimitive>
   );
 }
